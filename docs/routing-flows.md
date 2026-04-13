@@ -8,7 +8,7 @@ Source inventory and routing diagrams for the `.opencode/` configuration layer.
 
 | Command | Workflow | Description |
 |---------|----------|-------------|
-| `lint-brain.md` | `lint-vault.md` | Audit vault for metadata and knowledge quality |
+| `lint-vault.md` | `lint-vault.md` | Audit vault for metadata and knowledge quality |
 | `brainstorm.md` | `distill-brainstorm.md` | Distill or expand brainstorm material |
 | `solidify.md` | `solidify-to-wiki.md` | Promote grounded knowledge into wiki |
 | `ingest.md` | `ingest-my-work.md` / `ingest-resources.md` | Ingest notes or sources into vault |
@@ -60,7 +60,7 @@ Source inventory and routing diagrams for the `.opencode/` configuration layer.
 
 ## Command Routing Diagrams
 
-### /lint-brain
+### /lint-vault
 
 ```mermaid
 flowchart TD
