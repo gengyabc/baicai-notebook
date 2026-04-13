@@ -52,7 +52,7 @@ Source inventory and routing diagrams for the `.opencode/` configuration layer.
 |------|---------|
 | `core-vault.md` | Folder semantics, knowledge standards, decision priority |
 | `edit-policy.md` | Edit behavior by folder |
-| `promotion-policy.md` | Brainstorm-to-wiki promotion criteria |
+| `promotion-policy.md` | Direct-to-wiki promotion with automatic brainstorm routing for uncertain content, temporal metadata |
 | `metadata-conventions.md` | YAML frontmatter schemas |
 | `query-confidence.md` | Folder priority for answers |
 
@@ -191,23 +191,25 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Input: target notes/topics] --> B[Collect supporting material]
-    B --> C{Passes promotion policy?}
-    C -->|No| D[Keep in brainstorm/]
-    C -->|Yes| E{Existing wiki note?}
-    E -->|Yes| F[Update existing note]
-    E -->|No| G[Create new wiki note]
-    F --> H[Load skill: solidify-to-wiki]
-    G --> H
-    H --> I[Add metadata and provenance]
-    I --> J{Structural change?}
-    J -->|Yes| K[Append to wiki/log.md]
-    J -->|No| L[Complete]
-    K --> L
+    B --> C{Routing decision}
+    C -->|Conflict/Speculation/Uncertainty/Novelty| D[Route to brainstorm/]
+    C -->|Grounded/Clear/Supported| E[Proceed to wiki promotion]
+    D --> F[Keep in brainstorm for iteration]
+    E --> G{Existing wiki note?}
+    G -->|Yes| H[Update existing note]
+    G -->|No| I[Create new wiki note]
+    H --> J[Load skill: solidify-to-wiki]
+    I --> J
+    J --> K[Add metadata, provenance, temporal fields]
+    K --> L{Structural change?}
+    L -->|Yes| M[Append to wiki/log.md]
+    L -->|No| N[Complete]
+    M --> N
 ```
 
 **Handoffs:**
-- `wiki-curator`: deduplication, naming, normalization
-- `provenance-auditor`: mixed or weak support checking
+- `wiki-curator`: deduplication, naming, normalization, temporal metadata
+- `provenance-auditor`: routing condition detection, mixed or weak support checking
 
 ---
 
@@ -321,20 +323,30 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Input: selected material] --> B{Ready for wiki?}
-    B -->|No| C[Return: not promotable]
-    B -->|Yes| D{Existing wiki page?}
-    D -->|Yes| E[Update existing]
-    D -->|No| F[Create new note]
-    E --> G[Extract grounded claims]
-    F --> G
-    G --> H[Add sources, confidence, related]
-    H --> I[Preserve backlinks]
+    A[Input: selected material] --> B{Routing check}
+    B -->|Conflict detected| C[Route to brainstorm]
+    B -->|Speculation detected| C
+    B -->|Synthesis uncertainty| C
+    B -->|Novel ideas| C
+    B -->|Grounded & clear| D{Existing wiki page?}
+    C --> E[Inform user of routing decision]
+    D -->|Yes| F[Update existing]
+    D -->|No| G[Create new note]
+    F --> H[Extract grounded claims]
+    G --> H
+    H --> I[Add sources, confidence, related]
+    I --> J[Set temporal metadata]
+    J --> K[last_verified: current date]
+    K --> L[review_cadence: annual default]
+    L --> M[Preserve backlinks]
+    E --> M
 ```
 
 **Bounds:**
-- Does not promote unresolved speculation
+- Does not promote unresolved speculation (routes to brainstorm instead)
 - Prefers updating existing pages over duplicates
+- Always sets temporal metadata on new wiki notes
+- Defaults `review_cadence` to `annual`
 
 ---
 
@@ -503,31 +515,37 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Input: candidate for wiki] --> B{Brainstorm or resource?}
-    B -->|Brainstorm| C[Check promotion test]
-    B -->|Resource| D[Check if grounded claim]
-    C --> E{Passes most criteria?}
-    D --> E
-    E -->|No| F[Keep in source layer]
-    E -->|Yes| G{Existing wiki page?}
-    G -->|Yes| H[Update with grounded claims only]
-    G -->|No| I[Create new with provenance]
-    H --> J[Add backlink if helpful]
-    I --> J
-    F --> K{Evidence mixed?}
-    K -->|Yes| L[Record tension explicitly]
-    K -->|No| M[Keep as-is]
+    A[Input: candidate for wiki] --> B{Routing conditions?}
+    B -->|Conflict| C[Route to brainstorm/]
+    B -->|Speculation| C
+    B -->|Synthesis uncertainty| C
+    B -->|Novelty| C
+    B -->|None detected| D{Existing wiki page?}
+    C --> E[Mark for iteration]
+    D -->|Yes| F[Update with grounded claims only]
+    D -->|No| G[Create new with provenance]
+    E --> H{Evidence mixed?}
+    F --> I[Set temporal metadata]
+    G --> I
+    I --> J[last_verified + review_cadence]
+    J --> K[Add backlink if helpful]
+    H -->|Yes| L[Record tension explicitly]
+    H -->|No| M[Keep in brainstorm]
     L --> M
+    K --> N[Complete]
 ```
 
 **Must:**
-- Promote only grounded claims
+- Promote grounded claims directly to wiki (default)
+- Route uncertain content to brainstorm automatically
 - Attach provenance directly
+- Set temporal metadata on new wiki notes
 - Record tensions when evidence is mixed
 
 **Must Not:**
-- Promote entire speculative notes
+- Promote content with detected routing conditions without routing to brainstorm
 - Promote when evidence is mixed without noting tension
+- Skip temporal metadata on new wiki notes
 
 ---
 

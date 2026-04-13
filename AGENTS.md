@@ -32,11 +32,7 @@ Treat uppercase and lowercase folder variants as aliases until the repository is
 
 ## Canonical references
 
-- Entry commands: `.opencode/commands/brainstorm.md`, `ingest.md`, `lint-vault.md`, `query.md`, `solidify.md`
-- Workflows: `.opencode/workflows/distill-brainstorm.md`, `ingest-my-work.md`, `ingest-resources.md`, `lint-vault.md`, `query-vault.md`, `solidify-to-wiki.md`
-- Reusable rules: `.opencode/rules/core-vault.md`, `edit-policy.md`, `metadata-conventions.md`, `promotion-policy.md`, `query-confidence.md`
-- Skills: `.opencode/skills/web-to-resource/SKILL.md`, `second-brain-ingest/SKILL.md`, `second-brain-query/SKILL.md`, `second-brain-lint/SKILL.md`, `brainstorm-distill/SKILL.md`, `solidify-to-wiki/SKILL.md`
-- Discovery surfaces: `wiki/index.md` and `output/index.md`
+- Primary discovery: `wiki/index.md`, `output/index.md`
 - Structural log: `wiki/log.md` when present
 
 Keep provenance, local links, `image_key`, and attachment locality intact.
