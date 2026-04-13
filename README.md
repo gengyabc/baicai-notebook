@@ -231,6 +231,32 @@ Command (用户入口) -> Workflow (多步流程) -> Skill (原子能力) -> Rul
                     ↘ Subagent (深度推理、证据审查、聚类、提升)
 ```
 
+### 预期目录结构
+
+```
+future/
+├── my-work/          # 用户意图层：工作笔记、决策、项目思考
+│   └── My-work/     # (别名，兼容大小写)
+├── resources/        # LLM 管理存储：外部来源、网页捕获、Zotero 笔记
+│   └── Resources/   # (别名，兼容大小写)
+├── brainstorm/       # 推演层：假设、矛盾、开放问题
+│   ├── todo/        # 待整理的推演材料
+│   └── active/       # 活跃的推演内容
+├── wiki/             # 稳定记忆层：经 solidify gate 提升的 grounded 知识
+│   ├── index.md     # wiki 导航索引
+│   └── log.md       # 结构性更新日志 (可选)
+└── output/           # 交付层：面向用户的输出成果
+    └── index.md     # output 导航索引
+```
+
+**目录职责**
+
+- **`my-work/`**: 活跃意图层，存放工作笔记、决策、会议记录和项目思考。保留用户写作风格，不自动提升到 wiki。
+- **`resources/`**: LLM 管理存储，存放外部来源、证据和支持材料。受护栏约束：不删除、不改原名、只允许渐进整理。
+- **`brainstorm/`**: 推演思考层，存放假设、矛盾和开放问题。固定在 `todo/` 与 `active/` 中迭代，不自动进入 wiki。
+- **`wiki/`**: 稳定记忆层，仅通过 explicit `solidify` gate 入场。必须维护 `index.md`，结构性更新记录在 `log.md`。
+- **`output/`**: 交付层，面向用户的输出成果。必须维护 `index.md`，保持 index-first 组织。
+
 **层级职责**
 
 - Commands：解释用户意图，路由到 workflow

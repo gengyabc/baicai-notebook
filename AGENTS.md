@@ -25,6 +25,7 @@ Canonical target layout:
 - `brainstorm/`: speculative material only, kept in `todo/` and `active/`
 - `wiki/`: stable knowledge, curated and index-first
 - `output/`: deliverables, kept index-first
+- `docs/plans/`: development requirements and plans, organized by date-prefixed folders
 - `.opencode/`: project-local agent system
 
 Treat uppercase and lowercase folder variants as aliases until the repository is normalized.
