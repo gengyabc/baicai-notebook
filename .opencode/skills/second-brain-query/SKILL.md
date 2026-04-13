@@ -5,14 +5,14 @@ compatibility: opencode
 ---
 ## What I do
 
-- answer from `wiki/` first when possible
+- read `wiki/index.md` first and answer from `wiki/` when possible
 - pull supporting evidence from `resources/`
 - use `brainstorm/` only for tentative synthesis
 - call out uncertainty, conflict, and support level clearly
 
 ## When to use me
 
-Use this for retrieval, synthesis, and question answering across the vault.
+Use this for vault Q&A that needs confidence-aware retrieval and provenance.
 
 ## Constraints
 

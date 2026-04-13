@@ -2,7 +2,7 @@
 
 ## Goal
 
-Turn active notes from `my-work/` or `My-work/` into better-organized knowledge artifacts without flattening the user's intent.
+Turn active notes from `my-work/` or `My-work/` into better-organized downstream artifacts without flattening the user's intent.
 
 ## Inputs
 
@@ -14,12 +14,11 @@ Turn active notes from `my-work/` or `My-work/` into better-organized knowledge 
 1. Read the target note or notes and identify the note's role: active work, decision, project context, question, or hypothesis.
 2. Preserve active wording in place when the note is still live working material.
 3. Extract durable ideas, repeated themes, and explicit open questions.
-4. Route outputs:
-- grounded, stable material -> update `wiki/`
-- speculative or early synthesis -> update `brainstorm/`
-- source references mentioned but not captured -> create or request `resources/` notes
-5. Add links between the active note and any derived brainstorm or wiki notes.
-6. If a wiki structure change is material and `wiki/log.md` exists, append a short log line.
+4. Route derived material by default into `brainstorm/`, not `wiki/`.
+5. If source references are mentioned but not captured, create or request `resources/` notes with provenance and `image_key`.
+6. Only send clearly grounded material toward `wiki/` through the explicit `solidify` workflow.
+7. Add links between the active note and any derived brainstorm or wiki notes.
+8. If derived material is ready for `wiki/`, hand it off to `solidify` and let that workflow handle `wiki/` maintenance.
 
 ## Skills
 
@@ -34,5 +33,5 @@ Turn active notes from `my-work/` or `My-work/` into better-organized knowledge 
 ## Outputs
 
 - preserved active note
-- linked brainstorm and or wiki updates
+- linked brainstorm updates and optional wiki promotion candidates
 - optional source capture tasks or resource stubs

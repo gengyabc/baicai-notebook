@@ -10,74 +10,32 @@ Use this stack consistently:
 
 Responsibilities:
 
-- Commands interpret user intent, validate arguments, and route to the right workflow.
-- Workflows orchestrate multi-step work, decide where notes belong, and manage outputs.
-- Skills perform one atomic capability and should not own flow control.
-- Subagents handle selective deep reasoning, evidence review, clustering, or promotion work.
-- Rules enforce global constraints, metadata, promotion discipline, and answer quality.
+- Commands dispatch user intent into the right workflow.
+- Workflows own multi-step orchestration and output shape.
+- Skills provide reusable narrow capability.
+- Subagents handle deep reasoning, evidence review, clustering, or promotion work.
+- Rules hold reusable constraints, schemas, and confidence policy.
 
 ## Folder roles
 
 Canonical target layout:
 
-- `my-work/`: active notes, drafts, decisions, meetings, project thinking
-- `resources/`: external sources, stubs, captured webpages, Zotero notes, local-file references
-- `brainstorm/`: speculative, partial, exploratory, or contradictory idea space
-- `wiki/`: durable, curated, linked knowledge
-- `output/`: deliverables
+- `my-work/` and `My-work/`: active intent, drafts, decisions, meetings, and project thinking
+- `resources/` and `Resources/`: captured sources, evidence, and local-file references; keep changes incremental
+- `brainstorm/`: speculative material only, kept in `todo/` and `active/`
+- `wiki/`: stable knowledge, curated and index-first
+- `output/`: deliverables, kept index-first
 - `.opencode/`: project-local agent system
 
-Current repository compatibility:
+Treat uppercase and lowercase folder variants as aliases until the repository is normalized.
 
-- `My-work/` should be treated as `my-work/`
-- `Resources/` should be treated as `resources/`
+## Canonical references
 
-Preserve existing capitalization in the live repo unless the user explicitly asks for a folder migration.
+- Entry commands: `.opencode/commands/brainstorm.md`, `ingest.md`, `lint-vault.md`, `query.md`, `solidify.md`
+- Workflows: `.opencode/workflows/distill-brainstorm.md`, `ingest-my-work.md`, `ingest-resources.md`, `lint-vault.md`, `query-vault.md`, `solidify-to-wiki.md`
+- Reusable rules: `.opencode/rules/core-vault.md`, `edit-policy.md`, `metadata-conventions.md`, `promotion-policy.md`, `query-confidence.md`
+- Skills: `.opencode/skills/web-to-resource/SKILL.md`, `second-brain-ingest/SKILL.md`, `second-brain-query/SKILL.md`, `second-brain-lint/SKILL.md`, `brainstorm-distill/SKILL.md`, `solidify-to-wiki/SKILL.md`
+- Discovery surfaces: `wiki/index.md` and `output/index.md`
+- Structural log: `wiki/log.md` when present
 
-## Priority and confidence
-
-When evidence conflicts or is incomplete, prefer this order:
-
-1. User intent and active context from `my-work/` or `My-work/`
-2. Source evidence from `resources/` or `Resources/`
-3. Speculation and candidate synthesis in `brainstorm/`
-4. Stable claims in `wiki/`
-
-Do not present `brainstorm/` content as settled knowledge unless confidence and provenance are made explicit.
-
-## Promotion pipeline
-
-Default movement is:
-
-`my-work/resources -> brainstorm -> wiki -> output`
-
-Not everything should be promoted. Many ideas should remain in `brainstorm/` permanently.
-
-## Hard rules
-
-- Every important external source should have a Markdown note in `resources/`.
-- Bare links are not knowledge; retain title, provenance, and why it matters.
-- Prefer updating an existing wiki page over creating a duplicate.
-- Never write speculative claims into `wiki/` without provenance and uncertainty handling.
-- Treat `wiki/` as stable memory, not a scratchpad.
-- Treat `brainstorm/` as editable and iterative; Git history is valuable there.
-- Preserve links to local files and Zotero items in source notes.
-- If `wiki/log.md` exists, append meaningful structural changes to it.
-
-## Edit policy by folder
-
-- `my-work/` or `My-work/`: suggest heavily, edit lightly, preserve authorship and voice
-- `resources/` or `Resources/`: create or normalize stubs, summaries, provenance, and links
-- `brainstorm/`: edit freely for clustering, synthesis, and exploration
-- `wiki/`: edit carefully, preserve stability, remove duplication, tighten claims
-- `output/`: generate task-specific deliverables freely
-
-## Metadata
-
-Use YAML frontmatter for durable notes. Full schemas are loaded from `.opencode/rules/metadata-conventions.md` via `opencode.json`.
-
-## Modular instruction loading
-
-Project rules are loaded globally through `opencode.json`.
-
-When executing a vault task, read the relevant workflow file from `.opencode/workflows/` and follow it directly. Use skills for atomic work and subagents only when the task benefits from deeper parallel or specialized reasoning.
+Keep provenance, local links, `image_key`, and attachment locality intact.

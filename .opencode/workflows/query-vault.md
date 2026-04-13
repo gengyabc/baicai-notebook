@@ -11,11 +11,12 @@ Answer a user question from the vault with the right confidence level and proven
 
 ## Steps
 
-1. Search `wiki/` first for stable answers.
-2. Pull `resources/` for supporting evidence and provenance.
-3. Use `brainstorm/` only for tentative synthesis or future directions.
-4. Use `my-work/` to understand current context and user intent.
-5. Present the answer with explicit confidence and note any evidence conflicts.
+1. Read `wiki/index.md` first when it exists.
+2. Search the relevant `wiki/` pages for stable answers.
+3. Pull `resources/` for supporting evidence and provenance.
+4. Use `brainstorm/` only for tentative synthesis or future directions.
+5. Use `my-work/` only to understand current context and user intent.
+6. Present the answer using the `query-confidence` rules: explicit confidence, confirmed facts vs working hypotheses, and any evidence conflicts.
 
 ## Skills
 

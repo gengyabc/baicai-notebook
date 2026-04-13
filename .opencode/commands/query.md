@@ -6,5 +6,3 @@ subtask: true
 Answer this vault question: `$ARGUMENTS`
 
 Follow @.opencode/workflows/query-vault.md.
-
-Use `wiki/` first, then `resources/`, then `brainstorm/`, and make confidence explicit.

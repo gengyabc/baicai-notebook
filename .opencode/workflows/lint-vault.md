@@ -2,7 +2,7 @@
 
 ## Goal
 
-Audit the knowledge vault for metadata drift, missing provenance, orphan notes, duplicate concepts, and promotion opportunities.
+Audit the knowledge vault for metadata drift, missing provenance, indexing gaps, attachment locality issues, structural drift, and promotion opportunities.
 
 ## Inputs
 
@@ -10,12 +10,17 @@ Audit the knowledge vault for metadata drift, missing provenance, orphan notes, 
 
 ## Steps
 
-1. Check frontmatter coverage and schema fit for `resources/`, `brainstorm/`, and `wiki/` notes.
-2. Identify orphan notes, duplicate topics, and weakly linked pages.
-3. Flag wiki claims that lack supporting sources.
-4. Flag brainstorm notes that have enough support to consider promotion.
-5. Flag resource notes that lack summaries, provenance, or link targets.
-6. Report findings in order of severity and suggest the smallest corrective next steps.
+1. Check frontmatter coverage and schema fit for `resources/`, `brainstorm/`, `wiki/`, and `output/` notes.
+2. Flag missing `image_key` fields.
+3. Check whether `wiki/` and `output/` pages are represented in `wiki/index.md` and `output/index.md` when those indexes exist.
+4. Identify orphan notes, duplicate topics, weakly linked pages, and missing or stale index entries.
+5. Flag wiki claims that lack supporting sources.
+6. Flag brainstorm notes that drift away from the `todo/active` structure.
+7. Flag attachment patterns that break locality, such as cross-directory attachment reuse or global asset dependencies.
+8. Flag brainstorm notes that have enough support to consider promotion.
+9. Flag resource notes that lack summaries, provenance, or link targets.
+10. Check whether `wiki/log.md` entries use a consistent date-prefixed format when the file exists.
+11. Report findings in order of severity and suggest the smallest corrective next steps.
 
 ## Skills
 

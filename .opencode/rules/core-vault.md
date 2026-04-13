@@ -3,12 +3,14 @@
 ## Folder semantics
 
 - `my-work/` and `My-work/` are the active intent layer.
-- `resources/` and `Resources/` are the evidence layer.
-- `brainstorm/` is the speculative layer.
-- `wiki/` is the durable knowledge layer.
-- `output/` is the deliverable layer.
+- `resources/` and `Resources/` are LLM-managed storage for captured sources, evidence, and supporting material, with guardrails.
+- `brainstorm/` is the speculative thinking layer and should stay within `todo/` and `active/`.
+- `wiki/` is the durable knowledge layer and should be maintained `index-first`.
+- `output/` is the deliverable layer and should be maintained `index-first`.
 
 Until the repository is normalized, treat uppercase and lowercase folder variants as aliases rather than separate destinations.
+
+For retrieval order, promotion, and schema details, follow `.opencode/rules/query-confidence.md`, `.opencode/rules/promotion-policy.md`, and `.opencode/rules/metadata-conventions.md`.
 
 ## Knowledge standard
 
@@ -16,13 +18,10 @@ Until the repository is normalized, treat uppercase and lowercase folder variant
 - Important binaries should have a Markdown sidecar.
 - Bare URLs are insufficient; keep provenance, summary, and context.
 - Prefer durable notes over ephemeral references.
-
-## Decision priority
-
-1. Preserve active user intent.
-2. Preserve source provenance.
-3. Keep uncertain synthesis in `brainstorm/`.
-4. Promote only grounded knowledge into `wiki/`.
+- Root `index.md` serves as the vault navigation hub; read it first when understanding vault structure.
+- `resources/` may grow deep topic structure, but only through incremental organization; do not delete captured source files or rename original source files.
+- `wiki/` and `output/` may grow freely, but new pages must remain discoverable through `index.md`.
+- Attachments should live in local `attachments/` directories near the notes that use them.
 
 ## Duplicate control
 

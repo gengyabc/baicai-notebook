@@ -2,7 +2,7 @@
 
 ## Goal
 
-Turn messy idea material into clearer hypotheses, clusters, questions, and next steps while keeping it explicitly speculative.
+Turn messy idea material in `brainstorm/todo` and `brainstorm/active` into clearer hypotheses, clusters, questions, and next steps while keeping it explicitly speculative.
 
 ## Inputs
 
@@ -11,12 +11,13 @@ Turn messy idea material into clearer hypotheses, clusters, questions, and next 
 
 ## Steps
 
-1. Read the target brainstorm material and identify topic clusters.
+1. Read the target brainstorm material and confirm it lives in `brainstorm/todo` or `brainstorm/active`.
 2. Separate observations, hypotheses, tensions, and open questions.
 3. Rewrite or split notes for clarity while preserving speculative status.
-4. Add `derived_from`, `confidence`, and `status` metadata where missing.
-5. Create links to supporting resources and adjacent brainstorm themes.
-6. Mark promotion candidates, but do not promote automatically unless the user or workflow explicitly requests it.
+4. Move notes between `todo/` and `active/` as their state becomes clearer.
+5. Normalize metadata to the brainstorm schema, including `derived_from`, `confidence`, `status`, and `image_key`.
+6. Create links to supporting resources and adjacent brainstorm themes.
+7. Mark promotion candidates, but do not promote automatically or write `wiki/` as part of this workflow.
 
 ## Skills
 
@@ -30,6 +31,6 @@ Turn messy idea material into clearer hypotheses, clusters, questions, and next 
 
 ## Outputs
 
-- cleaner brainstorm notes
+- cleaner brainstorm notes within `todo/` and `active/`
 - explicit hypotheses and questions
 - optional promotion candidates for later wiki solidification
