@@ -1,0 +1,21 @@
+# Post Ingest Solidify
+
+Trigger solidify workflow after successful resource or my-work ingest.
+
+## Trigger
+
+This rule is a post-workflow policy. The host should evaluate it when:
+- The `ingest-resources` workflow completes successfully with grounded material
+- The `ingest-my-work` workflow completes successfully with grounded material
+
+## Behavior
+
+1. Check if the ingested material meets the promotion policy criteria.
+2. If yes, load the `solidify-to-wiki` skill.
+3. Promote only grounded claims to `wiki/`.
+4. Update `wiki/index.md` with Obsidian bidirectional links.
+5. Preserve speculative material in `brainstorm/`.
+
+## Condition
+
+Only trigger when the ingest produces clearly grounded content with sufficient provenance.

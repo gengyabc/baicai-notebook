@@ -1,7 +1,5 @@
 ---
 description: Discover requirements and persist to docs/requirements/
-agent: vault-orchestrator
-subtask: true
 argument-hint: <initial-request>
 ---
 

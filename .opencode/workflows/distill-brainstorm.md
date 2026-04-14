@@ -24,11 +24,6 @@ Turn messy idea material in `brainstorm/todo` and `brainstorm/active` into clear
 - load `brainstorm-distill`
 - load `second-brain-ingest` if routing decisions are needed
 
-## Subagents
-
-- use `brainstorm-catalyst` for larger thematic clustering or fresh synthesis
-- use `vault-researcher` if missing evidence should be gathered before refining claims
-
 ## Outputs
 
 - cleaner brainstorm notes within `todo/` and `active/`

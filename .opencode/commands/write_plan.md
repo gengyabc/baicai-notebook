@@ -1,7 +1,5 @@
 ---
 description: Write a plan to docs/plans after LLM discussion
-agent: general
-subtask: false
 ---
 
 Write the plan based on the final discussion result.

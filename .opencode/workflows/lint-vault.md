@@ -26,11 +26,6 @@ Audit the knowledge vault for metadata drift, missing provenance, indexing gaps,
 
 - load `second-brain-lint`
 
-## Subagents
-
-- use `provenance-auditor` for evidence gaps and wiki support issues
-- use `wiki-curator` for duplicate or structure-related findings
-
 ## Outputs
 
 - prioritized findings

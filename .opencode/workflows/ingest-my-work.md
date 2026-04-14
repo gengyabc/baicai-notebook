@@ -19,16 +19,12 @@ Turn active notes from `my-work/` or `My-work/` into better-organized downstream
 6. Only send clearly grounded material toward `wiki/` through the explicit `solidify` workflow.
 7. Add links between the active note and any derived brainstorm or wiki notes.
 8. If derived material is ready for `wiki/`, hand it off to `solidify` and let that workflow handle `wiki/` maintenance.
+9. If the ingest promotes material into `wiki/`, update `wiki/index.md` with Obsidian bidirectional links for the affected wiki notes.
 
 ## Skills
 
 - load `second-brain-ingest` for routing and note extraction
 - load `solidify-to-wiki` only if grounded material clearly belongs in `wiki/`
-
-## Subagents
-
-- use `brainstorm-catalyst` for clustering or idea expansion when the material is exploratory
-- use `wiki-curator` when promotion requires careful deduplication or normalization
 
 ## Outputs
 

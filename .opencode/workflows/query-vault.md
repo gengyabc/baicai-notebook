@@ -22,11 +22,6 @@ Answer a user question from the vault with the right confidence level and proven
 
 - load `second-brain-query`
 
-## Subagents
-
-- use `vault-researcher` for broad evidence gathering
-- use `provenance-auditor` if the answer depends on conflicting or weak support
-
 ## Outputs
 
 - concise answer

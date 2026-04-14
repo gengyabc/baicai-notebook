@@ -18,16 +18,12 @@ Convert external material into durable Markdown resources and connect them to th
 6. Link the resource to relevant brainstorm, wiki, or project notes.
 7. Send derived synthesis to `brainstorm/` by default.
 8. If the source strongly supports stable knowledge, hand the grounded part to `solidify` instead of writing `wiki/` directly.
+9. If the ingest promotes grounded material into `wiki/`, update `wiki/index.md` with Obsidian bidirectional links for the affected wiki notes.
 
 ## Skills
 
 - load `web-to-resource` for URL capture or web-note normalization
 - load `second-brain-ingest` for evidence routing
-
-## Subagents
-
-- use `vault-researcher` when multiple sources must be compared or summarized
-- use `wiki-curator` when source evidence supports a durable wiki update
 
 ## Outputs
 

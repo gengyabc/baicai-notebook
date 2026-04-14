@@ -6,15 +6,15 @@ This repository is an OpenCode-driven personal knowledge system.
 
 Use this stack consistently:
 
-`Command -> Workflow -> Skill / Subagent -> Rules`
+`Command -> Workflow -> Skill -> Rules`
 
 Responsibilities:
 
 - Commands dispatch user intent into the right workflow.
 - Workflows own multi-step orchestration and output shape.
-- Skills provide reusable narrow capability.
-- Subagents handle deep reasoning, evidence review, clustering, or promotion work.
+- Skills provide reusable narrow capability and handle focused operations.
 - Rules hold reusable constraints, schemas, and confidence policy.
+- Rules define auto-execution triggers.
 
 ## Folder roles
 

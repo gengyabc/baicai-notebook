@@ -24,11 +24,6 @@ Act as the only promotion gate that moves grounded knowledge into `wiki/` withou
 - load `solidify-to-wiki`
 - load `second-brain-query` when source triangulation is needed
 
-## Subagents
-
-- use `wiki-curator` for deduplication, naming, and normalization
-- use `provenance-auditor` when support is mixed or needs explicit checking
-
 ## Outputs
 
 - new or updated wiki note
