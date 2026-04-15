@@ -83,3 +83,6 @@ logs/
 #temp dev
 _vendor/
 .temp/
+
+# raw
+*/attachments/

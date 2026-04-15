@@ -1,10 +1,24 @@
 ---
-type: vault-index
-title: Knowledge Vault Index
-summary: Navigation hub for content layers in this personal knowledge system.
+type: vault
+kind: index
+source_type: manual
+content_role: index
 created: 2026-04-13
-updated: 2026-04-13
+updated: 2026-04-15
 image_key: vault-root-index
+status: active
+trust_level: verified
+verification: verified
+llm_stage: integrated
+canonical_topic: vault-navigation
+source_ref: ""
+derived_from: []
+entity_refs: []
+topic_refs: []
+tags:
+  - state/active
+  - source/manual
+  - role/index
 ---
 
 # Knowledge Vault Index
