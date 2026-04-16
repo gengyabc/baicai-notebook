@@ -1,17 +1,36 @@
 import fs from "fs/promises"
 import path from "path"
+import crypto from "node:crypto"
 import { parseDocument, stringify } from "yaml"
 
-const TARGET_ROOTS = ["resources", "Resources"]
+const TARGET_ROOTS = ["resources", "Resources", "brainstorm", "Brainstorm"]
 const SYSTEM_TAG_PREFIXES = ["state/", "source/", "role/"]
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 
-const isDryRun = process.argv.includes("--dry-run")
-const targets = process.argv.slice(2).filter((arg) => !arg.startsWith("--"))
+export async function backfillFile(filePath) {
+  if (!filePath.endsWith(".md")) {
+    return { changed: false, message: null, skipped: true }
+  }
+  
+  if (!isTargetPath(filePath)) {
+    return { changed: false, message: null, skipped: true }
+  }
+  
+  const source = await fs.readFile(filePath, "utf8")
+  const { frontmatter, body } = splitFrontmatter(source)
+  const existing = parseFrontmatter(frontmatter)
+  const next = buildFrontmatter(existing, body, filePath)
+  const nextSource = renderDocument(next, body)
 
-await main()
+  if (source === nextSource) return { changed: false, message: null }
 
-async function main() {
+  await atomicWrite(filePath, nextSource)
+  return { changed: true, message: filePath }
+}
+
+export async function main() {
+  const isDryRun = process.argv.includes("--dry-run")
+  const targets = process.argv.slice(2).filter((arg) => !arg.startsWith("--"))
   const roots = targets.length ? targets : TARGET_ROOTS.map((root) => path.join(process.cwd(), root))
   const files = []
 
@@ -30,7 +49,7 @@ async function main() {
 
   let changed = 0
   for (const filePath of files) {
-    const result = await processFile(filePath)
+    const result = await processFile(filePath, isDryRun)
     if (result.changed) changed += 1
     if (result.message) console.log(result.message)
   }
@@ -52,7 +71,7 @@ async function collectMarkdownFiles(dir, files) {
   }
 }
 
-async function processFile(filePath) {
+async function processFile(filePath, isDryRun = false) {
   if (!isTargetPath(filePath)) return { changed: false, message: null }
 
   const source = await fs.readFile(filePath, "utf8")
@@ -64,17 +83,17 @@ async function processFile(filePath) {
   if (source === nextSource) return { changed: false, message: null }
   if (isDryRun) return { changed: true, message: `[dry-run] ${filePath}` }
 
-  await fs.writeFile(filePath, nextSource)
+  await atomicWrite(filePath, nextSource)
   return { changed: true, message: filePath }
 }
 
 function buildFrontmatter(existing, body, filePath) {
   const imageKey = deriveImageKey(filePath)
   const sourceRef = existing.source_ref || extractFirstUrl(body)
-  const sourceType = existing.source_type || guessSourceType(sourceRef, body)
+  const sourceType = existing.source_type || guessSourceType(sourceRef, body, filePath)
   const status = existing.status || defaultStatus(filePath)
   const description = existing.description || deriveDescription(body)
-  const descriptionDone = existing.llm_description_done === true || Boolean(existing.description) || Boolean(description)
+  const descriptionDone = existing.llm_description_done === true || isDescriptionWhitelisted(filePath, sourceRef)
   const canonicalTopic = !existing.canonical_topic || /[^a-z0-9-]/.test(existing.canonical_topic) ? imageKey : existing.canonical_topic
   const now = today()
 
@@ -88,7 +107,6 @@ function buildFrontmatter(existing, body, filePath) {
   next.image_key = imageKey
   next.description = description
   next.llm_description_done = descriptionDone
-  next.llm_rename_done = existing.llm_rename_done === true
   next.status = status
   next.trust_level = existing.trust_level || defaultTrustLevel(filePath)
   next.verification = existing.verification || defaultVerification(filePath)
@@ -100,12 +118,89 @@ function buildFrontmatter(existing, body, filePath) {
   next.topic_refs = Array.isArray(existing.topic_refs) ? existing.topic_refs : []
   next.tags = mergeTags(existing.tags, sourceType, status, next.content_role)
 
+  if (!existing.ingest_status) {
+    next.ingest_status = "pending"
+  } else {
+    next.ingest_status = existing.ingest_status
+  }
+
+  if (!existing.normalized_at) {
+    next.normalized_at = now
+  } else {
+    next.normalized_at = existing.normalized_at
+  }
+
+  if (!existing.source_hash) {
+    next.source_hash = computeHash(body)
+  } else {
+    next.source_hash = existing.source_hash
+  }
+
+  if (!existing.source_path) {
+    next.source_path = deriveSourcePath(filePath)
+  } else {
+    next.source_path = existing.source_path
+  }
+
   for (const key of Object.keys(existing)) {
     if (key in next) continue
+    if (key === "llm_rename_done") continue
     next[key] = existing[key]
   }
 
   return next
+}
+
+function computeHash(body) {
+  const normalized = body
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{2,}/g, "\n\n")
+    .trim()
+  
+  return crypto.createHash("sha1")
+    .update(normalized)
+    .digest("hex")
+    .slice(0, 16)
+}
+
+function deriveSourcePath(filePath) {
+  const parts = filePath.split(path.sep)
+  
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i]
+    if (part === "resources" || part === "Resources") {
+      return parts.slice(i, i + 2).join("/")
+    }
+    if (part === "brainstorm" || part === "Brainstorm") {
+      return parts.slice(i, i + 2).join("/")
+    }
+    if (part === "wiki" || part === "Wiki") {
+      return parts.slice(i, i + 2).join("/")
+    }
+    if (part === "output" || part === "Output") {
+      return parts.slice(i, i + 2).join("/")
+    }
+    if (part === "my-work" || part === "My-work") {
+      return parts.slice(i, i + 2).join("/")
+    }
+  }
+  
+  return "unknown"
+}
+
+function guessSourceType(sourceRef, body, filePath) {
+  if (sourceRef) {
+    if (sourceRef.includes("webclips")) return "webview"
+    return "web"
+  }
+  
+  if (filePath.includes("webclips")) return "webview"
+  if (filePath.includes("inbox")) return "manual"
+  
+  if (/https?:\/\//i.test(body)) return "web"
+  if (/github\.com/i.test(body)) return "web"
+  
+  return "local"
 }
 
 function renderDocument(frontmatter, body) {
@@ -129,6 +224,12 @@ function parseFrontmatter(frontmatter) {
   const doc = parseDocument(frontmatter, { strict: false })
   const value = doc.toJS()
   return value && typeof value === "object" ? value : {}
+}
+
+async function atomicWrite(filePath, content) {
+  const tempPath = filePath + ".tmp"
+  await fs.writeFile(tempPath, content, "utf8")
+  await fs.rename(tempPath, filePath)
 }
 
 function mergeTags(tags, sourceType, status, contentRole) {
@@ -181,11 +282,6 @@ function extractFirstUrl(body) {
   return rawUrl ? rawUrl[0] : ""
 }
 
-function guessSourceType(sourceRef, body) {
-  if (sourceRef || /https?:\/\//i.test(body) || /github\.com/i.test(body)) return "web"
-  return "local"
-}
-
 function deriveDescription(body) {
   const paragraphs = body
     .replace(/\r\n/g, "\n")
@@ -212,6 +308,10 @@ function cleanupMarkdown(text) {
 
 function defaultType(filePath) {
   if (isUnder(filePath, "Resources") || isUnder(filePath, "resources")) return "resource"
+  if (isUnder(filePath, "Brainstorm") || isUnder(filePath, "brainstorm")) return "brainstorm"
+  if (isUnder(filePath, "Wiki") || isUnder(filePath, "wiki")) return "wiki"
+  if (isUnder(filePath, "Output") || isUnder(filePath, "output")) return "output"
+  if (isUnder(filePath, "My-work") || isUnder(filePath, "my-work")) return "my-work"
   return "resource"
 }
 
@@ -253,6 +353,15 @@ function isUnder(filePath, folder) {
   return filePath.includes(`${path.sep}${folder}${path.sep}`) || filePath.startsWith(`${folder}${path.sep}`)
 }
 
+function isDescriptionWhitelisted(filePath, sourceRef) {
+  const basename = path.basename(filePath)
+  if (basename === "index.md" || basename === "log.md") return true
+  
+  if (sourceRef && sourceRef.includes("github.com")) return true
+  
+  return false
+}
+
 function isTargetPath(filePath) {
   return filePath.endsWith(".md") && TARGET_ROOTS.some((root) => isUnder(filePath, root))
 }
@@ -263,4 +372,8 @@ async function safeStat(filePath) {
   } catch {
     return null
   }
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  await main()
 }

@@ -81,7 +81,7 @@ function buildFrontmatter(existing, body, filePath, event) {
   const sourceType = existing.source_type || guessSourceType(sourceRef, body)
   const status = existing.status || defaultStatus(filePath)
   const description = existing.description || deriveDescription(body)
-  const descriptionDone = existing.llm_description_done === true || Boolean(existing.description) || Boolean(description)
+  const descriptionDone = existing.llm_description_done === true || isDescriptionWhitelisted(filePath, sourceRef)
   const canonicalTopic = !existing.canonical_topic || /[^a-z0-9-]/.test(existing.canonical_topic) ? imageKey : existing.canonical_topic
   const now = today()
 
@@ -95,7 +95,6 @@ function buildFrontmatter(existing, body, filePath, event) {
   next.image_key = imageKey
   next.description = description
   next.llm_description_done = descriptionDone
-  next.llm_rename_done = existing.llm_rename_done === true
   next.status = status
   next.trust_level = existing.trust_level || defaultTrustLevel(filePath)
   next.verification = existing.verification || defaultVerification(filePath)
@@ -109,6 +108,7 @@ function buildFrontmatter(existing, body, filePath, event) {
 
   for (const key of Object.keys(existing)) {
     if (key in next) continue
+    if (key === "llm_rename_done") continue
     next[key] = existing[key]
   }
 
@@ -250,4 +250,13 @@ function today() {
 
 function isUnder(filePath, folder) {
   return filePath.includes(`${path.sep}${folder}${path.sep}`) || filePath.startsWith(`${folder}${path.sep}`)
+}
+
+function isDescriptionWhitelisted(filePath, sourceRef) {
+  const basename = path.basename(filePath)
+  if (basename === "index.md" || basename === "log.md") return true
+  
+  if (sourceRef && sourceRef.includes("github.com")) return true
+  
+  return false
 }

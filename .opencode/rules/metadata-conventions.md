@@ -14,6 +14,7 @@ For folder-level edit boundaries, see `.opencode/rules/edit-policy.md`. For prom
 ## Global note requirements
 
 - All durable vault Markdown notes, including `resources/`, `brainstorm/`, `wiki/`, `output/`, `my-work/`, root `index.md`, `wiki/index.md`, `wiki/log.md`, and `output/index.md`, must include `image_key`.
+- Notes processed through the LLM ingestion pipeline must include `ingest_status`, `normalized_at`, `source_hash`, and `source_path`.
 - Root `index.md` should use a table or directory-style layout to navigate vault layers with purpose and owner annotations.
 - `wiki/index.md` and `output/index.md` should use readable directory-style entries with a one-line summary when practical.
 - `wiki/log.md` entries should use a consistent date-prefixed format for later parsing and review.
@@ -47,18 +48,39 @@ description:
 derived_from: []
 entity_refs: []
 topic_refs: []
-llm_rename_done:
 llm_description_done:
 ```
 
-### LLM processing markers
+### LLM ingestion layer fields (v2)
 
 ```yaml
-llm_rename_done: true | false
+ingest_status: pending | processed | error
+normalized_at:
+source_hash:
+source_path:
+```
+
+These fields track content standardization and enable downstream LLM workflows:
+- `ingest_status`: Entry point status for LLM processing pipeline
+- `normalized_at`: Last standardization timestamp
+- `source_hash`: SHA1 hash (16 chars) for deduplication and idempotency
+- `source_path`: Original import location path
+
+### LLM description marker
+
+```yaml
 llm_description_done: true | false
 ```
 
-These markers track whether expensive rename and description passes have already run so later automation can skip them.
+Tracks whether description has been finalized:
+- `true`: Description is complete (either from whitelist or LLM-enhanced)
+- `false`: Description needs LLM enhancement
+
+**Whitelist** (automatically set to `true`):
+- `index.md` and `log.md` files
+- Files with `source_ref` containing `github.com`
+
+**Non-whitelisted** files can be enhanced via `/process-pending` command.
 
 ## Enum sets
 
@@ -108,6 +130,12 @@ verification: unverified | spot_checked | verified
 
 ```yaml
 llm_stage: unprocessed | parsed | linked | summarized | integrated
+```
+
+### `ingest_status` (v2)
+
+```yaml
+ingest_status: pending | processed | error
 ```
 
 ## Tag taxonomy
@@ -175,6 +203,11 @@ description:
 derived_from: []
 entity_refs: []
 topic_refs: []
+ingest_status: pending
+normalized_at:
+source_hash:
+source_path:
+llm_description_done:
 tags:
   - state/inbox
   - source/local

@@ -1,0 +1,21 @@
+{
+  "watchDirs": ["resources", "brainstorm"],
+  "excludeDirs": [
+    ".obsidian",
+    ".git",
+    "node_modules",
+    ".opencode/node_modules",
+    ".trash",
+    ".opencode/plugins/auto-frontmatter",
+    "attachments"
+  ],
+  "excludePatterns": ["\\.tmp$", "\\.bak$", "\\.DS_Store$", "\\.gitkeep$"],
+  "debounceMs": 300,
+  "settleTimeMs": 800,
+  "pollIntervalMs": 200,
+  "maxWaitMs": 10000,
+  "mode": "merge",
+  "atomicWrite": true,
+  "logLevel": "info",
+  "antiLoopWindowMs": 5000
+}

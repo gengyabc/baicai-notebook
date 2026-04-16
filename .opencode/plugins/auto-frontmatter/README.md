@@ -1,51 +1,177 @@
-# Auto Frontmatter Plugin
+# Auto Frontmatter Plugin (v2)
 
-Automatically adds or completes YAML frontmatter for Markdown files in vault content folders.
+LLM ingestion pipeline that standardizes all incoming markdown content, marks processing status, and enables downstream LLM workflows.
+
+## v2 Architecture
+
+```
+[Any Source Write]
+        │
+        ▼
+  watch.mjs (chokidar + debounce 300ms)
+        │
+        ▼
+  waitForStableFile (size/mtime stability)
+        │
+        ▼
+  backfill.mjs (v2 ingestion engine)
+        │
+        ├─ ingest_status: pending
+        ├─ image_key: <slugified filename>
+        ├─ description: <extracted first paragraph>
+        ├─ llm_description_done: true (whitelisted) or false (needs enhancement)
+        │
+        ▼
+  [Optional: /process-pending in OpenCode]
+        │
+        ├─ Find files: llm_description_done: false
+        ├─ LLM enhances description
+        ├─ Set llm_description_done: true
+        ├─ Set ingest_status: processed
+```
 
 ## Target Folders
 
 - `resources/` and `Resources/`
 - `brainstorm/`
-- `wiki/`
-- `output/`
-- `my-work/` and `My-work/`
 
-## Behavior
+Future expansion: `wiki/`, `output/`, `my-work/`
 
-- Watches for `file.watcher.updated` and `file.edited` events on `.md` files
-- Derives `image_key` from filename using lowercase alphanumeric hyphenation
-- Applies a folder-specific default schema
-- Uses standard YAML parsing and writing instead of line-based parsing
-- Adds missing core fields from `.opencode/rules/metadata-conventions.md`
-- Synchronizes required `state/*`, `source/*`, and `role/*` tags from frontmatter values
-- Preserves topic tags and any unknown frontmatter fields
-- Refreshes `updated` on each write day and remains idempotent for repeated same-day runs
-- Generates a short `description` from the note body when missing
-- Records `llm_description_done` and `llm_rename_done` so expensive passes can be skipped later
-- Ensures managed resource buckets exist under `resources/` and `Resources/`
+## v2 Frontmatter Schema
 
-## Schema Mapping
+### Ingestion Layer Fields
 
-| Folder | Default `type` |
-|--------|----------------|
-| `resources/` | `resource` |
-| `brainstorm/` | `brainstorm` |
-| `wiki/` | `wiki` |
-| `output/` | `output` |
-| `my-work/` | `my-work` |
+```yaml
+ingest_status: pending | processed | error
+normalized_at: 2026-04-15
+source_hash: a1b2c3d4e5f6...
+source_path: resources/web
+```
 
-## Managed resource buckets
+### Description Marker
 
-- `resources/inbox/`
-- `resources/web/`
-- `resources/local/`
-- `resources/archive/`
-- Case-variant aliases are handled the same way under `Resources/`
+```yaml
+llm_description_done: true | false
+```
 
-## Constraints
+- `true`: Description complete (whitelisted or LLM-enhanced)
+- `false`: Needs LLM enhancement via `/process-pending`
 
-- Does not overwrite existing non-empty frontmatter fields except `updated`, which is refreshed automatically
-- Skips non-Markdown files
-- Skips files outside target folders
-- Logs warnings on YAML parse failures or read/write errors
-- Does not perform content analysis, promotion, summarization, or entity extraction
+**Whitelist** (automatically `true`):
+- `index.md` and `log.md`
+- Files with `github.com` in `source_ref`
+
+## Core Principles
+
+1. **Process Only After File Stability**: Uses `size + mtime` stability check (800ms settle time)
+2. **Idempotent Write**: Only writes when content actually changes
+3. **backfill Independent of watcher**: Can run standalone (scan mode)
+4. **Atomic Write**: temp file → rename for safe concurrent access
+5. **LLM via OpenCode**: Use `/process-pending` command for description enhancement
+
+## Commands
+
+### File Watcher (npm scripts)
+
+```bash
+# Start file watcher
+npm run frontmatter:watch
+
+# One-time batch scan
+npm run frontmatter:scan
+
+# Manual backfill
+npm run frontmatter:backfill
+
+# Scan for files needing description enhancement
+npm run frontmatter:scan-pending
+```
+
+### LLM Processing (OpenCode)
+
+In OpenCode session:
+```
+/process-pending
+```
+
+This processes all files with `llm_description_done: false`:
+1. Enhances description with LLM
+2. Updates frontmatter
+3. Sets `llm_description_done: true`, `ingest_status: processed`
+
+## Configuration
+
+See `config.json`:
+- `debounceMs`: 300ms
+- `settleTimeMs`: 800ms
+- `pollIntervalMs`: 200ms
+- `maxWaitMs`: 10000ms
+- `antiLoopWindowMs`: 5000ms
+
+## Workflow
+
+### Automatic
+
+1. File watcher adds frontmatter with `ingest_status: pending`
+2. Description extracted from first paragraph
+3. `llm_description_done` set based on whitelist
+
+### Manual Enhancement
+
+```bash
+npm run frontmatter:scan-pending  # List files needing enhancement
+```
+
+Then in OpenCode:
+```
+/process-pending
+```
+
+## Whitelist
+
+Files automatically marked `llm_description_done: true`:
+- `index.md` and `log.md` (structured files)
+- Files with `source_ref` containing `github.com` (source repos)
+
+## Anti-Loop Strategy
+
+Primary: "If content unchanged, don't write → won't trigger change"
+Secondary: processedMap with 5s anti-loop window
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `watch.mjs` | File system watcher with chokidar |
+| `stable-check.mjs` | File stability detector |
+| `backfill.mjs` | Ingestion engine with v2 fields + whitelist |
+| `scan-pending.mjs` | Scan for files needing description enhancement |
+| `hash.mjs` | SHA1 hash computation |
+| `config.json` | Configuration schema |
+| `index.js` | OpenCode plugin compatibility |
+
+## Related Files
+
+| File | Purpose |
+|------|---------|
+| `.opencode/commands/process-pending.md` | OpenCode command for LLM enhancement |
+| `.opencode/workflows/process-pending-resources.md` | Workflow definition |
+
+## Deployment
+
+```bash
+cd /path/to/vault/.opencode
+npm install
+npm run frontmatter:watch
+```
+
+In OpenCode session:
+```
+/process-pending  # Enhance descriptions when needed
+```
+
+## Evolution
+
+v1: "补 frontmatter" → v2: "构建可计算的内容入口层" → v2.1: "描述增强与白名单"
+
+From metadata completion → data standardization → whitelist-based description processing
