@@ -7,7 +7,7 @@ const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
 export async function main() {
   const args = process.argv.slice(2)
   const targets = args.filter((arg) => !arg.startsWith("--"))
-  const roots = targets.length ? targets : ["resources", "Resources", "brainstorm", "Brainstorm"]
+  const roots = targets.length ? targets : ["resources", "brainstorm"]
   
   const pendingFiles = []
   

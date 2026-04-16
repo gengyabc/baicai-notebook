@@ -2,10 +2,18 @@ import fs from "fs/promises"
 import path from "path"
 import { stringify } from "yaml"
 import { computeHash } from "./hash.mjs"
-import { splitFrontmatter, parseFrontmatter, sleep } from "./utils.mjs"
+import { splitFrontmatter, parseFrontmatter } from "./utils.mjs"
+import { createRequire } from "module"
 
-const TARGET_ROOTS = ["resources", "Resources", "brainstorm", "Brainstorm"]
+const require = createRequire(import.meta.url)
+const config = require("./config.json")
+const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
+
+const TARGET_ROOTS = ["resources", "brainstorm"]
+const RESOURCE_BUCKETS = ["inbox", "web", "local", "archive"]
 const SYSTEM_TAG_PREFIXES = ["state/", "source/", "role/"]
+const RESOLVED_EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.join(VAULT_ROOT, dir))
+const EXCLUDE_PATTERNS = config.excludePatterns
 
 export async function backfillFile(filePath) {
   if (!filePath.endsWith(".md")) {
@@ -15,6 +23,8 @@ export async function backfillFile(filePath) {
   if (!isTargetPath(filePath)) {
     return { changed: false, message: null, skipped: true }
   }
+
+  await ensureManagedBuckets(filePath)
   
   const source = await fs.readFile(filePath, "utf8")
   const { frontmatter, body } = splitFrontmatter(source)
@@ -33,7 +43,7 @@ export async function main() {
   
   const isDryRun = process.argv.includes("--dry-run")
   const targets = process.argv.slice(2).filter((arg) => !arg.startsWith("--"))
-  const roots = targets.length ? targets : TARGET_ROOTS.map((root) => path.join(process.cwd(), root))
+  const roots = targets.length ? targets : TARGET_ROOTS.map((root) => path.join(VAULT_ROOT, root))
   const files = []
 
   for (const root of roots) {
@@ -60,14 +70,17 @@ export async function main() {
 }
 
 async function collectMarkdownFiles(dir, files) {
+  if (isExcluded(dir)) return
+
   const entries = await fs.readdir(dir, { withFileTypes: true })
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name)
     if (entry.isDirectory()) {
+      if (isExcluded(fullPath)) continue
       await collectMarkdownFiles(fullPath, files)
       continue
     }
-    if (entry.isFile() && entry.name.endsWith(".md") && isTargetPath(fullPath)) {
+    if (entry.isFile() && entry.name.endsWith(".md") && isTargetPath(fullPath) && !isExcluded(fullPath)) {
       files.push(fullPath)
     }
   }
@@ -179,17 +192,11 @@ function deriveSourcePath(filePath) {
 }
 
 function guessSourceType(sourceRef, body, filePath) {
-  if (sourceRef) {
-    if (sourceRef.includes("webclips")) return "webview"
-    return "web"
-  }
-  
-  if (filePath.includes("webclips")) return "webview"
-  if (filePath.includes("inbox")) return "manual"
-  
-  if (/https?:\/\//i.test(body)) return "web"
-  if (/github\.com/i.test(body)) return "web"
-  
+  if (isUnder(filePath, "wiki") || isUnder(filePath, "Wiki")) return "generated"
+  if (isUnder(filePath, "output") || isUnder(filePath, "Output")) return "manual"
+  if (isUnder(filePath, "my-work") || isUnder(filePath, "My-work")) return "manual"
+  if (isUnder(filePath, "brainstorm") || isUnder(filePath, "Brainstorm")) return "manual"
+  if (sourceRef || /https?:\/\//i.test(body) || /github\.com/i.test(body)) return "web"
   return "local"
 }
 
@@ -212,7 +219,7 @@ async function atomicWrite(filePath, content) {
 }
 
 async function cleanupOrphanedTempFiles() {
-  const roots = TARGET_ROOTS.map((root) => path.join(process.cwd(), root))
+  const roots = TARGET_ROOTS.map((root) => path.join(VAULT_ROOT, root))
   for (const root of roots) {
     try {
       const stat = await safeStat(root)
@@ -220,6 +227,20 @@ async function cleanupOrphanedTempFiles() {
       await cleanupTempFilesInDir(root)
     } catch {}
   }
+}
+
+async function ensureManagedBuckets(filePath) {
+  const root = getResourceRoot(filePath)
+  if (!root) return
+
+  await Promise.all(RESOURCE_BUCKETS.map((bucket) => fs.mkdir(path.join(root, bucket), { recursive: true })))
+}
+
+function getResourceRoot(filePath) {
+  const parts = filePath.split(path.sep)
+  const index = parts.findIndex((part) => part === "resources" || part === "Resources")
+  if (index === -1) return null
+  return parts.slice(0, index + 1).join(path.sep)
 }
 
 async function cleanupTempFilesInDir(dir) {
@@ -373,6 +394,18 @@ function isDescriptionWhitelisted(filePath, sourceRef) {
 
 function isTargetPath(filePath) {
   return filePath.endsWith(".md") && TARGET_ROOTS.some((root) => isUnder(filePath, root))
+}
+
+function isExcluded(filePath) {
+  if (RESOLVED_EXCLUDE_DIRS.some((excludeDir) => filePath.startsWith(excludeDir))) return true
+
+  for (const pattern of EXCLUDE_PATTERNS) {
+    try {
+      if (new RegExp(pattern).test(filePath)) return true
+    } catch {}
+  }
+
+  return false
 }
 
 async function safeStat(filePath) {

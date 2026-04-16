@@ -8,11 +8,6 @@
   },
   "watch": [
     "resources/",
-    "Resources/",
-    "brainstorm/",
-    "wiki/",
-    "output/",
-    "my-work/",
-    "My-work/"
+    "brainstorm/"
   ]
 }
