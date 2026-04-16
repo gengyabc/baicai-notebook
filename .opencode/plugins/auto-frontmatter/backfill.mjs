@@ -1,11 +1,11 @@
 import fs from "fs/promises"
 import path from "path"
-import crypto from "node:crypto"
-import { parseDocument, stringify } from "yaml"
+import { stringify } from "yaml"
+import { computeHash } from "./hash.mjs"
+import { splitFrontmatter, parseFrontmatter, sleep } from "./utils.mjs"
 
 const TARGET_ROOTS = ["resources", "Resources", "brainstorm", "Brainstorm"]
 const SYSTEM_TAG_PREFIXES = ["state/", "source/", "role/"]
-const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 
 export async function backfillFile(filePath) {
   if (!filePath.endsWith(".md")) {
@@ -29,6 +29,8 @@ export async function backfillFile(filePath) {
 }
 
 export async function main() {
+  await cleanupOrphanedTempFiles()
+  
   const isDryRun = process.argv.includes("--dry-run")
   const targets = process.argv.slice(2).filter((arg) => !arg.startsWith("--"))
   const roots = targets.length ? targets : TARGET_ROOTS.map((root) => path.join(process.cwd(), root))
@@ -151,18 +153,6 @@ function buildFrontmatter(existing, body, filePath) {
   return next
 }
 
-function computeHash(body) {
-  const normalized = body
-    .replace(/\r\n/g, "\n")
-    .replace(/\n{2,}/g, "\n\n")
-    .trim()
-  
-  return crypto.createHash("sha1")
-    .update(normalized)
-    .digest("hex")
-    .slice(0, 16)
-}
-
 function deriveSourcePath(filePath) {
   const parts = filePath.split(path.sep)
   
@@ -208,28 +198,47 @@ function renderDocument(frontmatter, body) {
   return content.replace(/\n{3,}$/u, "\n\n")
 }
 
-function splitFrontmatter(source) {
-  const match = source.match(FRONTMATTER_RE)
-  if (!match) return { frontmatter: "", body: source }
-
-  return {
-    frontmatter: match[1],
-    body: source.slice(match[0].length),
+async function atomicWrite(filePath, content) {
+  const tempPath = filePath + ".tmp"
+  try {
+    await fs.writeFile(tempPath, content, "utf8")
+    await fs.rename(tempPath, filePath)
+  } catch (err) {
+    try {
+      await fs.unlink(tempPath).catch(() => {})
+    } catch {}
+    throw err
   }
 }
 
-function parseFrontmatter(frontmatter) {
-  if (!frontmatter.trim()) return {}
-
-  const doc = parseDocument(frontmatter, { strict: false })
-  const value = doc.toJS()
-  return value && typeof value === "object" ? value : {}
+async function cleanupOrphanedTempFiles() {
+  const roots = TARGET_ROOTS.map((root) => path.join(process.cwd(), root))
+  for (const root of roots) {
+    try {
+      const stat = await safeStat(root)
+      if (!stat || !stat.isDirectory()) continue
+      await cleanupTempFilesInDir(root)
+    } catch {}
+  }
 }
 
-async function atomicWrite(filePath, content) {
-  const tempPath = filePath + ".tmp"
-  await fs.writeFile(tempPath, content, "utf8")
-  await fs.rename(tempPath, filePath)
+async function cleanupTempFilesInDir(dir) {
+  const entries = await fs.readdir(dir, { withFileTypes: true })
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      await cleanupTempFilesInDir(fullPath)
+    } else if (entry.name.endsWith(".md.tmp")) {
+      try {
+        const stat = await fs.stat(fullPath)
+        const ageMs = Date.now() - stat.mtimeMs
+        if (ageMs > 60000) {
+          await fs.unlink(fullPath)
+          console.log(`[cleanup] Removed orphaned temp file: ${fullPath}`)
+        }
+      } catch {}
+    }
+  }
 }
 
 function mergeTags(tags, sourceType, status, contentRole) {

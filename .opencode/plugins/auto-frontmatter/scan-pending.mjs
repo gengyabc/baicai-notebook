@@ -1,8 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
-import { parseDocument } from "yaml"
+import { splitFrontmatter, parseFrontmatter } from "./utils.mjs"
 
-const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
 
 export async function main() {
@@ -77,22 +76,6 @@ async function walkDir(dir, pendingFiles) {
       }
     }
   }
-}
-
-function splitFrontmatter(source) {
-  const match = source.match(FRONTMATTER_RE)
-  if (!match) return { frontmatter: "", body: source }
-  return {
-    frontmatter: match[1],
-    body: source.slice(match[0].length)
-  }
-}
-
-function parseFrontmatter(frontmatter) {
-  if (!frontmatter.trim()) return {}
-  const doc = parseDocument(frontmatter, { strict: false })
-  const value = doc.toJS()
-  return value && typeof value === "object" ? value : {}
 }
 
 function extractPreview(body) {

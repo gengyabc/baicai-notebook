@@ -8,6 +8,10 @@ This rule is a post-workflow policy. The host should evaluate it when:
 - The `distill-brainstorm` workflow completes successfully
 - The distilled material meets the promotion policy criteria
 
+## Guard
+
+If debug mode is active for this session (see `debug-mode` rule), skip this rule entirely.
+
 ## Behavior
 
 1. Review the distilled brainstorm notes for promotion candidates.

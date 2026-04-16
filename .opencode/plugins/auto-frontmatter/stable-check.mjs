@@ -1,4 +1,5 @@
 import fs from "fs/promises"
+import { sleep } from "./utils.mjs"
 
 export async function waitForStableFile(filePath, options = {}) {
   const {
@@ -39,8 +40,4 @@ export async function waitForStableFile(filePath, options = {}) {
   }
   
   return false
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }

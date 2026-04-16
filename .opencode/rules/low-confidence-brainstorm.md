@@ -6,6 +6,10 @@ Auto-invoke brainstorm when query returns confidence below threshold.
 
 This rule activates whenever `query-on-interaction` returns a vault answer with confidence < 0.7.
 
+## Guard
+
+If debug mode is active for this session (see `debug-mode` rule), skip this rule entirely.
+
 ## Behavior
 
 1. Load the `brainstorm-distill` skill.

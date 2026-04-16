@@ -8,6 +8,10 @@ This rule is a post-workflow policy. The host should evaluate it when:
 - The `ingest-resources` workflow completes successfully with grounded material
 - The `ingest-my-work` workflow completes successfully with grounded material
 
+## Guard
+
+If debug mode is active for this session (see `debug-mode` rule), skip this rule entirely.
+
 ## Behavior
 
 1. Check if the ingested material meets the promotion policy criteria.

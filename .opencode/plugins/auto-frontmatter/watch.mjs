@@ -17,6 +17,8 @@ const EXCLUDE_PATTERNS = config.excludePatterns
 const processedMap = new Map()
 const pendingQueue = new Map()
 let debounceTimer = null
+let cleanupInterval = null
+let watcher = null
 
 await main()
 
@@ -47,9 +49,9 @@ async function runWatchMode() {
   console.log(`[watch] Vault root: ${VAULT_ROOT}`)
   console.log(`[watch] Use /process-pending in OpenCode for LLM title/description generation`)
   
-  setInterval(cleanupProcessedMap, 10000)
+  cleanupInterval = setInterval(cleanupProcessedMap, config.antiLoopWindowMs || 10000)
   
-const watcher = chokidar.watch(RESOLVED_WATCH_DIRS, {
+  watcher = chokidar.watch(RESOLVED_WATCH_DIRS, {
     ignored: createIgnorePatterns(),
     persistent: true,
     ignoreInitial: false,
@@ -67,6 +69,26 @@ const watcher = chokidar.watch(RESOLVED_WATCH_DIRS, {
     })
     .on("error", (error) => console.error(`[watch] Error: ${error.message}`))
     .on("ready", () => console.log(`[watch] Ready, watching for changes`))
+  
+  process.on("SIGINT", shutdown)
+  process.on("SIGTERM", shutdown)
+}
+
+function shutdown() {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval)
+    cleanupInterval = null
+  }
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+  if (watcher) {
+    watcher.close()
+    watcher = null
+  }
+  console.log(`[watch] Shutdown complete`)
+  setTimeout(() => process.exit(0), 100)
 }
 
 async function runScanMode() {
@@ -123,7 +145,11 @@ function scheduleProcess(filePath) {
     
     for (const [fp, timestamp] of entries) {
       if (Date.now() - timestamp >= config.debounceMs) {
-        await processWithStability(fp)
+        try {
+          await processWithStability(fp)
+        } catch (err) {
+          console.error(`[watch] Error processing ${fp}: ${err.message}`)
+        }
       }
     }
   }, config.debounceMs)
@@ -182,8 +208,9 @@ function shouldProcess(filePath, hash) {
 
 function cleanupProcessedMap() {
   const now = Date.now()
+  const maxAge = config.antiLoopWindowMs || 10000
   for (const [key, value] of processedMap) {
-    if (now - value.timestamp > 10000) {
+    if (now - value.timestamp > maxAge) {
       processedMap.delete(key)
     }
   }
@@ -198,9 +225,13 @@ function createIgnorePatterns() {
     }
     
     for (const pattern of EXCLUDE_PATTERNS) {
-      const regex = new RegExp(pattern)
-      if (regex.test(filePath)) {
-        return true
+      try {
+        const regex = new RegExp(pattern)
+        if (regex.test(filePath)) {
+          return true
+        }
+      } catch (err) {
+        console.error(`[watch] Invalid pattern "${pattern}": ${err.message}`)
       }
     }
     
@@ -216,9 +247,13 @@ function isExcluded(filePath) {
   }
   
   for (const pattern of EXCLUDE_PATTERNS) {
-    const regex = new RegExp(pattern)
-    if (regex.test(filePath)) {
-      return true
+    try {
+      const regex = new RegExp(pattern)
+      if (regex.test(filePath)) {
+        return true
+      }
+    } catch (err) {
+      console.error(`[scan] Invalid pattern "${pattern}": ${err.message}`)
     }
   }
   

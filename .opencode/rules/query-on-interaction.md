@@ -1,19 +1,22 @@
 # Query on Interaction
 
-Execute the query workflow on every user interaction.
+Default routing strategy for invoking vault query behavior on every user interaction.
 
 ## Trigger
 
-This rule activates on every user message, but should exit early unless the message is likely to depend on vault context.
+Evaluate each user message and run vault query behavior by default.
+
+## Guard
+
+If debug mode is active for this session, skip this routing entirely.
 
 ## Behavior
 
-1. Load the `second-brain-query` skill.
-2. If the message is unrelated to vault content, skip the query workflow.
-3. Read `wiki/index.md` first for vault structure.
-4. Search relevant folders based on query type.
-5. Return confidence-labeled answers with provenance.
+1. Unless debug mode is active, read `.opencode/workflows/query-vault.md` for every user message.
+2. Let the workflow load the relevant skill and rules.
+3. Return confidence-labeled answers with provenance.
+4. If the vault does not contain relevant grounding, say so explicitly before falling back to general knowledge.
 
 ## Confidence threshold
 
-If the query returns confidence < 0.7, trigger the `low-confidence-brainstorm` rule automatically.
+If the query workflow returns confidence < 0.7, follow the low-confidence brainstorm routing.

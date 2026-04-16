@@ -42,6 +42,7 @@ tags: []
 Optional supporting fields:
 
 ```yaml
+source:
 canonical_topic:
 source_ref:
 description:
@@ -197,6 +198,7 @@ status: inbox
 trust_level: raw
 verification: unverified
 llm_stage: unprocessed
+source:
 canonical_topic:
 source_ref:
 description:
@@ -230,6 +232,7 @@ status: active
 trust_level: synthesized
 verification: unverified
 llm_stage: unprocessed
+source:
 canonical_topic:
 source_ref:
 derived_from: []
@@ -257,6 +260,7 @@ status: active
 trust_level: synthesized
 verification: unverified
 llm_stage: linked
+source:
 canonical_topic:
 source_ref:
 derived_from: []
@@ -284,6 +288,7 @@ status: active
 trust_level: verified
 verification: verified
 llm_stage: integrated
+source:
 canonical_topic:
 source_ref:
 derived_from: []
@@ -311,6 +316,7 @@ status: active
 trust_level: verified
 verification: verified
 llm_stage: integrated
+source:
 canonical_topic:
 source_ref:
 derived_from: []
@@ -338,6 +344,7 @@ status: draft
 trust_level: synthesized
 verification: unverified
 llm_stage: unprocessed
+source:
 canonical_topic:
 source_ref:
 derived_from: []
@@ -365,6 +372,7 @@ status: active
 trust_level: raw
 verification: unverified
 llm_stage: unprocessed
+source:
 canonical_topic:
 source_ref:
 derived_from: []
