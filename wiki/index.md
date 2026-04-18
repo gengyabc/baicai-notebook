@@ -1,14 +1,24 @@
 ---
 type: wiki
-kind: synthesis
-title: Wiki Index
-summary: Directory-style index for stable wiki pages in this vault.
-sources: []
-related: []
-confidence: high
-status: stable
-last_reviewed: 2026-04-13
+kind: index
+source_type: generated
+content_role: index
+created: 2026-04-13
+updated: 2026-04-15
 image_key: wiki-index
+status: active
+trust_level: verified
+verification: verified
+llm_stage: integrated
+canonical_topic: wiki
+source_ref: ""
+derived_from: []
+entity_refs: []
+topic_refs: []
+tags:
+  - state/active
+  - source/generated
+  - role/index
 ---
 
 # Wiki Index

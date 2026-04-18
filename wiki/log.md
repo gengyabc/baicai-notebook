@@ -1,15 +1,24 @@
 ---
 type: wiki
-kind: synthesis
-title: Wiki Log
-summary: Append-only log for material wiki structure changes.
-sources: []
-related:
-  - wiki/index.md
-confidence: high
-status: stable
-last_reviewed: 2026-04-13
+kind: log
+source_type: generated
+content_role: log
+created: 2026-04-13
+updated: 2026-04-15
 image_key: wiki-log
+status: active
+trust_level: verified
+verification: verified
+llm_stage: integrated
+canonical_topic: wiki
+source_ref: ""
+derived_from: []
+entity_refs: []
+topic_refs: []
+tags:
+  - state/active
+  - source/generated
+  - role/log
 ---
 
 # Wiki Log
