@@ -83,7 +83,14 @@ logs/
 #temp dev
 _vendor/
 .temp/
+Templates/
 
-# raw
+# content
 */attachments/
-raw/processed/
+baicai-vibe/
+raw/
+resources/
+wiki/
+my-work/
+brainstorm/
+output/
