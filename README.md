@@ -12,10 +12,20 @@
 
 从仓库根目录执行：
 
-- `npm --prefix .opencode run frontmatter:watch`: 持续监听库文件并更新 frontmatter
-- `npm --prefix .opencode run frontmatter:scan`: 对知识库执行一次性扫描
-- `npm --prefix .opencode run frontmatter:backfill`: 批量补全缺失的 frontmatter 字段
-- `npm --prefix .opencode run frontmatter:scan-pending`: 扫描待处理的资源笔记
+**一键启动（推荐）**
+
+- `bun --cwd .opencode run watch`: 同时启动 frontmatter 监听和 SQLite 索引监听
+
+**单独命令**
+
+- `bun --cwd .opencode run frontmatter:watch`: 持续监听库文件并更新 frontmatter
+- `bun --cwd .opencode run frontmatter:scan`: 对知识库执行一次性扫描
+- `bun --cwd .opencode run frontmatter:backfill`: 批量补全缺失的 frontmatter 字段
+- `bun --cwd .opencode run frontmatter:scan-pending`: 扫描待处理的资源笔记
+- `bun --cwd .opencode run frontmatter:index:scan`: 构建 SQLite frontmatter 索引
+- `bun --cwd .opencode run frontmatter:index:rebuild`: 清空并重建 SQLite frontmatter 索引
+- `bun --cwd .opencode run frontmatter:index:reconcile`: 重扫并清理陈旧的 SQLite 索引记录
+- `bun --cwd .opencode run frontmatter:index:watch`: 持续监听并增量更新 SQLite frontmatter 索引
 
 ## 运行模型
 
@@ -92,14 +102,23 @@
 
 不同来源类型的笔记使用不同的默认值：
 
-**人工编写（brainstorm/my-work）**
+**人工编写**
 
+`my-work`:
 ```yaml
 source_type: manual
 content_role: draft
 status: active
-trust_level: raw          # my-work
-trust_level: synthesized  # brainstorm
+trust_level: raw
+llm_stage: unprocessed
+```
+
+`brainstorm`:
+```yaml
+source_type: manual
+content_role: draft
+status: active
+trust_level: synthesized
 llm_stage: unprocessed
 ```
 

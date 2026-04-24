@@ -1,0 +1,38 @@
+{
+  "dbPath": ".opencode/frontmatter-index.sqlite",
+  "roots": [
+    "resources",
+    "Resources",
+    "brainstorm",
+    "wiki",
+    "output",
+    "my-work",
+    "My-work"
+  ],
+  "excludeDirs": [
+    ".obsidian",
+    ".git",
+    "node_modules",
+    ".opencode/node_modules",
+    ".trash",
+    ".opencode/plugins/auto-frontmatter",
+    "attachments",
+    "raw"
+  ],
+  "excludePatterns": [
+    "\\.tmp$",
+    "\\.bak$",
+    "\\.DS_Store$",
+    "\\.gitkeep$"
+  ],
+  "debounceMs": 300,
+  "folderPriorities": {
+    "wiki": 400,
+    "output": 350,
+    "resources": 300,
+    "Resources": 300,
+    "brainstorm": 200,
+    "my-work": 100,
+    "My-work": 100
+  }
+}

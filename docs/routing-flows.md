@@ -61,6 +61,12 @@ System-wide routing documentation for OpenCode commands, workflows, skills, and 
 |------|---------|
 | `.opencode/plugins/auto-frontmatter/README.md` | Auto frontmatter |
 
+### Docs (1)
+
+| File | Purpose |
+|------|---------|
+| `docs/sqlite-dataview-alignment.md` | SQLite mirror for Dataview-aligned retrieval |
+
 ---
 
 ## Command Routing Graphs

@@ -79,15 +79,19 @@ logs/
 
 # Obsidian
 .obsidian
+.opencode/*.sqlite
+.opencode/*.sqlite-*
 
-#temp dev
+# temp dev
 _vendor/
 .temp/
 Templates/
 
+# other skills
+baicai-vibe/
+
 # content
 */attachments/
-baicai-vibe/
 raw/
 resources/
 wiki/
