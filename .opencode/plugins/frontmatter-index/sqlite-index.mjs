@@ -1,7 +1,7 @@
 import fs from "fs/promises"
 import { watch as fsWatch } from "fs"
 import path from "path"
-import { DatabaseSync } from "node:sqlite"
+import { Database } from "bun:sqlite"
 import { createRequire } from "module"
 import { parseFrontmatter, splitFrontmatter } from "../auto-frontmatter/utils.mjs"
 
@@ -487,7 +487,7 @@ async function safeStat(filePath) {
 
 class IndexStore {
   constructor(dbPath, journalMode = "WAL") {
-    this.db = new DatabaseSync(dbPath)
+    this.db = new Database(dbPath)
     this.db.exec(`PRAGMA journal_mode = ${journalMode}`)
     this.db.exec("PRAGMA busy_timeout = 5000")
     this.db.exec("PRAGMA foreign_keys = ON")

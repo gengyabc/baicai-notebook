@@ -30,6 +30,13 @@ LLM ingestion pipeline that standardizes all incoming markdown content, marks pr
         ├─ Set ingest_status: processed
 ```
 
+## Technical Notes
+
+- Runtime: Bun (not Node.js)
+- SQLite: `bun:sqlite` (not `node:sqlite` - Bun doesn't support Node.js 22+ built-in modules)
+- File watching: `chokidar` package
+- Both plugins run together via `bun run watch` script
+
 ## Target Folders
 
 - `resources/` and `Resources/`
@@ -71,21 +78,35 @@ llm_description_done: true | false
 
 ## Commands
 
-### File Watcher (npm scripts)
+### File Watcher (bun scripts)
 
 ```bash
-# Start file watcher
-npm run frontmatter:watch
+# Install dependencies first
+bun run --cwd .opencode install
+
+# Start file watcher (combines frontmatter + sqlite index)
+bun run --cwd .opencode watch
+
+# Or run separately:
+bun run --cwd .opencode frontmatter:watch      # Frontmatter watcher only
+bun run --cwd .opencode frontmatter:index:watch # SQLite index watcher only
 
 # One-time batch scan
-npm run frontmatter:scan
+bun run --cwd .opencode frontmatter:scan
 
 # Manual backfill
-npm run frontmatter:backfill
+bun run --cwd .opencode frontmatter:backfill
 
 # Scan for files needing description enhancement
-npm run frontmatter:scan-pending
+bun run --cwd .opencode frontmatter:scan-pending
+
+# SQLite index operations
+bun run --cwd .opencode frontmatter:index:scan     # Scan and index all files
+bun run --cwd .opencode frontmatter:index:rebuild  # Rebuild index from scratch
+bun run --cwd .opencode frontmatter:index:reconcile # Remove stale entries
 ```
+
+**Note**: Use `bun run --cwd <dir> <script>` (not `bun --cwd <dir> run <script>`)
 
 ### LLM Processing (OpenCode)
 
@@ -119,7 +140,7 @@ See `config.json`:
 ### Manual Enhancement
 
 ```bash
-npm run frontmatter:scan-pending  # List files needing enhancement
+bun run --cwd .opencode frontmatter:scan-pending  # List files needing enhancement
 ```
 
 Then in OpenCode:
@@ -160,9 +181,8 @@ Secondary: processedMap with 5s anti-loop window
 ## Deployment
 
 ```bash
-cd /path/to/vault/.opencode
-npm install
-npm run frontmatter:watch
+bun run --cwd .opencode install
+bun run --cwd .opencode watch
 ```
 
 In OpenCode session:

@@ -4,7 +4,7 @@ kind: index
 source_type: manual
 content_role: index
 created: 2026-04-13
-updated: 2026-04-18
+updated: 2026-04-24
 image_key: index
 description: Speculative thinking layer — ideas, hypotheses, exploratory
 llm_description_done: true

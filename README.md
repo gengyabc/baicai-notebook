@@ -14,18 +14,24 @@
 
 **一键启动（推荐）**
 
-- `bun --cwd .opencode run watch`: 同时启动 frontmatter 监听和 SQLite 索引监听
+- `bun run --cwd .opencode watch`: 同时启动 frontmatter 监听和 SQLite 索引监听
 
 **单独命令**
 
-- `bun --cwd .opencode run frontmatter:watch`: 持续监听库文件并更新 frontmatter
-- `bun --cwd .opencode run frontmatter:scan`: 对知识库执行一次性扫描
-- `bun --cwd .opencode run frontmatter:backfill`: 批量补全缺失的 frontmatter 字段
-- `bun --cwd .opencode run frontmatter:scan-pending`: 扫描待处理的资源笔记
-- `bun --cwd .opencode run frontmatter:index:scan`: 构建 SQLite frontmatter 索引
-- `bun --cwd .opencode run frontmatter:index:rebuild`: 清空并重建 SQLite frontmatter 索引
-- `bun --cwd .opencode run frontmatter:index:reconcile`: 重扫并清理陈旧的 SQLite 索引记录
-- `bun --cwd .opencode run frontmatter:index:watch`: 持续监听并增量更新 SQLite frontmatter 索引
+- `bun run --cwd .opencode frontmatter:watch`: 持续监听库文件并更新 frontmatter
+- `bun run --cwd .opencode frontmatter:scan`: 对知识库执行一次性扫描
+- `bun run --cwd .opencode frontmatter:backfill`: 批量补全缺失的 frontmatter 字段
+- `bun run --cwd .opencode frontmatter:scan-pending`: 扫描待处理的资源笔记
+- `bun run --cwd .opencode frontmatter:index:scan`: 构建 SQLite frontmatter 索引
+- `bun run --cwd .opencode frontmatter:index:rebuild`: 清空并重建 SQLite frontmatter 索引
+- `bun run --cwd .opencode frontmatter:index:reconcile`: 重扫并清理陈旧的 SQLite 索引记录
+- `bun run --cwd .opencode frontmatter:index:watch`: 持续监听并增量更新 SQLite frontmatter 索引
+
+**首次运行需安装依赖**
+
+```bash
+bun run --cwd .opencode install
+```
 
 ## 运行模型
 
