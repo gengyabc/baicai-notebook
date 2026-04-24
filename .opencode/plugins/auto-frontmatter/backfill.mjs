@@ -9,7 +9,12 @@ const require = createRequire(import.meta.url)
 const config = require("./config.json")
 const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
 
-const TARGET_ROOTS = ["resources", "brainstorm"]
+const TARGET_PATHS = [
+  "resources",
+  "Resources",
+  path.join("brainstorm", "managed"),
+  path.join("Brainstorm", "managed"),
+]
 const RESOURCE_BUCKETS = ["inbox", "web", "local", "archive"]
 const SYSTEM_TAG_PREFIXES = ["state/", "source/", "role/"]
 const RESOLVED_EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.join(VAULT_ROOT, dir))
@@ -43,7 +48,8 @@ export async function main() {
   
   const isDryRun = process.argv.includes("--dry-run")
   const targets = process.argv.slice(2).filter((arg) => !arg.startsWith("--"))
-  const roots = targets.length ? targets : TARGET_ROOTS.map((root) => path.join(VAULT_ROOT, root))
+  const requestedRoots = targets.length ? targets : TARGET_PATHS.map((targetPath) => path.join(VAULT_ROOT, targetPath))
+  const roots = await resolveUniquePaths(requestedRoots)
   const files = []
 
   for (const root of roots) {
@@ -111,6 +117,8 @@ function buildFrontmatter(existing, body, filePath) {
   const descriptionDone = existing.llm_description_done === true || isDescriptionWhitelisted(filePath, sourceRef)
   const canonicalTopic = !existing.canonical_topic || /[^a-z0-9-]/.test(existing.canonical_topic) ? imageKey : existing.canonical_topic
   const now = today()
+  const sourceHash = computeHash(body)
+  const sourcePath = deriveSourcePath(filePath)
 
   const next = {}
   next.type = existing.type || defaultType(filePath)
@@ -139,23 +147,14 @@ function buildFrontmatter(existing, body, filePath) {
     next.ingest_status = existing.ingest_status
   }
 
-  if (!existing.normalized_at) {
-    next.normalized_at = now
-  } else {
-    next.normalized_at = existing.normalized_at
-  }
+  next.normalized_at = !existing.normalized_at || existing.source_hash !== sourceHash
+    ? now
+    : existing.normalized_at
+  next.source_hash = sourceHash
 
-  if (!existing.source_hash) {
-    next.source_hash = computeHash(body)
-  } else {
-    next.source_hash = existing.source_hash
-  }
-
-  if (!existing.source_path) {
-    next.source_path = deriveSourcePath(filePath)
-  } else {
-    next.source_path = existing.source_path
-  }
+  next.source_path = shouldRefreshSourcePath(existing.source_path, sourcePath)
+    ? sourcePath
+    : existing.source_path
 
   for (const key of Object.keys(existing)) {
     if (key in next) continue
@@ -172,23 +171,38 @@ function deriveSourcePath(filePath) {
   for (let i = parts.length - 1; i >= 0; i--) {
     const part = parts[i]
     if (part === "resources" || part === "Resources") {
-      return parts.slice(i, i + 2).join("/")
+      return deriveContainerPath(parts, i)
     }
     if (part === "brainstorm" || part === "Brainstorm") {
-      return parts.slice(i, i + 2).join("/")
+      return deriveContainerPath(parts, i)
     }
     if (part === "wiki" || part === "Wiki") {
-      return parts.slice(i, i + 2).join("/")
+      return deriveContainerPath(parts, i)
     }
     if (part === "output" || part === "Output") {
-      return parts.slice(i, i + 2).join("/")
+      return deriveContainerPath(parts, i)
     }
     if (part === "my-work" || part === "My-work") {
-      return parts.slice(i, i + 2).join("/")
+      return deriveContainerPath(parts, i)
     }
   }
   
   return "unknown"
+}
+
+function deriveContainerPath(parts, rootIndex) {
+  const root = parts[rootIndex]
+  const child = parts[rootIndex + 1]
+
+  if (!child || child.endsWith(".md")) return root
+  return `${root}/${child}`
+}
+
+function shouldRefreshSourcePath(existingSourcePath, derivedSourcePath) {
+  if (!existingSourcePath || existingSourcePath === "unknown") return true
+  if (existingSourcePath.includes(".md")) return true
+
+  return existingSourcePath !== derivedSourcePath
 }
 
 function guessSourceType(sourceRef, body, filePath) {
@@ -206,7 +220,10 @@ function renderDocument(frontmatter, body) {
 }
 
 async function atomicWrite(filePath, content) {
-  const tempPath = filePath + ".tmp"
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.frontmatter-${process.pid}-${Date.now()}-${computeHash(filePath)}.tmp`
+  )
   try {
     await fs.writeFile(tempPath, content, "utf8")
     await fs.rename(tempPath, filePath)
@@ -219,7 +236,7 @@ async function atomicWrite(filePath, content) {
 }
 
 async function cleanupOrphanedTempFiles() {
-  const roots = TARGET_ROOTS.map((root) => path.join(VAULT_ROOT, root))
+  const roots = await resolveUniquePaths(TARGET_PATHS.map((targetPath) => path.join(VAULT_ROOT, targetPath)))
   for (const root of roots) {
     try {
       const stat = await safeStat(root)
@@ -249,7 +266,7 @@ async function cleanupTempFilesInDir(dir) {
     const fullPath = path.join(dir, entry.name)
     if (entry.isDirectory()) {
       await cleanupTempFilesInDir(fullPath)
-    } else if (entry.name.endsWith(".md.tmp")) {
+    } else if (entry.name.startsWith(".frontmatter-") && entry.name.endsWith(".tmp")) {
       try {
         const stat = await fs.stat(fullPath)
         const ageMs = Date.now() - stat.mtimeMs
@@ -393,7 +410,13 @@ function isDescriptionWhitelisted(filePath, sourceRef) {
 }
 
 function isTargetPath(filePath) {
-  return filePath.endsWith(".md") && TARGET_ROOTS.some((root) => isUnder(filePath, root))
+  if (!filePath.endsWith(".md")) return false
+
+  const relativePath = path.relative(VAULT_ROOT, filePath)
+  if (relativePath.startsWith("..")) return false
+
+  const normalized = relativePath.split(path.sep).join("/")
+  return TARGET_PATHS.some((targetPath) => normalized === targetPath || normalized.startsWith(`${targetPath}/`))
 }
 
 function isExcluded(filePath) {
@@ -413,6 +436,29 @@ async function safeStat(filePath) {
     return await fs.stat(filePath)
   } catch {
     return null
+  }
+}
+
+async function resolveUniquePaths(paths) {
+  const uniquePaths = []
+  const seen = new Set()
+
+  for (const candidate of paths) {
+    const key = await pathIdentity(candidate)
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    uniquePaths.push(candidate)
+  }
+
+  return uniquePaths
+}
+
+async function pathIdentity(filePath) {
+  try {
+    return (await fs.realpath(filePath)).toLowerCase()
+  } catch {
+    return path.resolve(filePath).toLowerCase()
   }
 }
 

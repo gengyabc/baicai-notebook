@@ -1,5 +1,5 @@
 {
-  "watchDirs": ["resources", "brainstorm"],
+  "watchDirs": ["resources", "Resources", "brainstorm/managed", "Brainstorm/managed"],
   "excludeDirs": [
     ".obsidian",
     ".git",

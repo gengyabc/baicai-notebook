@@ -1,15 +1,11 @@
 ---
 type: vault
 kind: index
-source_type: manual
-content_role: index
 created: 2026-04-13
-updated: 2026-04-15
+updated: 2026-04-24
 image_key: vault-root-index
+description: Root navigation hub for the knowledge vault and its content layers.
 status: active
-trust_level: verified
-verification: verified
-llm_stage: integrated
 canonical_topic: vault-navigation
 source_ref: ""
 derived_from: []
@@ -17,8 +13,7 @@ entity_refs: []
 topic_refs: []
 tags:
   - state/active
-  - source/manual
-  - role/index
+  - topic/navigation
 ---
 
 # Knowledge Vault Index
@@ -29,9 +24,10 @@ Personal knowledge system organized by content layers.
 
 ### Active Intent
 - `my-work/` — User-authored drafts, decisions, meetings, project thinking (user-owned)
-- `brainstorm/` — Speculative synthesis, hypotheses, exploratory ideas (LLM-assisted)
+- `brainstorm/` — Speculative synthesis, hypotheses, exploratory ideas (human-managed by default)
   - `todo/` — Placeholder for queued ideas
   - `active/` — Placeholder for active ideas
+  - `managed/` — Explicit opt-in area for LLM-managed brainstorm notes
 
 ### Durable Knowledge
 - `wiki/` — Stable, grounded, cross-referenced knowledge (index-first)
@@ -52,7 +48,7 @@ Personal knowledge system organized by content layers.
 | Layer | Purpose | Owner |
 |-------|---------|-------|
 | my-work | Active intent | User |
-| brainstorm | Exploration | Mixed |
+| brainstorm | Exploration | Human by default |
 | wiki | Durable memory | LLM |
 | resources | Source archive | LLM |
 | output | Deliverables | User |

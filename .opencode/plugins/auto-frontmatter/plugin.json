@@ -8,6 +8,8 @@
   },
   "watch": [
     "resources/",
-    "brainstorm/"
+    "Resources/",
+    "brainstorm/managed/",
+    "Brainstorm/managed/"
   ]
 }

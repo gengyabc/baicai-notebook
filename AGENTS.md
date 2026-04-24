@@ -27,7 +27,7 @@ Use this stack consistently:
 
 - `my-work/` and `My-work/`: active intent, drafts, decisions, meetings, and project thinking
 - `resources/` and `Resources/`: captured sources, evidence, and local-file references; keep changes incremental
-- `brainstorm/`: speculative material only, kept in `todo/` and `active/`
+- `brainstorm/`: speculative material; `todo/` and `active/` stay lightweight and human-managed by default, while `brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes
 - `wiki/`: stable knowledge, curated and index-first
 - `output/`: deliverables, kept index-first
 - `docs/plans/`: development requirements and plans, organized by date-prefixed folders

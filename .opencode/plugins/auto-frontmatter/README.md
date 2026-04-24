@@ -1,6 +1,6 @@
 # Auto Frontmatter Plugin (v2)
 
-LLM ingestion pipeline that standardizes all incoming markdown content, marks processing status, and enables downstream LLM workflows.
+LLM ingestion pipeline that standardizes opted-in markdown content, marks processing status, and enables downstream LLM workflows.
 
 ## v2 Architecture
 
@@ -40,7 +40,9 @@ LLM ingestion pipeline that standardizes all incoming markdown content, marks pr
 ## Target Folders
 
 - `resources/` and `Resources/`
-- `brainstorm/`
+- `brainstorm/managed/` and `Brainstorm/managed/`
+
+`brainstorm/` is human-managed by default. Only explicit managed subfolders should enter the LLM ingestion pipeline.
 
 Future expansion: `wiki/`, `output/`, `my-work/`
 
@@ -115,7 +117,7 @@ In OpenCode session:
 /process-pending
 ```
 
-This processes all files with `llm_description_done: false`:
+This processes all files with `llm_description_done: false` in managed folders:
 1. Enhances description with LLM
 2. Updates frontmatter
 3. Sets `llm_description_done: true`, `ingest_status: processed`
@@ -195,3 +197,9 @@ In OpenCode session:
 v1: "补 frontmatter" → v2: "构建可计算的内容入口层" → v2.1: "描述增强与白名单"
 
 From metadata completion → data standardization → whitelist-based description processing
+
+## Scope boundary
+
+- Human-managed notes should not be enriched with LLM-only pipeline fields by default.
+- `resources/` is always in scope.
+- `brainstorm/` is only in scope when a note lives under an explicit managed subfolder such as `brainstorm/managed/` or `Brainstorm/managed/`.

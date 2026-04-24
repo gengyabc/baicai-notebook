@@ -4,8 +4,11 @@
     "resources",
     "Resources",
     "brainstorm",
+    "Brainstorm",
     "wiki",
+    "Wiki",
     "output",
+    "Output",
     "my-work",
     "My-work"
   ],
@@ -28,10 +31,13 @@
   "debounceMs": 300,
   "folderPriorities": {
     "wiki": 400,
+    "Wiki": 400,
     "output": 350,
+    "Output": 350,
     "resources": 300,
     "Resources": 300,
     "brainstorm": 200,
+    "Brainstorm": 200,
     "my-work": 100,
     "My-work": 100
   }

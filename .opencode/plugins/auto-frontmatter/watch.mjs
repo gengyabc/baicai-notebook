@@ -10,7 +10,6 @@ const require = createRequire(import.meta.url)
 const config = require("./config.json")
 
 const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
-const RESOLVED_WATCH_DIRS = config.watchDirs.map((dir) => path.join(VAULT_ROOT, dir))
 const RESOLVED_EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.join(VAULT_ROOT, dir))
 const EXCLUDE_PATTERNS = config.excludePatterns
 
@@ -44,14 +43,15 @@ async function main() {
 }
 
 async function runWatchMode() {
+  const watchDirs = await resolveUniquePaths(config.watchDirs.map((dir) => path.join(VAULT_ROOT, dir)))
   console.log(`[watch] Starting file watcher`)
-  console.log(`[watch] Watching: ${config.watchDirs.join(", ")}`)
+  console.log(`[watch] Watching: ${watchDirs.join(", ")}`)
   console.log(`[watch] Vault root: ${VAULT_ROOT}`)
   console.log(`[watch] Use /process-pending in OpenCode for LLM title/description generation`)
   
   cleanupInterval = setInterval(cleanupProcessedMap, config.antiLoopWindowMs || 10000)
   
-  watcher = chokidar.watch(RESOLVED_WATCH_DIRS, {
+  watcher = chokidar.watch(watchDirs, {
     ignored: createIgnorePatterns(),
     persistent: true,
     ignoreInitial: false,
@@ -93,9 +93,10 @@ function shutdown() {
 
 async function runScanMode() {
   console.log(`[scan] Scanning target directories`)
+  const watchDirs = await resolveUniquePaths(config.watchDirs.map((dir) => path.join(VAULT_ROOT, dir)))
   
   const files = []
-  for (const dir of RESOLVED_WATCH_DIRS) {
+  for (const dir of watchDirs) {
     await collectMarkdownFiles(dir, files)
   }
   
@@ -258,4 +259,27 @@ function isExcluded(filePath) {
   }
   
   return false
+}
+
+async function resolveUniquePaths(paths) {
+  const uniquePaths = []
+  const seen = new Set()
+
+  for (const candidate of paths) {
+    const key = await pathIdentity(candidate)
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    uniquePaths.push(candidate)
+  }
+
+  return uniquePaths
+}
+
+async function pathIdentity(filePath) {
+  try {
+    return (await fs.realpath(filePath)).toLowerCase()
+  } catch {
+    return path.resolve(filePath).toLowerCase()
+  }
 }

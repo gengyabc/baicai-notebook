@@ -6,14 +6,14 @@ Process resource notes marked with `llm_description_done: false` by generating L
 
 ## Inputs
 
-- Files with `llm_description_done: false` in frontmatter (typically in `resources/` or `brainstorm/`)
+- Files with `llm_description_done: false` in frontmatter (typically in `resources/`, `Resources/`, `brainstorm/managed/`, or `Brainstorm/managed/`)
 - Exclude whitelist: `index.md`, `log.md`, files with `github.com` in `source_ref`
 
 ## Steps
 
 1. **Scan for pending files**
    - Use grep to find `llm_description_done: false` in `.md` files
-   - Filter by target directories: `resources/`, `brainstorm/`
+   - Filter by target directories: `resources/`, `Resources/`, `brainstorm/managed/`, `Brainstorm/managed/`
    - Skip index.md and log.md
 
 2. **For each pending file**:

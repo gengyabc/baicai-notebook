@@ -4,7 +4,9 @@
 
 - `my-work/` and `My-work/` are the active intent layer.
 - `resources/` and `Resources/` are LLM-managed storage for captured sources, evidence, and supporting material, with guardrails.
-- `brainstorm/` is the speculative thinking layer and should stay within `todo/` and `active/`.
+- `brainstorm/` is the speculative thinking layer and is human-managed by default.
+- `brainstorm/todo/` and `brainstorm/active/` are the default lightweight brainstorm areas.
+- `brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes.
 - `wiki/` is the durable knowledge layer and should be maintained `index-first`.
 - `output/` is the deliverable layer and should be maintained `index-first`.
 

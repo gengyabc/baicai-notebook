@@ -7,7 +7,10 @@ const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
 export async function main() {
   const args = process.argv.slice(2)
   const targets = args.filter((arg) => !arg.startsWith("--"))
-  const roots = targets.length ? targets : ["resources", "brainstorm"]
+  const requestedRoots = targets.length
+    ? targets
+    : ["resources", "Resources", "brainstorm/managed", "Brainstorm/managed"]
+  const roots = await resolveUniqueRoots(requestedRoots)
   
   const pendingFiles = []
   
@@ -75,6 +78,30 @@ async function walkDir(dir, pendingFiles) {
         console.error(`Error reading ${fullPath}: ${err.message}`)
       }
     }
+  }
+}
+
+async function resolveUniqueRoots(roots) {
+  const uniqueRoots = []
+  const seen = new Set()
+
+  for (const root of roots) {
+    const rootPath = path.join(VAULT_ROOT, root)
+    const key = await rootIdentity(rootPath)
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    uniqueRoots.push(root)
+  }
+
+  return uniqueRoots
+}
+
+async function rootIdentity(rootPath) {
+  try {
+    return (await fs.realpath(rootPath)).toLowerCase()
+  } catch {
+    return path.resolve(rootPath).toLowerCase()
   }
 }
 

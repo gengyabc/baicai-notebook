@@ -88,7 +88,14 @@ bun run --cwd .opencode install
 
 ## Frontmatter 模式
 
-详见 `.opencode/rules/metadata-conventions.md`。
+### 元数据策略
+
+- 人工管理笔记使用最小必需 frontmatter。
+- LLM 管理笔记使用更丰富的检索、溯源、流程字段。
+- `brainstorm/` 默认按人工管理处理，只有显式托管的子目录才进入 LLM frontmatter 流程。
+- 领域字段是一级公民，例如 `start_date`、`participants`、`location` 等，不应为了统一 schema 被移除。
+
+详见 `.opencode/rules/metadata-conventions.md` 与 `docs/metadata-field-matrix.md`。
 
 ### 核心字段
 
@@ -96,59 +103,69 @@ bun run --cwd .opencode install
 |------|------|
 | `type` | 笔记类型：`vault`/`resource`/`brainstorm`/`wiki`/`output`/`my-work` |
 | `kind` | 内容分类：`note`/`index`/`log`/`topic`/`entity`/`concept`/`project`/`deliverable` |
+| `created` | 创建日期 |
+| `updated` | 最近更新日期 |
+| `image_key` | 图片/附件关联键 |
+| `description` | 笔记的简短说明；人工笔记和 LLM 笔记都要求 |
+| `status` | 工作流状态，人工笔记至少要可区分当前状态 |
+| `tags` | 必填；人工笔记可以更自由，LLM 笔记应保持结构化 |
+
+### 仅 LLM 管理笔记要求的字段
+
+| 字段 | 含义 |
+|------|------|
 | `source_type` | 来源类型：`web`/`paper`/`local`/`chat`/`manual`/`generated` |
 | `content_role` | 内容角色：`raw`/`summary`/`topic`/`entity`/`synthesis`/`draft`/`index`/`log` |
-| `status` | 工作流状态：`inbox`/`active`/`reviewed`/`archived`/`draft` |
 | `trust_level` | 可信度：`raw`/`extracted`/`synthesized`/`verified`/`disputed` |
 | `verification` | 验证状态：`unverified`/`spot_checked`/`verified` |
 | `llm_stage` | LLM 处理阶段：`unprocessed`/`parsed`/`linked`/`summarized`/`integrated` |
-| `image_key` | 图片/附件关联键 |
 
 ### 模板差异
 
-不同来源类型的笔记使用不同的默认值：
+不同管理方式的笔记使用不同的默认值：
 
-**人工编写**
+**人工管理笔记最小要求**
 
-`my-work`:
 ```yaml
-source_type: manual
-content_role: draft
+type:
+kind:
+created:
+updated:
+image_key:
+description:
 status: active
-trust_level: raw
-llm_stage: unprocessed
+tags: []
 ```
 
-`brainstorm`:
+**LLM 管理笔记基础字段**
+
 ```yaml
-source_type: manual
-content_role: draft
-status: active
-trust_level: synthesized
-llm_stage: unprocessed
+type:
+kind:
+created:
+updated:
+image_key:
+description:
+status:
+tags: []
+source_type:
+content_role:
+trust_level:
+verification:
+llm_stage:
 ```
 
-**外部来源（resources）**
+**LLM 摄取层（仅进入 ingestion 流程的笔记）**
 
 ```yaml
-source_type: local/web/paper/chat
-content_role: raw
-status: inbox
-trust_level: raw
-llm_stage: unprocessed
 ingest_status: pending
+normalized_at:
+source_hash:
+source_path:
+llm_description_done: false
 ```
 
-**稳定知识（wiki）**
-
-```yaml
-source_type: generated
-content_role: synthesis
-status: active
-trust_level: synthesized
-verification: unverified
-llm_stage: linked
-```
+`brainstorm/` 默认按人工管理；只有例如 `brainstorm/managed/` 这样的显式托管子目录才应进入 LLM 摄取流程。
 
 ### LLM 摄取字段 (v2)
 
@@ -165,6 +182,12 @@ llm_stage: linked
 - `entity_refs`: 实体引用
 - `topic_refs`: 主题引用
 - `source_ref`: 来源链接
+
+### 领域字段
+
+- 保留对具体领域真正有价值的结构化字段
+- 例如：`start_date`、`end_date`、`location`、`host`、`participants`、`organizer`
+- 不要为了统一 schema 删除这些字段
 
 ## 注意事项
 

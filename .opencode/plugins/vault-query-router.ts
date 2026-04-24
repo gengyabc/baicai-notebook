@@ -1,4 +1,5 @@
 import path from "node:path"
+import fs from "node:fs"
 import { createRequire } from "node:module"
 import { DatabaseSync } from "node:sqlite"
 import type { Plugin } from "@opencode-ai/plugin"
@@ -12,7 +13,8 @@ const frontmatterIndexConfig = require("./frontmatter-index/config.json") as {
 
 const DEFAULT_LIMIT = 8
 const MAX_LIMIT = 12
-const DEFAULT_FOLDERS = ["wiki", "output", "resources", "Resources", "brainstorm", "my-work", "My-work"]
+const DEFAULT_FOLDERS = ["wiki", "Wiki", "output", "Output", "resources", "Resources", "brainstorm", "Brainstorm", "my-work", "My-work"]
+const SESSION_CLEANUP_INTERVAL_MS = 60 * 1000
 
 type SessionState = {
   debug: boolean
@@ -37,9 +39,55 @@ type SearchRow = {
 const sessions = new Map<string, SessionState>()
 const SESSION_TTL_MS = 60 * 60 * 1000
 const MAX_SESSIONS = 128
+type CachedDatabase = {
+  db: DatabaseSync
+  mtimeMs: number
+  size: number
+}
+
+const searchDatabases = new Map<string, CachedDatabase>()
+let lastSessionCleanupAt = 0
+
+process.on("exit", () => {
+  for (const cached of searchDatabases.values()) {
+    try {
+      cached.db.close()
+    } catch {}
+  }
+  searchDatabases.clear()
+})
+
+function getDatabase(dbPath: string) {
+  const stat = fs.statSync(dbPath)
+  const cached = searchDatabases.get(dbPath)
+
+  if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+    return cached.db
+  }
+
+  if (cached) {
+    try {
+      cached.db.close()
+    } catch {}
+  }
+
+  const db = new DatabaseSync(dbPath)
+  searchDatabases.set(dbPath, {
+    db,
+    mtimeMs: stat.mtimeMs,
+    size: stat.size,
+  })
+
+  return db
+}
 
 function cleanupStaleSessions() {
   const now = Date.now()
+  if (now - lastSessionCleanupAt < SESSION_CLEANUP_INTERVAL_MS && sessions.size <= MAX_SESSIONS) {
+    return
+  }
+
+  lastSessionCleanupAt = now
   const stale: string[] = []
 
   for (const [id, state] of sessions) {
@@ -80,7 +128,7 @@ function tokenizeQuery(query: string) {
   const tokens: string[] = []
 
   for (const token of query.toLowerCase().split(/[^\p{L}\p{N}_-]+/u)) {
-    if (token.length < 2 || seen.has(token)) continue
+    if (!isMeaningfulToken(token) || seen.has(token)) continue
     seen.add(token)
     tokens.push(token)
     if (tokens.length >= 6) break
@@ -92,6 +140,12 @@ function tokenizeQuery(query: string) {
 function clampLimit(limit?: number) {
   if (!Number.isFinite(limit)) return DEFAULT_LIMIT
   return Math.max(1, Math.min(MAX_LIMIT, Math.floor(limit as number)))
+}
+
+function isMeaningfulToken(token: string) {
+  if (token.length >= 2) return true
+
+  return /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{N}]/u.test(token)
 }
 
 function normalizeFolders(folders?: string[]) {
@@ -332,10 +386,13 @@ function searchIndex(
   const effectiveLimit = clampLimit(limit)
   const effectivePriorities = priorities || {
     wiki: 400,
+    Wiki: 400,
     output: 350,
+    Output: 350,
     resources: 300,
     Resources: 300,
     brainstorm: 200,
+    Brainstorm: 200,
     "my-work": 100,
     "My-work": 100,
   }
@@ -347,15 +404,12 @@ function searchIndex(
     effectivePriorities
   )
 
-  const db = new DatabaseSync(dbPath)
-  try {
-    const rows = db.query(sql).all(...finalParams) as SearchRow[]
-    return {
-      rows,
-      output: formatResults(query, rows),
-    }
-  } finally {
-    db.close()
+  const db = getDatabase(dbPath)
+
+  const rows = db.query(sql).all(...finalParams) as SearchRow[]
+  return {
+    rows,
+    output: formatResults(query, rows),
   }
 }
 

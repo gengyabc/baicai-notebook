@@ -6,202 +6,268 @@ For folder-level edit boundaries, see `.opencode/rules/edit-policy.md`. For prom
 
 ## Design principles
 
-- Use frontmatter for precise machine-readable judgments.
-- Use tags for lightweight navigation and clustering only.
-- Keep field values constrained to stable enums whenever possible.
-- Keep `type` stable and broad; use `kind` and `content_role` for note-level specificity.
+- Separate human-managed and LLM-managed note profiles.
+- Keep human-managed notes small, readable, and easy to maintain by hand.
+- Require richer metadata only where retrieval, provenance, or automation actually depends on it.
+- Treat domain-specific fields as first-class metadata, not schema violations.
+- Keep `type` stable and broad when practical, but do not force human-managed notes into a rigid global enum when local domain vocabularies are clearer.
 
-## Global note requirements
+## Ownership profiles
 
-- All durable vault Markdown notes, including `resources/`, `brainstorm/`, `wiki/`, `output/`, `my-work/`, root `index.md`, `wiki/index.md`, `wiki/log.md`, and `output/index.md`, must include `image_key`.
-- Notes processed through the LLM ingestion pipeline must include `ingest_status`, `normalized_at`, `source_hash`, and `source_path`.
-- Root `index.md` should use a table or directory-style layout to navigate vault layers with purpose and owner annotations.
-- `wiki/index.md` and `output/index.md` should use readable directory-style entries with a one-line summary when practical.
-- `wiki/log.md` entries should use a consistent date-prefixed format for later parsing and review.
-- Use `updated` for notes that may be revised over time.
+### Human-managed notes
 
-## Core field model
+Default folders:
 
-Required core fields for durable notes:
+- `my-work/`
+- human-authored `output/`
+- `brainstorm/` by default
+- domain-specific records managed directly by the user
+
+Required fields:
 
 ```yaml
 type:
 kind:
-source_type:
-content_role:
 created:
 updated:
 image_key:
+description:
 status:
-trust_level:
-verification:
-llm_stage:
 tags: []
 ```
 
-Optional supporting fields:
+Allowed and encouraged:
+
+- domain-specific fields such as `start_date`, `end_date`, `participants`, `location`, `host`, `organizer`, and similar structured properties
+- folder-local or note-type-specific metadata when it improves retrieval or human maintenance
+
+Not required for human-managed notes:
+
+- `source_type`
+- `content_role`
+- `trust_level`
+- `verification`
+- `llm_stage`
+- `canonical_topic`
+- `source_ref`
+- `source`
+- `derived_from`
+- `entity_refs`
+- `topic_refs`
+- `llm_description_done`
+- `ingest_status`
+- `normalized_at`
+- `source_hash`
+- `source_path`
+
+### LLM-managed notes
+
+Default folders:
+
+- `resources/`
+- generated `wiki/`
+- generated or automation-managed `output/`
+- explicitly managed brainstorm subfolders such as `brainstorm/managed/`
+
+Required LLM base fields:
 
 ```yaml
-source:
-canonical_topic:
-source_ref:
+type:
+kind:
+created:
+updated:
+image_key:
 description:
-derived_from: []
-entity_refs: []
-topic_refs: []
-llm_description_done:
+status:
+tags: []
+source_type:
+content_role:
+trust_level:
+verification:
+llm_stage:
 ```
 
-### LLM ingestion layer fields (v2)
+Required only for ingestion-pipeline notes:
 
 ```yaml
-ingest_status: pending | processed | error
+ingest_status:
 normalized_at:
 source_hash:
 source_path:
+llm_description_done:
 ```
 
-These fields track content standardization and enable downstream LLM workflows:
-- `ingest_status`: Entry point status for LLM processing pipeline
-- `normalized_at`: Last standardization timestamp
-- `source_hash`: SHA1 hash (16 chars) for deduplication and idempotency
-- `source_path`: Original import location path
-
-### LLM description marker
+Required when provenance is external or operationally important:
 
 ```yaml
-llm_description_done: true | false
+source_ref:
+source:
 ```
 
-Tracks whether description has been finalized:
-- `true`: Description is complete (either from whitelist or LLM-enhanced)
-- `false`: Description needs LLM enhancement
-
-**Whitelist** (automatically set to `true`):
-- `index.md` and `log.md` files
-- Files with `source_ref` containing `github.com`
-
-**Non-whitelisted** files can be enhanced via `/process-pending` command.
-
-## Enum sets
-
-### `type`
+Useful but optional linking fields:
 
 ```yaml
-type: vault | resource | brainstorm | wiki | output | my-work
+canonical_topic:
+derived_from: []
+entity_refs: []
+topic_refs: []
 ```
 
-### `kind`
+These linking fields should only be required when a workflow or query pattern actually depends on them.
 
-```yaml
-kind: note | index | log | topic | entity | concept | project | deliverable
-```
+## Brainstorm policy
 
-### `source_type`
+- `brainstorm/` is mixed by subfolder.
+- Human-minimal is the default for brainstorm notes.
+- Only explicitly managed brainstorm areas should carry the richer LLM ingestion profile.
+- Use `brainstorm/managed/` for brainstorm notes that should participate in the auto-frontmatter and description-enhancement pipeline.
+- Keep `brainstorm/todo/` and `brainstorm/active/` lightweight unless a specific workflow opts them into richer metadata.
 
-```yaml
-source_type: web | paper | local | chat | manual | generated
-```
+## Folder profile matrix
 
-### `content_role`
+| Note family | Profile | Required | Optional | Avoid by default |
+| --- | --- | --- | --- | --- |
+| `my-work/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | domain-specific fields, `source_ref` when useful | LLM pipeline fields |
+| `brainstorm/todo/`, `brainstorm/active/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | `derived_from`, `source_ref`, domain fields | LLM pipeline fields unless explicitly opted in |
+| `brainstorm/managed/` | LLM-managed | LLM base fields, plus ingestion fields when auto-managed | linking fields | nothing beyond the profile |
+| `resources/` | LLM-managed | LLM base fields, ingestion fields, `source_ref` when externally sourced | `source`, linking fields, `author`, `published` | human-only domain fields unrelated to the source |
+| generated `wiki/` | LLM-managed | LLM base fields | `canonical_topic`, linking fields, `source_ref` or backlinks | ingestion fields unless the note is actually in that pipeline |
+| human `output/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | deliverable-specific fields, `source_ref` | LLM pipeline fields |
+| generated `output/` | LLM-managed | LLM base fields | provenance and linking fields | ingestion fields unless auto-managed |
+| root and folder indexes/logs | whichever manages them | same as their owning profile; keep concise | provenance fields when useful | unnecessary pipeline state |
 
-```yaml
-content_role: raw | summary | topic | entity | synthesis | draft | index | log
-```
+## Field matrix
+
+Legend:
+
+- `R`: required
+- `O`: optional
+- `D`: domain-specific
+- `-`: not needed by default
+
+| Field | Human-managed | LLM-managed base | Ingestion notes |
+| --- | --- | --- | --- |
+| `type` | R | R | R |
+| `kind` | R | R | R |
+| `created` | R | R | R |
+| `updated` | R | R | R |
+| `image_key` | R | R | R |
+| `description` | R | R | R |
+| `status` | R | R | R |
+| `tags` | R | R | R |
+| `source_type` | - | R | R |
+| `content_role` | - | R | R |
+| `trust_level` | - | R | R |
+| `verification` | - | R | R |
+| `llm_stage` | - | R | R |
+| `source_ref` | O | O | O |
+| `source` | O | O | O |
+| `canonical_topic` | - | O | O |
+| `derived_from` | O | O | O |
+| `entity_refs` | - | O | O |
+| `topic_refs` | - | O | O |
+| `llm_description_done` | - | - | R |
+| `ingest_status` | - | - | R |
+| `normalized_at` | - | - | R |
+| `source_hash` | - | - | R |
+| `source_path` | - | - | R |
+| domain-specific fields | D | D | D |
+
+## Enum guidance
+
+Use stable enums where they clearly improve retrieval or automation, especially for LLM-managed notes.
 
 ### `status`
+
+Recommended shared values:
 
 ```yaml
 status: inbox | active | reviewed | archived | draft
 ```
 
-### `trust_level`
+Human-managed notes may use domain-local values when that is genuinely clearer, but keep them intentional and queryable.
+
+### LLM-managed enums
 
 ```yaml
+type: vault | resource | brainstorm | wiki | output | my-work
+kind: note | index | log | topic | entity | concept | project | deliverable
+source_type: web | paper | local | chat | manual | generated
+content_role: raw | summary | topic | entity | synthesis | draft | index | log
 trust_level: raw | extracted | synthesized | verified | disputed
-```
-
-### `verification`
-
-```yaml
 verification: unverified | spot_checked | verified
-```
-
-### `llm_stage`
-
-```yaml
 llm_stage: unprocessed | parsed | linked | summarized | integrated
-```
-
-### `ingest_status` (v2)
-
-```yaml
 ingest_status: pending | processed | error
 ```
 
-## Tag taxonomy
+## Tag rules
 
-Tags are secondary metadata. Do not store precise judgment fields only in tags.
+- All durable human-managed and LLM-managed notes should include tags.
+- For LLM-managed notes, include exactly one `state/*`, one `source/*`, and one `role/*` tag.
+- For human-managed notes, tags are required but may remain simple and user-shaped.
+- Use `topic/*` tags only when they improve retrieval.
+- Keep total tags small whenever practical.
+- Do not move precise judgment fields like `trust_level` or `verification` into tags.
 
-Allowed tag families:
+## Templates
 
-- `state/*` for workflow state
-- `source/*` for source class
-- `role/*` for knowledge role
-- `topic/*` for lightweight topical clustering
-
-Tag rules:
-
-- Every durable note should include exactly one `state/*` tag.
-- Every durable note should include exactly one `source/*` tag.
-- Every durable note should include exactly one `role/*` tag.
-- Use at most two `topic/*` tags unless there is a concrete retrieval reason.
-- Keep total tags at five or fewer whenever practical.
-- Do not put `trust_level`, `verification`, timestamps, or kind-specific semantics into tags.
-
-## Schema templates
-
-### Root vault index schema
+### Human-managed note
 
 ```yaml
 ---
-type: vault
-kind: index
-source_type: manual
-content_role: index
+type: my-work
+kind: note
 created:
 updated:
 image_key:
+description:
 status: active
-trust_level: verified
-verification: verified
-llm_stage: integrated
 tags:
   - state/active
-  - source/manual
-  - role/index
 ---
 ```
 
-### Resource note schema
+### Human-managed domain note
+
+```yaml
+---
+type: my-work
+kind: training
+created:
+updated:
+image_key:
+description:
+status: active
+tags:
+  - state/active
+  - topic/training
+start_date:
+end_date:
+location:
+host:
+participants:
+---
+```
+
+### LLM-managed resource note
 
 ```yaml
 ---
 type: resource
 kind: note
-source_type: local
+source_type: web
 content_role: raw
 created:
 updated:
 image_key:
+description:
+llm_description_done: false
 status: inbox
 trust_level: raw
 verification: unverified
 llm_stage: unprocessed
-source:
 canonical_topic:
 source_ref:
-description:
 derived_from: []
 entity_refs: []
 topic_refs: []
@@ -209,63 +275,55 @@ ingest_status: pending
 normalized_at:
 source_hash:
 source_path:
-llm_description_done:
 tags:
   - state/inbox
-  - source/local
+  - source/web
   - role/raw
 ---
 ```
 
-### Brainstorm note schema
+### Human-default brainstorm note
 
 ```yaml
 ---
 type: brainstorm
 kind: note
-source_type: manual
-content_role: draft
 created:
 updated:
 image_key:
+description:
 status: active
-trust_level: synthesized
-verification: unverified
-llm_stage: unprocessed
-source:
-canonical_topic:
-source_ref:
-derived_from: []
-entity_refs: []
-topic_refs: []
 tags:
   - state/active
-  - source/manual
-  - role/draft
+  - topic/idea
 ---
 ```
 
-### Wiki note schema
+### LLM-managed brainstorm note
 
 ```yaml
 ---
-type: wiki
+type: brainstorm
 kind: note
 source_type: generated
 content_role: synthesis
 created:
 updated:
 image_key:
+description:
+llm_description_done: false
 status: active
 trust_level: synthesized
 verification: unverified
 llm_stage: linked
-source:
 canonical_topic:
-source_ref:
 derived_from: []
 entity_refs: []
 topic_refs: []
+ingest_status: pending
+normalized_at:
+source_hash:
+source_path: brainstorm/managed
 tags:
   - state/active
   - source/generated
@@ -273,123 +331,11 @@ tags:
 ---
 ```
 
-### Wiki index schema
-
-```yaml
----
-type: wiki
-kind: index
-source_type: generated
-content_role: index
-created:
-updated:
-image_key:
-status: active
-trust_level: verified
-verification: verified
-llm_stage: integrated
-source:
-canonical_topic:
-source_ref:
-derived_from: []
-entity_refs: []
-topic_refs: []
-tags:
-  - state/active
-  - source/generated
-  - role/index
----
-```
-
-### Wiki log schema
-
-```yaml
----
-type: wiki
-kind: log
-source_type: generated
-content_role: log
-created:
-updated:
-image_key:
-status: active
-trust_level: verified
-verification: verified
-llm_stage: integrated
-source:
-canonical_topic:
-source_ref:
-derived_from: []
-entity_refs: []
-topic_refs: []
-tags:
-  - state/active
-  - source/generated
-  - role/log
----
-```
-
-### Output note schema
-
-```yaml
----
-type: output
-kind: deliverable
-source_type: manual
-content_role: draft
-created:
-updated:
-image_key:
-status: draft
-trust_level: synthesized
-verification: unverified
-llm_stage: unprocessed
-source:
-canonical_topic:
-source_ref:
-derived_from: []
-entity_refs: []
-topic_refs: []
-tags:
-  - state/draft
-  - source/manual
-  - role/draft
----
-```
-
-### My-work note schema
-
-```yaml
----
-type: my-work
-kind: note
-source_type: manual
-content_role: draft
-created:
-updated:
-image_key:
-status: active
-trust_level: raw
-verification: unverified
-llm_stage: unprocessed
-source:
-canonical_topic:
-source_ref:
-derived_from: []
-entity_refs: []
-topic_refs: []
-tags:
-  - state/active
-  - source/manual
-  - role/draft
----
-```
-
 ## Minimum content rules
 
+- Human-managed notes should stay hand-editable and should not accumulate automation-only fields without a concrete need.
+- Domain-specific notes should preserve the structured fields that matter to that domain.
 - Resource notes should include provenance or source context and a short summary.
-- Resource notes should include a short `description` when practical.
-- Brainstorm notes should preserve uncertainty and derivation.
 - Wiki notes should include explicit supporting sources or backlinks to grounded upstream notes.
-- Output notes should be indexable and linked from `output/index.md`.
+- Output notes should be indexable and linked from `output/index.md` when durable.
 - Index and log pages should remain concise, discoverable, and consistent with folder structure.

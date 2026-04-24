@@ -6,6 +6,7 @@ content_role: log
 created: 2026-04-13
 updated: 2026-04-15
 image_key: wiki-log
+description: Change log for durable wiki structure and major updates.
 status: active
 trust_level: verified
 verification: verified

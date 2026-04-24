@@ -14,6 +14,15 @@ const ROOTS = config.roots.map((root) => path.resolve(VAULT_ROOT, root))
 const EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.resolve(VAULT_ROOT, dir))
 const EXCLUDE_PATTERNS = config.excludePatterns.map((pattern) => new RegExp(pattern))
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/
+const CANONICAL_ROOTS = {
+  "Resources": "resources",
+  "Brainstorm": "brainstorm",
+  "Wiki": "wiki",
+  "Output": "output",
+  "My-work": "my-work",
+}
+
+let managedRootsPromise = null
 
 async function main() {
   const args = process.argv.slice(2)
@@ -127,6 +136,7 @@ async function runWatchMode() {
   const pending = new Map()
   let timer = null
   const watchers = []
+  const managedRoots = await getManagedRoots()
 
   const initial = await scanAll(store)
   const initialRemoved = await reconcileMissingNotes(store)
@@ -171,7 +181,7 @@ async function runWatchMode() {
     }, config.debounceMs)
   }
 
-  for (const root of ROOTS) {
+  for (const root of managedRoots) {
     const stat = await safeStat(root)
     if (!stat || !stat.isDirectory()) continue
 
@@ -192,7 +202,7 @@ async function runWatchMode() {
     watchers.push(watcher)
   }
 
-  console.log(`[sqlite-index] watching ${config.roots.join(", ")}`)
+  console.log(`[sqlite-index] watching ${managedRoots.join(", ")}`)
 
   const shutdown = async () => {
     if (timer) {
@@ -214,8 +224,9 @@ async function scanAll(store) {
   let scanned = 0
   let synced = 0
   const paths = new Set()
+  const managedRoots = await getManagedRoots()
 
-  for (const root of ROOTS) {
+  for (const root of managedRoots) {
     const stat = await safeStat(root)
     if (!stat || !stat.isDirectory()) continue
     const files = []
@@ -340,7 +351,47 @@ function shouldIgnore(filePath) {
 }
 
 function toVaultPath(filePath) {
-  return path.relative(VAULT_ROOT, path.resolve(filePath)).split(path.sep).join(path.posix.sep)
+  const relativePath = path.relative(VAULT_ROOT, path.resolve(filePath)).split(path.sep).join(path.posix.sep)
+  return canonicalizeVaultPath(relativePath)
+}
+
+function canonicalizeVaultPath(filePath) {
+  const parts = filePath.split(path.posix.sep)
+  if (!parts[0]) return filePath
+
+  parts[0] = CANONICAL_ROOTS[parts[0]] || parts[0]
+  return parts.join(path.posix.sep)
+}
+
+async function getManagedRoots() {
+  if (!managedRootsPromise) {
+    managedRootsPromise = resolveUniqueRoots(ROOTS)
+  }
+
+  return managedRootsPromise
+}
+
+async function resolveUniqueRoots(roots) {
+  const uniqueRoots = []
+  const seen = new Set()
+
+  for (const root of roots) {
+    const key = await rootIdentity(root)
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    uniqueRoots.push(root)
+  }
+
+  return uniqueRoots
+}
+
+async function rootIdentity(root) {
+  try {
+    return (await fs.realpath(root)).toLowerCase()
+  } catch {
+    return path.resolve(root).toLowerCase()
+  }
 }
 
 function isIsoLikeDate(value) {
