@@ -1,5 +1,6 @@
 ---
 description: Write a plan to docs/plans after LLM discussion
+model: bailian-coding-plan/glm-5
 ---
 
 Write the plan based on the final discussion result.

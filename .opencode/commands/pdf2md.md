@@ -1,5 +1,6 @@
 ---
 description: Convert PDFs in raw/ to markdown in resources/
+model: bailian-coding-plan/glm-5
 ---
 Convert all unprocessed PDF files from `raw/` to markdown in `resources/`.
 

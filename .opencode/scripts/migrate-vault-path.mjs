@@ -99,6 +99,23 @@ async function main() {
     console.log(`  Updated: ${change.relativePath}`)
   }
   
+  const oldFolderPath = path.join(PROJECT_ROOT, oldRoot)
+  const newFolderPath = path.join(PROJECT_ROOT, newRoot)
+  
+  try {
+    await fs.access(oldFolderPath)
+    await fs.rename(oldFolderPath, newFolderPath)
+    console.log(`  Renamed folder: ${oldRoot}/ -> ${newRoot}/`)
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      console.log(`  Folder ${oldRoot}/ not found (may already be renamed)`)
+    } else if (err.code === "EEXIST") {
+      console.log(`  Folder ${newRoot}/ already exists, skipping rename`)
+    } else {
+      throw err
+    }
+  }
+  
   console.log(`\nMigration complete: ${oldRoot} -> ${newRoot}`)
   console.log(`Total files updated: ${changes.length}`)
 }

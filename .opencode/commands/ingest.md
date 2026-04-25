@@ -1,5 +1,6 @@
 ---
 description: Ingest a note or source into the vault
+model: bailian-coding-plan/glm-5
 ---
 Ingest the note or source: `$ARGUMENTS`.
 

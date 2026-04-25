@@ -1,5 +1,6 @@
 ---
 description: Enter sandbox mode for read-only vault behavior
+model: bailian-coding-plan/glm-5
 ---
 Enter debug/sandbox mode for this session.
 

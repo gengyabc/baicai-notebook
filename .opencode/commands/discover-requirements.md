@@ -1,6 +1,7 @@
 ---
 description: Discover requirements and persist to docs/requirements/
 argument-hint: <initial-request>
+model: bailian-coding-plan/glm-5
 ---
 
 Discover requirements for: `$ARGUMENTS`

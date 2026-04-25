@@ -1,5 +1,6 @@
 ---
 description: Enhance descriptions for resource notes needing LLM processing
+model: bailian-coding-plan/glm-5
 ---
 Scan for files with `llm_description_done: false` and enhance descriptions:
 
