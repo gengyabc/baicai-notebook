@@ -9,11 +9,11 @@ compatibility: opencode
 - extract grounded claims from mixed material
 - update or create the right wiki note
 - preserve links back to sources and brainstorm notes when helpful
-- maintain `wiki/index.md` and `wiki/log.md` responsibilities for wiki changes
+- maintain `workbook/wiki/index.md` and `workbook/wiki/log.md` responsibilities for wiki changes
 
 ## When to use me
 
-Use this when selected material may be ready for durable `wiki/` memory.
+Use this when selected material may be ready for durable `workbook/wiki/` memory.
 
 ## Constraints
 

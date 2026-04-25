@@ -7,12 +7,12 @@ compatibility: opencode
 
 - cluster idea fragments into themes
 - separate observations, guesses, and open questions
-- improve note structure within `brainstorm/todo` and `brainstorm/active` while preserving speculative status
+- improve note structure within `workbook/brainstorm/todo` and `workbook/brainstorm/active` while preserving speculative status
 - mark likely follow-up directions
 
 ## When to use me
 
-Use this when `brainstorm/` material needs clustering, cleanup, or a clearer next step.
+Use this when `workbook/brainstorm/` material needs clustering, cleanup, or a clearer next step.
 
 ## Constraints
 

@@ -4,23 +4,26 @@ import path from "path"
 import { Database } from "bun:sqlite"
 import { createRequire } from "module"
 import { parseFrontmatter, splitFrontmatter } from "../auto-frontmatter/utils.mjs"
+import {
+  getVaultRootPath,
+  getDefaultFolders,
+  getCanonicalRoots,
+  getFolderPriorities,
+  getVaultConfig,
+} from "../../scripts/vault-paths.mjs"
 
 const require = createRequire(import.meta.url)
 const config = require("./config.json")
+const vaultConfig = getVaultConfig()
 
-const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
-const DB_PATH = path.resolve(VAULT_ROOT, config.dbPath)
-const ROOTS = config.roots.map((root) => path.resolve(VAULT_ROOT, root))
-const EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.resolve(VAULT_ROOT, dir))
+const VAULT_ROOT = getVaultRootPath()
+const REPO_ROOT = path.resolve(VAULT_ROOT, "..")
+const DB_PATH = path.resolve(REPO_ROOT, config.dbPath)
+const ROOTS = getDefaultFolders().map((folder) => path.resolve(VAULT_ROOT, folder))
+const EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.resolve(REPO_ROOT, dir))
 const EXCLUDE_PATTERNS = config.excludePatterns.map((pattern) => new RegExp(pattern))
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/
-const CANONICAL_ROOTS = {
-  "Resources": "resources",
-  "Brainstorm": "brainstorm",
-  "Wiki": "wiki",
-  "Output": "output",
-  "My-work": "my-work",
-}
+const CANONICAL_ROOTS = getCanonicalRoots()
 
 let managedRootsPromise = null
 

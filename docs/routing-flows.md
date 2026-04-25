@@ -84,7 +84,7 @@ flowchart TD
 ```
 
 **Routing Standards:**
-- `ingest-my-work` for active notes from `my-work/`
+- `ingest-my-work` for active notes from `workbook/my-work/`
 - `ingest-resources` for external sources (URLs, PDFs, Zotero)
 
 ### Debug Command
@@ -116,7 +116,7 @@ flowchart TD
 ```
 
 **Routing Standards:**
-- Only `solidify` is the promotion gate into `wiki/`
+- Only `solidify` is the promotion gate into `workbook/wiki/`
 - Requires grounded claims with provenance
 
 ---
@@ -141,16 +141,16 @@ flowchart TD
     G --> H
     H --> I{Strong evidence?}
     I -->|yes| J[solidify-to-wiki]
-    I -->|no| K[brainstorm/]
-    J --> L[Update wiki/index.md]
+    I -->|no| K[workbook/brainstorm/]
+    J --> L[Update workbook/wiki/index.md]
     K --> M[Link to relevant notes]
     L --> N[Output: resource + links]
     M --> N
 ```
 
 **Routing Standards:**
-- Default derived material to `brainstorm/`
-- Only promote to `wiki/` via explicit `solidify` gate
+- Default derived material to `workbook/brainstorm/`
+- Only promote to `workbook/wiki/` via explicit `solidify` gate
 
 ### Solidify to Wiki Workflow
 
@@ -159,9 +159,9 @@ flowchart TD
     A[brainstorm note] --> B[Load solidify-to-wiki skill]
     B --> C{Promotion test passed?}
     C -->|yes| D[Create wiki note]
-    C -->|no| E[Keep in brainstorm]
+    C -->|no| E[Keep in workbook/brainstorm/]
     D --> F[Add backlink]
-    F --> G[Update wiki/index.md]
+    F --> G[Update workbook/wiki/index.md]
     E --> H[Record tension]
     G --> I[Output: wiki updated]
     H --> I
@@ -195,22 +195,22 @@ flowchart TD
 flowchart TD
     A[incoming material] --> B{Classify by role}
     B --> C{Confidence level?}
-    C -->|high| D[wiki/]
-    C -->|medium| E[brainstorm/]
-    C -->|low| F[resources/]
-    C -->|active| G[my-work/]
+    C -->|high| D[workbook/wiki/]
+    C -->|medium| E[workbook/brainstorm/]
+    C -->|low| F[workbook/resources/]
+    C -->|active| G[workbook/my-work/]
     D --> H[Extract durable points]
     E --> H
     F --> H
     G --> H
-    H --> I[Default to brainstorm/]
+    H --> I[Default to workbook/brainstorm/]
     I --> J[Suggest backlinks]
     J --> K[Output: routed note]
 ```
 
 **Skill Bounds:**
 - Keep user-authored notes intact
-- Do not promote speculative claims to `wiki/` by default
+- Do not promote speculative claims to `workbook/wiki/` by default
 
 ### Web to Resource Skill
 
@@ -238,27 +238,27 @@ flowchart TD
     B -->|resources| C
     B -->|brainstorm| D{Promotion test?}
     C --> E[Route through solidify]
-    D -->|passed| F[wiki/]
-    D -->|failed| G[brainstorm/]
+    D -->|passed| F[workbook/wiki/]
+    D -->|failed| G[workbook/brainstorm/]
     E --> F
-    F --> H[Update wiki/index.md]
+    F --> H[Update workbook/wiki/index.md]
 ```
 
 **Must:**
-- Entry into `wiki/` must go through `solidify` gate
+- Entry into `workbook/wiki/` must go through `solidify` gate
 - Prefer promoting selected grounded claims
 
 **Must Not:**
-- Do not promote directly from `my-work/` or `resources/` to `wiki/`
+- Do not promote directly from `workbook/my-work/` or `workbook/resources/` to `workbook/wiki/`
 
 ### Query Confidence Rule
 
 ```mermaid
 flowchart TD
     A[Query] --> B{Confidence level?}
-    B -->|high| C[Direct answer from wiki]
-    B -->|medium| D[Synthesize from brainstorm]
-    B -->|low| E[Search resources/]
+    B -->|high| C[Direct answer from workbook/wiki/]
+    B -->|medium| D[Synthesize from workbook/brainstorm/]
+    B -->|low| E[Search workbook/resources/]
     C --> F[Answer with full confidence]
     D --> F
     E --> F
@@ -293,14 +293,14 @@ flowchart TD
 
 ### Default Paths
 
-- Derived material: `brainstorm/` by default
-- External sources: `resources/` for capture, `brainstorm/` for synthesis
+- Derived material: `workbook/brainstorm/` by default
+- External sources: `workbook/resources/` for capture, `workbook/brainstorm/` for synthesis
 - Promotion: Only through `solidify` gate
 - Debug: Session-scoped, disables all auto-write rules
 
 ### Stop Conditions
 
 - `debug` mode active: All writes suspended
-- Promotion test failed: Content stays in `brainstorm/`
+- Promotion test failed: Content stays in `workbook/brainstorm/`
 - Duplicate found: Update existing instead of creating new
 - Invalid source: Error and exit

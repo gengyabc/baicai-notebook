@@ -4,6 +4,7 @@ import { createRequire } from "node:module"
 import { DatabaseSync } from "node:sqlite"
 import type { Plugin } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
+import { getDefaultFoldersWithRoot, getFolderPriorities, getVaultConfig } from "../scripts/vault-paths.mjs"
 
 const require = createRequire(import.meta.url)
 const frontmatterIndexConfig = require("./frontmatter-index/config.json") as {
@@ -11,9 +12,10 @@ const frontmatterIndexConfig = require("./frontmatter-index/config.json") as {
   folderPriorities?: Record<string, number>
 }
 
+const vaultConfig = getVaultConfig()
 const DEFAULT_LIMIT = 8
 const MAX_LIMIT = 12
-const DEFAULT_FOLDERS = ["wiki", "Wiki", "output", "Output", "resources", "Resources", "brainstorm", "Brainstorm", "my-work", "My-work"]
+const DEFAULT_FOLDERS = getDefaultFoldersWithRoot()
 const SESSION_CLEANUP_INTERVAL_MS = 60 * 1000
 
 type SessionState = {
@@ -384,18 +386,7 @@ function searchIndex(
   const effectiveTokens = tokens.length ? tokens : [normalizedQuery]
   const effectiveFolders = normalizeFolders(folders)
   const effectiveLimit = clampLimit(limit)
-  const effectivePriorities = priorities || {
-    wiki: 400,
-    Wiki: 400,
-    output: 350,
-    Output: 350,
-    resources: 300,
-    Resources: 300,
-    brainstorm: 200,
-    Brainstorm: 200,
-    "my-work": 100,
-    "My-work": 100,
-  }
+  const effectivePriorities = priorities || getFolderPriorities()
   const { sql, finalParams } = buildSearchQuery(
     normalizedQuery,
     effectiveTokens,
@@ -414,10 +405,12 @@ function searchIndex(
 }
 
 function buildSystemInstruction() {
+  const folders = vaultConfig.folders
+  const vaultRoot = vaultConfig.vaultRoot
   return [
     "Vault retrieval routing is enabled for this session.",
     "For vault-grounded questions, call `vault_index_search` first before reading vault files.",
-    "Read the shortlisted files first and preserve folder priority: wiki -> output -> resources -> brainstorm -> my-work.",
+    `Read the shortlisted files first and preserve folder priority: ${vaultRoot}/${folders.wiki} -> ${vaultRoot}/${folders.output} -> ${vaultRoot}/${folders.resources} -> ${vaultRoot}/${folders.brainstorm} -> ${vaultRoot}/${folders.myWork}.`,
     "Soft fallback is allowed only when the SQLite shortlist is empty or clearly insufficient. If you broaden retrieval, say that explicitly before reading outside the shortlist.",
     "When answering from the vault, include confidence and provenance.",
   ].join("\n")

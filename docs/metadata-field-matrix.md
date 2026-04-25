@@ -9,7 +9,7 @@ Legend:
 - `D`: domain-specific
 - `-`: not needed by default
 
-| Field | `my-work/` | `brainstorm/todo` + `active` | `brainstorm/managed` | `resources/` | generated `wiki/` | human `output/` | generated `output/` |
+| Field | `workbook/my-work/` | `workbook/brainstorm/todo` + `active` | `workbook/brainstorm/managed` | `workbook/resources/` | generated `workbook/wiki/` | human `workbook/output/` | generated `workbook/output/` |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `type` | R | R | R | R | R | R | R |
 | `kind` | R | R | R | R | R | R | R |
@@ -39,7 +39,7 @@ Legend:
 
 ## Notes
 
-- `brainstorm/` is human-minimal by default.
-- `brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes.
+- `workbook/brainstorm/` is human-minimal by default.
+- `workbook/brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes.
 - Human-managed notes should preserve useful domain fields instead of being flattened into generic metadata.
 - LLM-managed notes should only carry provenance and pipeline fields that a workflow actually uses.

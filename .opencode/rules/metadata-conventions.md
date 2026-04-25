@@ -2,7 +2,7 @@
 
 Use YAML frontmatter for durable notes unless the note is intentionally temporary.
 
-For folder-level edit boundaries, see `.opencode/rules/edit-policy.md`. For promotion into `wiki/`, see `.opencode/rules/promotion-policy.md`.
+For folder-level edit boundaries, see `.opencode/rules/edit-policy.md`. For promotion into `workbook/wiki/`, see `.opencode/rules/promotion-policy.md`.
 
 ## Design principles
 
@@ -18,9 +18,9 @@ For folder-level edit boundaries, see `.opencode/rules/edit-policy.md`. For prom
 
 Default folders:
 
-- `my-work/`
-- human-authored `output/`
-- `brainstorm/` by default
+- `workbook/my-work/`
+- human-authored `workbook/output/`
+- `workbook/brainstorm/` by default
 - domain-specific records managed directly by the user
 
 Required fields:
@@ -64,10 +64,10 @@ Not required for human-managed notes:
 
 Default folders:
 
-- `resources/`
-- generated `wiki/`
-- generated or automation-managed `output/`
-- explicitly managed brainstorm subfolders such as `brainstorm/managed/`
+- `workbook/resources/`
+- generated `workbook/wiki/`
+- generated or automation-managed `workbook/output/`
+- explicitly managed brainstorm subfolders such as `workbook/brainstorm/managed/`
 
 Required LLM base fields:
 
@@ -117,23 +117,23 @@ These linking fields should only be required when a workflow or query pattern ac
 
 ## Brainstorm policy
 
-- `brainstorm/` is mixed by subfolder.
+- `workbook/brainstorm/` is mixed by subfolder.
 - Human-minimal is the default for brainstorm notes.
 - Only explicitly managed brainstorm areas should carry the richer LLM ingestion profile.
-- Use `brainstorm/managed/` for brainstorm notes that should participate in the auto-frontmatter and description-enhancement pipeline.
-- Keep `brainstorm/todo/` and `brainstorm/active/` lightweight unless a specific workflow opts them into richer metadata.
+- Use `workbook/brainstorm/managed/` for brainstorm notes that should participate in the auto-frontmatter and description-enhancement pipeline.
+- Keep `workbook/brainstorm/todo/` and `workbook/brainstorm/active/` lightweight unless a specific workflow opts them into richer metadata.
 
 ## Folder profile matrix
 
 | Note family | Profile | Required | Optional | Avoid by default |
 | --- | --- | --- | --- | --- |
-| `my-work/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | domain-specific fields, `source_ref` when useful | LLM pipeline fields |
-| `brainstorm/todo/`, `brainstorm/active/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | `derived_from`, `source_ref`, domain fields | LLM pipeline fields unless explicitly opted in |
-| `brainstorm/managed/` | LLM-managed | LLM base fields, plus ingestion fields when auto-managed | linking fields | nothing beyond the profile |
-| `resources/` | LLM-managed | LLM base fields, ingestion fields, `source_ref` when externally sourced | `source`, linking fields, `author`, `published` | human-only domain fields unrelated to the source |
-| generated `wiki/` | LLM-managed | LLM base fields | `canonical_topic`, linking fields, `source_ref` or backlinks | ingestion fields unless the note is actually in that pipeline |
-| human `output/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | deliverable-specific fields, `source_ref` | LLM pipeline fields |
-| generated `output/` | LLM-managed | LLM base fields | provenance and linking fields | ingestion fields unless auto-managed |
+| `workbook/my-work/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | domain-specific fields, `source_ref` when useful | LLM pipeline fields |
+| `workbook/brainstorm/todo/`, `workbook/brainstorm/active/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | `derived_from`, `source_ref`, domain fields | LLM pipeline fields unless explicitly opted in |
+| `workbook/brainstorm/managed/` | LLM-managed | LLM base fields, plus ingestion fields when auto-managed | linking fields | nothing beyond the profile |
+| `workbook/resources/` | LLM-managed | LLM base fields, ingestion fields, `source_ref` when externally sourced | `source`, linking fields, `author`, `published` | human-only domain fields unrelated to the source |
+| generated `workbook/wiki/` | LLM-managed | LLM base fields | `canonical_topic`, linking fields, `source_ref` or backlinks | ingestion fields unless the note is actually in that pipeline |
+| human `workbook/output/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | deliverable-specific fields, `source_ref` | LLM pipeline fields |
+| generated `workbook/output/` | LLM-managed | LLM base fields | provenance and linking fields | ingestion fields unless auto-managed |
 | root and folder indexes/logs | whichever manages them | same as their owning profile; keep concise | provenance fields when useful | unnecessary pipeline state |
 
 ## Field matrix
@@ -323,7 +323,7 @@ topic_refs: []
 ingest_status: pending
 normalized_at:
 source_hash:
-source_path: brainstorm/managed
+source_path: workbook/brainstorm/managed
 tags:
   - state/active
   - source/generated
@@ -337,5 +337,5 @@ tags:
 - Domain-specific notes should preserve the structured fields that matter to that domain.
 - Resource notes should include provenance or source context and a short summary.
 - Wiki notes should include explicit supporting sources or backlinks to grounded upstream notes.
-- Output notes should be indexable and linked from `output/index.md` when durable.
+- Output notes should be indexable and linked from `workbook/output/index.md` when durable.
 - Index and log pages should remain concise, discoverable, and consistent with folder structure.

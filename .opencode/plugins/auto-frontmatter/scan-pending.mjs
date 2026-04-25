@@ -1,15 +1,14 @@
 import fs from "fs/promises"
 import path from "path"
 import { splitFrontmatter, parseFrontmatter } from "./utils.mjs"
+import { getVaultRootPath, getManagedPaths } from "../../scripts/vault-paths.mjs"
 
-const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
+const VAULT_ROOT = getVaultRootPath()
 
 export async function main() {
   const args = process.argv.slice(2)
   const targets = args.filter((arg) => !arg.startsWith("--"))
-  const requestedRoots = targets.length
-    ? targets
-    : ["resources", "Resources", "brainstorm/managed", "Brainstorm/managed"]
+  const requestedRoots = targets.length ? targets : getManagedPaths()
   const roots = await resolveUniqueRoots(requestedRoots)
   
   const pendingFiles = []

@@ -13,9 +13,9 @@ If debug mode is active for this session (see `debug-mode` rule), skip this rule
 ## Behavior
 
 1. Load the `brainstorm-distill` skill.
-2. Move the question into `brainstorm/todo/` or `brainstorm/active/` as appropriate.
+2. Move the question into `workbook/brainstorm/todo/` or `workbook/brainstorm/active/` as appropriate.
 3. Cluster related ideas and identify knowledge gaps.
-4. Mark promotion candidates without promoting to `wiki/`.
+4. Mark promotion candidates without promoting to `workbook/wiki/`.
 
 ## Threshold
 

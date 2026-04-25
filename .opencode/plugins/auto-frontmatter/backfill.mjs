@@ -4,21 +4,18 @@ import { stringify } from "yaml"
 import { computeHash } from "./hash.mjs"
 import { splitFrontmatter, parseFrontmatter } from "./utils.mjs"
 import { createRequire } from "module"
+import { getVaultRootPath, getManagedPaths, getVaultConfig } from "../../scripts/vault-paths.mjs"
 
 const require = createRequire(import.meta.url)
 const config = require("./config.json")
-const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
+const VAULT_ROOT = getVaultRootPath()
 
-const TARGET_PATHS = [
-  "resources",
-  "Resources",
-  path.join("brainstorm", "managed"),
-  path.join("Brainstorm", "managed"),
-]
+const TARGET_PATHS = getManagedPaths()
 const RESOURCE_BUCKETS = ["inbox", "web", "local", "archive"]
 const SYSTEM_TAG_PREFIXES = ["state/", "source/", "role/"]
-const RESOLVED_EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.join(VAULT_ROOT, dir))
+const RESOLVED_EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.resolve(VAULT_ROOT, dir))
 const EXCLUDE_PATTERNS = config.excludePatterns
+const vaultConfig = getVaultConfig()
 
 export async function backfillFile(filePath) {
   if (!filePath.endsWith(".md")) {
@@ -167,23 +164,14 @@ function buildFrontmatter(existing, body, filePath) {
 
 function deriveSourcePath(filePath) {
   const parts = filePath.split(path.sep)
+  const vaultRootFolder = vaultConfig.vaultRoot
   
   for (let i = parts.length - 1; i >= 0; i--) {
     const part = parts[i]
-    if (part === "resources" || part === "Resources") {
-      return deriveContainerPath(parts, i)
-    }
-    if (part === "brainstorm" || part === "Brainstorm") {
-      return deriveContainerPath(parts, i)
-    }
-    if (part === "wiki" || part === "Wiki") {
-      return deriveContainerPath(parts, i)
-    }
-    if (part === "output" || part === "Output") {
-      return deriveContainerPath(parts, i)
-    }
-    if (part === "my-work" || part === "My-work") {
-      return deriveContainerPath(parts, i)
+    for (const [key, folderName] of Object.entries(vaultConfig.folders)) {
+      if (part === folderName) {
+        return deriveContainerPath(parts, i)
+      }
     }
   }
   
@@ -206,10 +194,11 @@ function shouldRefreshSourcePath(existingSourcePath, derivedSourcePath) {
 }
 
 function guessSourceType(sourceRef, body, filePath) {
-  if (isUnder(filePath, "wiki") || isUnder(filePath, "Wiki")) return "generated"
-  if (isUnder(filePath, "output") || isUnder(filePath, "Output")) return "manual"
-  if (isUnder(filePath, "my-work") || isUnder(filePath, "My-work")) return "manual"
-  if (isUnder(filePath, "brainstorm") || isUnder(filePath, "Brainstorm")) return "manual"
+  const folders = vaultConfig.folders
+  if (isUnder(filePath, folders.wiki)) return "generated"
+  if (isUnder(filePath, folders.output)) return "manual"
+  if (isUnder(filePath, folders.myWork)) return "manual"
+  if (isUnder(filePath, folders.brainstorm)) return "manual"
   if (sourceRef || /https?:\/\//i.test(body) || /github\.com/i.test(body)) return "web"
   return "local"
 }
@@ -255,7 +244,8 @@ async function ensureManagedBuckets(filePath) {
 
 function getResourceRoot(filePath) {
   const parts = filePath.split(path.sep)
-  const index = parts.findIndex((part) => part === "resources" || part === "Resources")
+  const resourcesFolder = vaultConfig.folders.resources
+  const index = parts.findIndex((part) => part === resourcesFolder)
   if (index === -1) return null
   return parts.slice(0, index + 1).join(path.sep)
 }
@@ -354,11 +344,12 @@ function cleanupMarkdown(text) {
 }
 
 function defaultType(filePath) {
-  if (isUnder(filePath, "Resources") || isUnder(filePath, "resources")) return "resource"
-  if (isUnder(filePath, "Brainstorm") || isUnder(filePath, "brainstorm")) return "brainstorm"
-  if (isUnder(filePath, "Wiki") || isUnder(filePath, "wiki")) return "wiki"
-  if (isUnder(filePath, "Output") || isUnder(filePath, "output")) return "output"
-  if (isUnder(filePath, "My-work") || isUnder(filePath, "my-work")) return "my-work"
+  const folders = vaultConfig.folders
+  if (isUnder(filePath, folders.resources)) return "resource"
+  if (isUnder(filePath, folders.brainstorm)) return "brainstorm"
+  if (isUnder(filePath, folders.wiki)) return "wiki"
+  if (isUnder(filePath, folders.output)) return "output"
+  if (isUnder(filePath, folders.myWork)) return "my-work"
   return "resource"
 }
 
@@ -397,7 +388,9 @@ function today() {
 }
 
 function isUnder(filePath, folder) {
-  return filePath.includes(`${path.sep}${folder}${path.sep}`) || filePath.startsWith(`${folder}${path.sep}`)
+  const parts = filePath.split(path.sep)
+  const folderIndex = parts.indexOf(folder)
+  return folderIndex !== -1 && folderIndex < parts.length - 1
 }
 
 function isDescriptionWhitelisted(filePath, sourceRef) {

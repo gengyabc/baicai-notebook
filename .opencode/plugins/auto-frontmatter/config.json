@@ -1,5 +1,4 @@
 {
-  "watchDirs": ["resources", "Resources", "brainstorm/managed", "Brainstorm/managed"],
   "excludeDirs": [
     ".obsidian",
     ".git",
@@ -17,5 +16,6 @@
   "mode": "merge",
   "atomicWrite": true,
   "logLevel": "info",
-  "antiLoopWindowMs": 5000
+  "antiLoopWindowMs": 5000,
+  "_note": "watchDirs are computed from ../vault-config.json"
 }

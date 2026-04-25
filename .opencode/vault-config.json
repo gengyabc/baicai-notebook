@@ -1,0 +1,20 @@
+{
+  "vaultRoot": "workbook",
+  "folders": {
+    "myWork": "my-work",
+    "resources": "resources",
+    "brainstorm": "brainstorm",
+    "wiki": "wiki",
+    "output": "output"
+  },
+  "folderPriorities": {
+    "wiki": 400,
+    "output": 350,
+    "resources": 300,
+    "brainstorm": 200,
+    "myWork": 100
+  },
+  "managedSubfolders": {
+    "brainstorm": ["managed"]
+  }
+}

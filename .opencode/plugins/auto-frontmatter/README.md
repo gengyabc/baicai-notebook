@@ -39,12 +39,15 @@ LLM ingestion pipeline that standardizes opted-in markdown content, marks proces
 
 ## Target Folders
 
-- `resources/` and `Resources/`
-- `brainstorm/managed/` and `Brainstorm/managed/`
+Folder paths are configured in `.opencode/vault-config.json`. Current vault root: `workbook/`.
 
-`brainstorm/` is human-managed by default. Only explicit managed subfolders should enter the LLM ingestion pipeline.
+Managed folders:
+- `workbook/resources/`
+- `workbook/brainstorm/managed/`
 
-Future expansion: `wiki/`, `output/`, `my-work/`
+`workbook/brainstorm/` is human-managed by default. Only explicit managed subfolders should enter the LLM ingestion pipeline.
+
+Future expansion: `workbook/wiki/`, `workbook/output/`, `workbook/my-work/`
 
 ## v2 Frontmatter Schema
 
@@ -54,7 +57,7 @@ Future expansion: `wiki/`, `output/`, `my-work/`
 ingest_status: pending | processed | error
 normalized_at: 2026-04-15
 source_hash: a1b2c3d4e5f6...
-source_path: resources/web
+source_path: workbook/resources/web
 ```
 
 ### Description Marker
@@ -201,5 +204,5 @@ From metadata completion → data standardization → whitelist-based descriptio
 ## Scope boundary
 
 - Human-managed notes should not be enriched with LLM-only pipeline fields by default.
-- `resources/` is always in scope.
-- `brainstorm/` is only in scope when a note lives under an explicit managed subfolder such as `brainstorm/managed/` or `Brainstorm/managed/`.
+- `workbook/resources/` is always in scope.
+- `workbook/brainstorm/` is only in scope when a note lives under an explicit managed subfolder such as `workbook/brainstorm/managed/`.

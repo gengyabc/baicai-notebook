@@ -14,11 +14,11 @@ Convert external material into durable Markdown resources and connect them to th
 2. Check whether a matching resource note already exists.
 3. Create or update a Markdown resource note with provenance, summary, links, and `image_key`.
 4. Normalize metadata using the resource schema.
-5. Organize `resources/` incrementally when useful, but do not delete captured files, rename original files, or perform large tree-wide restructures.
+5. Organize `workbook/resources/` incrementally when useful, but do not delete captured files, rename original files, or perform large tree-wide restructures.
 6. Link the resource to relevant brainstorm, wiki, or project notes.
-7. Send derived synthesis to `brainstorm/` by default.
-8. If the source strongly supports stable knowledge, hand the grounded part to `solidify` instead of writing `wiki/` directly.
-9. If the ingest promotes grounded material into `wiki/`, update `wiki/index.md` with Obsidian bidirectional links for the affected wiki notes.
+7. Send derived synthesis to `workbook/brainstorm/` by default.
+8. If the source strongly supports stable knowledge, hand the grounded part to `solidify` instead of writing `workbook/wiki/` directly.
+9. If the ingest promotes grounded material into `workbook/wiki/`, update `workbook/wiki/index.md` with Obsidian bidirectional links for the affected wiki notes.
 
 ## Skills
 

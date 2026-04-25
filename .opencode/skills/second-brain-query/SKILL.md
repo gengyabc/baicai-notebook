@@ -5,9 +5,9 @@ compatibility: opencode
 ---
 ## What I do
 
-- read `wiki/index.md` first and answer from `wiki/` when possible
-- pull supporting evidence from `resources/`
-- use `brainstorm/` only for tentative synthesis
+- read `workbook/wiki/index.md` first and answer from `workbook/wiki/` when possible
+- pull supporting evidence from `workbook/resources/`
+- use `workbook/brainstorm/` only for tentative synthesis
 - call out uncertainty, conflict, and support level clearly
 
 ## When to use me

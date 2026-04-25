@@ -16,9 +16,9 @@ If debug mode is active for this session (see `debug-mode` rule), skip this rule
 
 1. Check if the ingested material meets the promotion policy criteria.
 2. If yes, load the `solidify-to-wiki` skill.
-3. Promote only grounded claims to `wiki/`.
-4. Update `wiki/index.md` with Obsidian bidirectional links.
-5. Preserve speculative material in `brainstorm/`.
+3. Promote only grounded claims to `workbook/wiki/`.
+4. Update `workbook/wiki/index.md` with Obsidian bidirectional links.
+5. Preserve speculative material in `workbook/brainstorm/`.
 
 ## Condition
 

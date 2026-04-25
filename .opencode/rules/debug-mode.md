@@ -14,7 +14,7 @@ When `debug` mode is active:
 - Skip `low-confidence-brainstorm` rule
 - Skip `post-ingest-solidify` rule
 - Skip `post-brainstorm-solidify` rule
-- Block all writes to `wiki/`, `resources/`, `brainstorm/`
+- Block all writes to `workbook/wiki/`, `workbook/resources/`, `workbook/brainstorm/`
 
 ## Allowed Behaviors
 

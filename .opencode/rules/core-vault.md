@@ -2,27 +2,25 @@
 
 ## Folder semantics
 
-- `my-work/` and `My-work/` are the active intent layer.
-- `resources/` and `Resources/` are LLM-managed storage for captured sources, evidence, and supporting material, with guardrails.
-- `brainstorm/` is the speculative thinking layer and is human-managed by default.
-- `brainstorm/todo/` and `brainstorm/active/` are the default lightweight brainstorm areas.
-- `brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes.
-- `wiki/` is the durable knowledge layer and should be maintained `index-first`.
-- `output/` is the deliverable layer and should be maintained `index-first`.
-
-Until the repository is normalized, treat uppercase and lowercase folder variants as aliases rather than separate destinations.
+- `workbook/my-work/` is the active intent layer.
+- `workbook/resources/` is LLM-managed storage for captured sources, evidence, and supporting material, with guardrails.
+- `workbook/brainstorm/` is the speculative thinking layer and is human-managed by default.
+- `workbook/brainstorm/todo/` and `workbook/brainstorm/active/` are the default lightweight brainstorm areas.
+- `workbook/brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes.
+- `workbook/wiki/` is the durable knowledge layer and should be maintained `index-first`.
+- `workbook/output/` is the deliverable layer and should be maintained `index-first`.
 
 For retrieval order, promotion, and schema details, follow `.opencode/rules/query-confidence.md`, `.opencode/rules/promotion-policy.md`, and `.opencode/rules/metadata-conventions.md`.
 
 ## Knowledge standard
 
-- External material should become Markdown in `resources/`.
+- External material should become Markdown in `workbook/resources/`.
 - Important binaries should have a Markdown sidecar.
 - Bare URLs are insufficient; keep provenance, summary, and context.
 - Prefer durable notes over ephemeral references.
 - Root `index.md` serves as the vault navigation hub; read it first when understanding vault structure.
-- `resources/` may grow deep topic structure, but only through incremental organization; do not delete captured source files or rename original source files.
-- `wiki/` and `output/` may grow freely, but new pages must remain discoverable through `index.md`.
+- `workbook/resources/` may grow deep topic structure, but only through incremental organization; do not delete captured source files or rename original source files.
+- `workbook/wiki/` and `workbook/output/` may grow freely, but new pages must remain discoverable through `index.md`.
 - Attachments should live in local `attachments/` directories near the notes that use them.
 
 ## Duplicate control

@@ -1,6 +1,6 @@
 # 个人知识库
 
-基于 OpenCode 的个人知识系统，用于摄取来源、查询有据可依的知识，并将稳定的笔记提升至 `wiki/` 并保留溯源信息。
+基于 OpenCode 的个人知识系统，用于摄取来源、查询有据可依的知识，并将稳定的笔记提升至 `workbook/wiki/` 并保留溯源信息。
 
 ## 目的
 
@@ -48,22 +48,27 @@ bun run --cwd .opencode install
 
 ## 知识库层级
 
-- `my-work/` 和 `My-work/`: 当前意图、草稿、决策和项目思考
-- `resources/` 和 `Resources/`: 捕获的来源和支撑证据
-- `brainstorm/`: `todo/` 和 `active/` 中的推测性笔记
-- `wiki/`: 稳定知识，索引优先维护
-- `output/`: 交付物，索引优先维护
+知识库根目录由 `.opencode/vault-config.json` 定义，当前为 `workbook/`。
+
+- `workbook/my-work/`: 当前意图、草稿、决策和项目思考
+- `workbook/resources/`: 捕获的来源和支撑证据
+- `workbook/brainstorm/`: `todo/` 和 `active/` 中的推测性笔记
+- `workbook/wiki/`: 稳定知识，索引优先维护
+- `workbook/output/`: 交付物，索引优先维护
 - `docs/plans/`: 日期前缀的计划和需求
 - `.opencode/`: 命令、工作流、技能和规则
 
-在仓库规范化之前，将大小写文件夹变体视为别名。
+如需重命名 vault 根目录，运行：
+```bash
+node .opencode/scripts/migrate-vault-path.mjs <oldRoot> <newRoot>
+```
 
 ## 常用 OpenCode 命令
 
 在 OpenCode 会话中执行：
 
 - `/ingest <路径或URL>`: 摄取本地笔记、文件、URL 或会话产物
-- `/solidify <主题或笔记>`: 将有据可依的知识提升至 `wiki/`
+- `/solidify <主题或笔记>`: 将有据可依的知识提升至 `workbook/wiki/`
 - `/lint-vault`: 审计元数据、索引和知识库卫生
 - `/process-pending`: 处理待 LLM 描述的笔记
 - `/debug`: 启动只读沙箱会话用于知识库行为调试
@@ -72,19 +77,19 @@ bun run --cwd .opencode install
 
 - 正常会话中，每条用户消息应先查询知识库
 - 唯一例外是以 `/debug` 命令启动的会话
-- 知识库问答从 `wiki/index.md` 开始，然后是相关的 `wiki/` 页面，再从 `resources/` 获取证据
-- `brainstorm/` 用于试探性综合，不是稳定事实
-- `my-work/` 用于当前上下文和用户意图
-- 提升至 `wiki/` 通过 `solidify` 工作流进行；未解决的推测不进入稳定记忆
+- 知识库问答从 `workbook/wiki/index.md` 开始，然后是相关的 `workbook/wiki/` 页面，再从 `workbook/resources/` 获取证据
+- `workbook/brainstorm/` 用于试探性综合，不是稳定事实
+- `workbook/my-work/` 用于当前上下文和用户意图
+- 提升至 `workbook/wiki/` 通过 `solidify` 工作流进行；未解决的推测不进入稳定记忆
 
 ## 关键文件
 
 - `AGENTS.md`: 智能体入口地图和路由策略
 - `.opencode/workflows/query-vault.md`: 知识库查询工作流
 - `.opencode/workflows/ingest-resources.md`: 外部来源摄取工作流
-- `.opencode/workflows/solidify-to-wiki.md`: 提升至 `wiki/` 的工作流
-- `wiki/index.md`: 主要 wiki 发现入口
-- `output/index.md`: 主要交付物发现入口
+- `.opencode/workflows/solidify-to-wiki.md`: 提升至 `workbook/wiki/` 的工作流
+- `workbook/wiki/index.md`: 主要 wiki 发现入口
+- `workbook/output/index.md`: 主要交付物发现入口
 
 ## Frontmatter 模式
 
@@ -92,7 +97,7 @@ bun run --cwd .opencode install
 
 - 人工管理笔记使用最小必需 frontmatter。
 - LLM 管理笔记使用更丰富的检索、溯源、流程字段。
-- `brainstorm/` 默认按人工管理处理，只有显式托管的子目录才进入 LLM frontmatter 流程。
+- `workbook/brainstorm/` 默认按人工管理处理，只有显式托管的子目录才进入 LLM frontmatter 流程。
 - 领域字段是一级公民，例如 `start_date`、`participants`、`location` 等，不应为了统一 schema 被移除。
 
 详见 `.opencode/rules/metadata-conventions.md` 与 `docs/metadata-field-matrix.md`。
@@ -165,7 +170,7 @@ source_path:
 llm_description_done: false
 ```
 
-`brainstorm/` 默认按人工管理；只有例如 `brainstorm/managed/` 这样的显式托管子目录才应进入 LLM 摄取流程。
+`workbook/brainstorm/` 默认按人工管理；只有例如 `workbook/brainstorm/managed/` 这样的显式托管子目录才应进入 LLM 摄取流程。
 
 ### LLM 摄取字段 (v2)
 
@@ -191,5 +196,5 @@ llm_description_done: false
 
 ## 注意事项
 
-- `/debug` 会话禁用知识库自动化策略，并阻止写入 `wiki/`、`resources/` 和 `brainstorm/`
+- `/debug` 会话禁用知识库自动化策略，并阻止写入 `workbook/wiki/`、`workbook/resources/` 和 `workbook/brainstorm/`
 - 编辑知识库笔记时保持溯源信息、本地链接、`image_key` 和附件位置的完整性
