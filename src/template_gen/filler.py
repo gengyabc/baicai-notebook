@@ -215,6 +215,12 @@ def generate_template(
             if mapping.paragraph_index is None or mapping.paragraph_index >= len(doc.paragraphs):
                 continue
             paragraph = doc.paragraphs[mapping.paragraph_index]
+            if paragraph.text.strip():
+                if paragraph.runs:
+                    paragraph.runs[-1].text += " " + mapping.placeholder
+                else:
+                    paragraph.add_run(" " + mapping.placeholder)
+                continue
             set_paragraph_text_keep_style(paragraph, mapping.placeholder)
             continue
         
