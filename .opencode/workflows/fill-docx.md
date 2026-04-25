@@ -32,29 +32,27 @@ uv run python -m template_gen.generate_fill_data \
   --output .temp/docx_data/form_fill_data.json
 ```
 
-### Step 3: Query Vault for Fill Data
+### Step 3: Query Sources for Fill Data
 
 **This step must be performed by the LLM.**
 
 Read `.temp/docx_data/form_fill_data.json` to see the field structure and descriptions.
 
-Then query the vault (`workbook/`) to find relevant data:
-
-1. Read `workbook/wiki/index.md` first for knowledge discovery
-2. Search relevant resources in `workbook/resources/`
-3. Check `workbook/my-work/` for current context and active intent
-4. Use `workbook/brainstorm/` only for tentative synthesis if no grounded data found
-
-**Query strategy:**
-- For project-related fields: search project documents in resources
-- For course/teacher data: search training materials, course records
-- Use Chinese keywords matching the description fields
+Then follow `@.opencode/workflows/query-vault.md` to query the vault (`workbook/`) for relevant data.
 
 **Fill data rules:**
 - Use real data from vault when found
 - Leave empty string `""` if no data found (do not invent data)
 - For arrays: populate with actual items from vault, or keep single empty template item
 - Preserve data provenance by noting source in comments
+
+If the command is run with `--free yes`, you may also:
+- fill missing content with reasonable non-vault content
+- search the web for content not available in the vault
+- prefer vault data first when both vault and web sources exist
+- Never invent personal info
+
+If `--free` is omitted or set to `no`, keep the vault-only behavior.
 
 Update `.temp/docx_data/form_fill_data.json` with the populated values.
 
