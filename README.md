@@ -72,6 +72,7 @@ node .opencode/scripts/migrate-vault-path.mjs <oldRoot> <newRoot>
 - `/lint-vault`: 审计元数据、索引和知识库卫生
 - `/process-pending`: 处理待 LLM 描述的笔记
 - `/debug`: 启动只读沙箱会话用于知识库行为调试
+- `/generate-template <docx-file>`: 从 Word 空表生成 Jinja 模板（解析结构 -> 生成语义化占位符 -> 写出模板）
 
 ## 检索与提升
 

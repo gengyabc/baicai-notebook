@@ -65,3 +65,12 @@ node .opencode/scripts/migrate-vault-path.mjs <oldRoot> <newRoot>
 - Structural log: `workbook/wiki/log.md` when present
 
 Keep provenance, local links, `image_key`, and attachment locality intact.
+
+## Tool requirements
+
+This project uses the following toolchain:
+
+- **Python**: Use `uv` for all Python package management (install, run, sync, etc.)
+- **JavaScript/TypeScript**: Use `bun` for all JS/TS package management and runtime
+
+When working with Python dependencies, prefer `uv` commands over `pip`. When working with JS/TS dependencies, prefer `bun` commands over `npm` or `yarn`.

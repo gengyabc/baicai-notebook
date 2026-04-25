@@ -8,4 +8,21 @@ dependencies = [
     "cli-anything-drawio>=1.0.0",
     "docxtpl>=0.20.2",
     "markitdown[pdf]>=0.1.5",
+    "python-docx>=1.1.0",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

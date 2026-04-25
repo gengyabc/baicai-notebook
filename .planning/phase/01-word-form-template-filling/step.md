@@ -2,6 +2,7 @@
 step-key: word-form-template-filling
 step-version: 1
 requirement-version: 1
+implementation-status: complete
 ---
 
 # Word Form Template Generation and Filling
@@ -40,11 +41,12 @@ requirement-version: 1
 **Key Implementation Pattern:**
 
 ```python
-def set_cell_text_keep_basic_style(cell, text):
+def set_cell_text_keep_style(cell, text: str, style_source_run=None) -> None:
     """
     保留样式设置单元格文本：
-    只修改第一个段落的第一个 run，
-    如果没有 run 才新增 run。
+    - 如果段落有 runs，修改第一个 run 的文本，清空其他 runs
+    - 如果段落没有 runs，添加新 run 并可选复制样式源
+    - style_source_run: 可选，用于为空单元格提供样式的 run 对象
     """
     paragraph = cell.paragraphs[0]
     if paragraph.runs:
@@ -52,30 +54,61 @@ def set_cell_text_keep_basic_style(cell, text):
         for run in paragraph.runs[1:]:
             run.text = ""
     else:
-        paragraph.add_run(text)
+        run = paragraph.add_run(text)
+        if style_source_run:
+            _copy_run_style(style_source_run, run)
+
+def set_cell_text_keep_basic_style(cell, text: str, style_source_run=None) -> None:
+    """向后兼容别名"""
+    set_cell_text_keep_style(cell, text, style_source_run=style_source_run)
 ```
 
 **Why This Pattern:**
 - 不重建单元格结构
 - 保留原有字体、对齐等样式
 - 避免因重建 run 导致格式丢失
+- 支持从同行/同列单元格借用样式（style_source_run 参数）
+
+**Merged Cell Handling:**
+```python
+def detect_merged_cells(table) -> dict:
+    """检测合并单元格，返回 (row, col) -> 主单元格坐标的映射"""
+    merged_map = {}
+    for row_idx, row in enumerate(table.rows):
+        prev_cell = None
+        prev_col = 0
+        for col_idx, cell in enumerate(row.cells):
+            if prev_cell is not None and cell._tc is prev_cell._tc:
+                merged_map[(row_idx, col_idx)] = (row_idx, prev_col)
+            else:
+                prev_cell = cell
+                prev_col = col_idx
+    return merged_map
+```
+- 跳过合并单元格的从单元格，只处理主单元格
+- 防止在合并区域重复写入
 
 ### Two-Phase Workflow
 
 **Phase 1: Template Generation**
 1. 输入: Word 空表文件 (`.docx`)
-2. `python-docx` 解析文档结构（段落、表格、样式）
-3. 提取结构化描述（字段位置、表格行列、可填充区域）
-4. LLM 分析结构描述，生成 Jinja 占位符建议
+2. `python -m src.template_gen.parser <docx_file>` 解析文档结构
+3. 输出: JSON 结构描述到 `.temp/docx_parsed/<filename>.json`（自动生成）
+4. LLM 分析结构描述，生成占位符建议 JSON（人工交互）
 5. 人工校对占位符命名和位置
-6. 输出: 带占位符的模板文件 (`.docx`)
+6. `python -m src.template_gen.generate_template --source <docx> --placeholders <json> --output <template.docx>`
+7. 输出: 带占位符的模板文件 (`.docx`)
 
 **Phase 2: Batch Filling**
-1. 输入: 模板文件 + 结构化数据 (JSON/YAML/CSV)
-2. `docxtpl` 加载模板
-3. 数据映射到占位符
-4. 批量生成输出文档
-5. 输出: 填充后的文档集合
+1. 输入: 模板文件 + 结构化数据 (JSON)
+2. `python -m src.template_gen.fill_runner --template <template.docx> --data <data.json> --output <output.docx>` 单文档填充
+3. 或编程调用 `batch_fill()` 批量生成
+4. 输出: 填充后的文档集合
+
+**CLI Entry Points:**
+- `python -m src.template_gen.parser <docx_file>` - 解析文档结构
+- `python -m src.template_gen.generate_template --source --placeholders --output` - 生成模板
+- `python -m src.template_gen.fill_runner --template --data --output` - 填充文档
 
 ### Placeholder Naming Convention
 
@@ -134,8 +167,13 @@ def set_cell_text_keep_basic_style(cell, text):
 - 占位符命名规范
 - 支持段落文本替换
 - 支持表格固定行字段填充
-- 样式保留函数实现
+- 样式保留函数实现（含样式借用）
+- 合并单元格检测与处理
 - 辅助坐标工具
+- CLI 入口（parser, generate_template, fill_runner）
+- JSON 输出（parse_document 自动输出）
+- 路径安全检查（batch_fill）
+- 位置字符串解析（parse_location）
 
 ### Out
 
@@ -162,25 +200,38 @@ def set_cell_text_keep_basic_style(cell, text):
 - WHEN filling with test data
 - THEN output document contains correct values
 
+- GIVEN an invalid docx file
+- WHEN parsing with python-docx
+- THEN ParseError is raised
+
+- GIVEN a missing file path
+- WHEN parsing
+- THEN ParseError is raised
+
 **Implementation:**
 - 创建 `src/template_gen/` 目录结构
-- 实现文档结构解析函数
+- 实现文档结构解析函数（自动输出 JSON 到 `.temp/docx_parsed/`）
 - 实现模板填充基础函数
+- 实现异常类：`ParseError`, `FillError`, `TemplateGenError`
 
 ---
 
 ## Batch 2: Template Generation Workflow
 
-**Primary Concern:** 空表分析 → 占位符生成 → 模板输出（保留样式）
+**Primary Concern:** 空表分析 → 占位符生成 → 模板输出（保留样式、处理合并单元格）
 
 **Tests:**
 - GIVEN an empty form document with text fields
 - WHEN analyzing document structure
-- THEN extract field positions and context
+- THEN extract field positions and context (JSON output)
 
 - GIVEN an empty table cell with existing style
 - WHEN setting placeholder text
 - THEN cell style (font, alignment) is preserved
+
+- GIVEN an empty table cell with no runs
+- WHEN setting placeholder text with style_source_run
+- THEN borrowed style from adjacent cell is applied
 
 - GIVEN document structure analysis
 - WHEN generating placeholder suggestions
@@ -190,18 +241,38 @@ def set_cell_text_keep_basic_style(cell, text):
 - WHEN writing to template file
 - THEN output valid docxtpl-compatible template with styles preserved
 
+- GIVEN a non-empty cell
+- WHEN generating template
+- THEN skip non-empty cells (preserve original content)
+
+- GIVEN a table with merged cells
+- WHEN generating template
+- THEN only process primary cell, skip merged duplicates
+
+- GIVEN an unsupported location string
+- WHEN parsing location
+- THEN TemplateGenError is raised
+
+- GIVEN a placeholders JSON with invalid location
+- WHEN loading JSON
+- THEN TemplateGenError is raised
+
 **Implementation:**
-- 实现文档结构分析模块
-- 实现 `set_cell_text_keep_basic_style()` 样式保留函数
-- 实现辅助坐标工具 `print_table_coordinates()`
-- 定义 LLM 输入输出接口（不实现 LLM 调用）
-- 实现占位符写入逻辑（只修改空单元格）
+- 实现文档结构分析模块（自动 JSON 输出）
+- 实现 `set_cell_text_keep_style()` 和 `set_cell_text_keep_basic_style()` 样式保留函数
+- 实现 `detect_merged_cells()` 合并单元格检测
+- 实现 `_find_style_source_run()` 样式源查找
+- 实现 `parse_location()` 位置字符串解析
+- 实现 `load_placeholders_json()` JSON 加载
+- 实现 `generate_template()` 占位符写入逻辑（处理合并单元格）
+- 实现 `generate_template_from_json()` CLI 入口
+- 实现 `print_table_coordinates()` 辅助坐标工具
 
 ---
 
 ## Batch 3: Batch Filling Workflow
 
-**Primary Concern:** 结构化数据 → 模板渲染 → 文档输出
+**Primary Concern:** 结构化数据 → 模板渲染 → 文档输出（含安全检查）
 
 **Tests:**
 - GIVEN a template with placeholders
@@ -216,9 +287,23 @@ def set_cell_text_keep_basic_style(cell, text):
 - WHEN filling with partial data (only 2 courses)
 - THEN remaining fields filled with empty strings, table structure intact
 
+- GIVEN a filename pattern with path traversal characters
+- WHEN batch filling
+- THEN sanitize filename and prevent escape from output directory
+
+- GIVEN a template with borrowed style placeholders
+- WHEN filling with data
+- THEN filled text preserves borrowed style
+
+- GIVEN a template requiring field but missing in data
+- WHEN filling
+- THEN FillError is raised (StrictUndefined)
+
 **Implementation:**
-- 实现单文档填充函数
+- 实现单文档填充函数（使用 StrictUndefined）
 - 实现批量填充函数
+- 实现路径安全检查：`_sanitize_filename_component()` 和 `_build_output_path()`
+- 实现 `fill_runner.py` CLI 入口
 - 固定行字段填充（不用动态循环）
 
 ---
@@ -228,9 +313,10 @@ def set_cell_text_keep_basic_style(cell, text):
 | Path | Purpose |
 |------|---------|
 | `src/template_gen/__init__.py` | Package entry |
-| `src/template_gen/parser.py` | Word 文档结构解析 |
-| `src/template_gen/generator.py` | 占位符生成与模板创建 |
-| `src/template_gen/filler.py` | 批量填充功能 |
+| `src/template_gen/parser.py` | Word 文档结构解析，CLI 入口 |
+| `src/template_gen/generate_template.py` | 占位符 JSON 加载与模板生成，CLI 入口 |
+| `src/template_gen/filler.py` | 批量填充功能，样式保留函数 |
+| `src/template_gen/fill_runner.py` | 单文档填充 CLI 入口 |
 | `src/template_gen/schemas.py` | 数据结构定义 |
 | `src/template_gen/exceptions.py` | 自定义异常类 |
 | `tests/test_parser.py` | 解析功能测试 |
@@ -245,23 +331,87 @@ def set_cell_text_keep_basic_style(cell, text):
 
 | Symbol | Module | Description |
 |--------|--------|-------------|
-| `parse_document` | `parser` | 解析 Word 文档结构 |
-| `extract_fillable_fields` | `parser` | 提取可填充字段列表 |
+| `parse_document` | `parser` | 解析 Word 文档结构，输出 JSON 到 `.temp/docx_parsed/` |
 | `print_table_coordinates` | `parser` | 打印表格坐标辅助工具 |
-| `generate_template` | `generator` | 生成带占位符的模板 |
-| `set_cell_text_keep_basic_style` | `generator` | 保留样式设置单元格文本 |
+| `generate_template` | `filler` | 生成带占位符的模板（内部实现） |
+| `generate_template_from_json` | `generate_template` | 从 JSON 配置生成模板（CLI 入口） |
+| `load_placeholders_json` | `generate_template` | 加载占位符 JSON 配置文件 |
+| `parse_location` | `generate_template` | 解析位置字符串为坐标 |
+| `set_cell_text_keep_style` | `filler` | 保留样式设置单元格文本（完整版） |
+| `set_cell_text_keep_basic_style` | `filler` | 保留样式设置单元格文本（兼容别名） |
+| `detect_merged_cells` | `filler` | 检测表格合并单元格 |
+| `fill_template` | `filler` | 单文档填充（内部实现） |
+| `batch_fill` | `filler` | 批量文档填充，含路径安全检查 |
+| `fill_document` | `fill_runner` | 单文档填充（CLI 入口） |
+| `load_data_from_json` | `fill_runner` | 加载数据 JSON 文件 |
 | `PlaceholderMapping` | `schemas` | 占位符映射数据类 |
 | `DocumentStructure` | `schemas` | 文档结构描述数据类 |
+| `ParagraphInfo` | `schemas` | 段落信息数据类 |
+| `TableInfo` | `schemas` | 表格信息数据类 |
+| `RowInfo` | `schemas` | 行信息数据类 |
+| `CellInfo` | `schemas` | 单元格信息数据类 |
 | `FieldInfo` | `schemas` | 字段信息数据类 |
 | `CoordinateMapping` | `schemas` | 坐标映射数据类 |
-| `fill_template` | `filler` | 单文档填充 |
-| `batch_fill` | `filler` | 批量文档填充 |
+| `StyleInfo` | `schemas` | 样式信息数据类 |
 | `ParseError` | `exceptions` | 解析失败异常 |
 | `FillError` | `exceptions` | 填充失败异常 |
+| `TemplateGenError` | `exceptions` | 基础异常类 |
 
 ---
 
 ## Data Schemas
+
+### StyleInfo
+
+```python
+@dataclass
+class StyleInfo:
+    font_name: Optional[str] = None
+    font_size: Optional[int] = None
+    bold: bool = False
+    italic: bool = False
+    alignment: Optional[str] = None
+```
+
+### ParagraphInfo
+
+```python
+@dataclass
+class ParagraphInfo:
+    index: int
+    text: str
+    style: Optional[StyleInfo] = None
+```
+
+### CellInfo
+
+```python
+@dataclass
+class CellInfo:
+    row_index: int
+    col_index: int
+    text: str
+    is_empty: bool
+    style: Optional[StyleInfo] = None
+```
+
+### RowInfo
+
+```python
+@dataclass
+class RowInfo:
+    index: int
+    cells: list[CellInfo]
+```
+
+### TableInfo
+
+```python
+@dataclass
+class TableInfo:
+    index: int
+    rows: list[RowInfo]
+```
 
 ### DocumentStructure
 
@@ -311,12 +461,17 @@ class PlaceholderMapping:
 
 ## Failure and Fallback Behavior
 
+### TemplateGenError
+
+**Base exception class for all template_gen errors.**
+
 ### ParseError
 
 **When raised:**
 - 文件不是有效的 `.docx` 格式
 - 文件损坏无法读取
 - 编码问题导致解析失败
+- 文件不存在
 
 **Behavior:**
 - 抛出 `ParseError` 包含文件路径和具体错误原因
@@ -326,13 +481,25 @@ class PlaceholderMapping:
 
 **When raised:**
 - 模板文件不存在或格式无效
-- 数据字段与占位符不匹配（缺少必需字段）
+- 数据字段与占位符不匹配（使用 StrictUndefined）
 - 输出路径不可写
+- 输出文件名包含路径遍历字符（安全检查）
 
 **Behavior:**
-- 抛出 `FillError` 包含缺失字段列表
+- 抛出 `FillError` 包含缺失字段列表或具体错误
 - 批量填充时，单个记录失败不影响其他记录
 - 记录失败记录并继续处理
+
+### TemplateGenError (parse_location/load_placeholders_json)
+
+**When raised:**
+- 位置字符串格式不支持（如 "paragraphs[0]"）
+- 位置字符串索引无效（非数字）
+- JSON 文件中 location 字段格式错误
+
+**Behavior:**
+- 抛出 `TemplateGenError` 包含具体错误原因
+- 不尝试修复格式，由调用方修正 JSON
 
 ---
 
@@ -359,6 +526,7 @@ class PlaceholderMapping:
 ## Deferred follow-up
 
 - LLM API 集成实现（LLM 只生成 JSON，不直接操作 Word）
-- GUI/CLI 交互界面（后续步骤）
-- 模板版本管理（后续步骤）
+- GUI/CLI 交互界面增强（当前已有基础 CLI）
+- 模板版本管理
 - 动态行扩展支持（如确有需求，后续评估风险）
+- extract_fillable_fields 函数（当前通过 JSON 输出人工识别）
