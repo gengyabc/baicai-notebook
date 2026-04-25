@@ -1,5 +1,7 @@
 from copy import deepcopy
 import os
+import re
+import tempfile
 
 from docx import Document
 from docxtpl import DocxTemplate
@@ -7,6 +9,10 @@ from jinja2 import Environment, StrictUndefined
 
 from .exceptions import FillError
 from .schemas import CoordinateMapping, DocumentStructure, FieldInfo, PlaceholderMapping
+
+
+LOOP_ROW_PATTERN = re.compile(r"\{\%\s*for\s+(\w+)\s+in\s+(\w+)\s*\%\}")
+LOOP_FIELD_PATTERN = re.compile(r"\{\{\s*(\w+)\.(\w+)\s*\}\}")
 
 
 def detect_merged_cells(table) -> dict:
@@ -85,6 +91,90 @@ def set_cell_text_keep_basic_style(cell, text: str, style_source_run=None) -> No
     set_cell_text_keep_style(cell, text, style_source_run=style_source_run)
 
 
+def _collect_loop_table_specs(doc: Document) -> list[dict]:
+    specs = []
+
+    for table_index, table in enumerate(doc.tables):
+        for row_index, row in enumerate(table.rows):
+            row_text = " ".join(cell.text for cell in row.cells)
+            loop_match = LOOP_ROW_PATTERN.search(row_text)
+            if not loop_match:
+                continue
+
+            loop_var = loop_match.group(1)
+            list_name = loop_match.group(2)
+            field_map: dict[int, str] = {}
+            style_sources: dict[int, object] = {}
+
+            for col_index, cell in enumerate(row.cells):
+                cell_match = LOOP_FIELD_PATTERN.search(cell.text)
+                if not cell_match or cell_match.group(1) != loop_var:
+                    continue
+
+                field_map[col_index] = cell_match.group(2)
+                style_sources[col_index] = cell.paragraphs[0].runs[0] if cell.paragraphs[0].runs else None
+
+            if field_map:
+                specs.append(
+                    {
+                        "table_index": table_index,
+                        "row_index": row_index,
+                        "list_name": list_name,
+                        "field_map": field_map,
+                        "style_sources": style_sources,
+                    }
+                )
+
+    return specs
+
+
+def _blank_table_rows(doc: Document, specs: list[dict]) -> None:
+    for spec in specs:
+        table = doc.tables[spec["table_index"]]
+        if spec["row_index"] >= len(table.rows):
+            continue
+
+        row = table.rows[spec["row_index"]]
+        for cell in row.cells:
+            cell.text = ""
+
+
+def _fill_loop_tables(doc: Document, data: dict, specs: list[dict]) -> None:
+    for spec in specs:
+        table = doc.tables[spec["table_index"]]
+        items = data.get(spec["list_name"], [])
+        if not isinstance(items, list):
+            continue
+
+        start_row = spec["row_index"]
+        field_map = spec["field_map"]
+        style_sources = spec["style_sources"]
+
+        for offset, item in enumerate(items):
+            row_index = start_row + offset
+            if row_index >= len(table.rows):
+                break
+
+            row = table.rows[row_index]
+            item_data = item if isinstance(item, dict) else {}
+
+            for col_index, field_name in field_map.items():
+                value = item_data.get(field_name, "")
+                if value is None:
+                    value = ""
+                set_cell_text_keep_style(
+                    row.cells[col_index],
+                    str(value),
+                    style_source_run=style_sources.get(col_index),
+                )
+
+        for row_index in range(start_row + len(items), len(table.rows)):
+            row = table.rows[row_index]
+            for cell in row.cells:
+                if cell.text.strip():
+                    cell.text = ""
+
+
 def generate_template(
     input_path: str,
     output_path: str,
@@ -154,11 +244,35 @@ def fill_template(
         raise FillError(f"Template file not found: {template_path}")
     
     try:
-        tpl = DocxTemplate(template_path)
+        template_doc = Document(template_path)
+        loop_specs = _collect_loop_table_specs(template_doc)
+
+        working_template_path = template_path
+        temp_path = None
+        if loop_specs:
+            _blank_table_rows(template_doc, loop_specs)
+            tmp = tempfile.NamedTemporaryFile(suffix=".docx", delete=False)
+            temp_path = tmp.name
+            tmp.close()
+            template_doc.save(temp_path)
+            working_template_path = temp_path
+
+        tpl = DocxTemplate(working_template_path)
         tpl.render(data, jinja_env=Environment(undefined=StrictUndefined))
         tpl.save(output_path)
+
+        if loop_specs:
+            rendered_doc = Document(output_path)
+            _fill_loop_tables(rendered_doc, data, loop_specs)
+            rendered_doc.save(output_path)
+
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+
         return output_path
     except Exception as e:
+        if "temp_path" in locals() and temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
         raise FillError(f"Fill failed: {str(e)}")
 
 

@@ -20,38 +20,29 @@
 
 **步骤 2：导出占位符供人工编辑描述**
 ```bash
-uv run python -m template_gen.export_placeholder_csv \
-  --input .temp/docx_placeholders/form_placeholders.json \
-  --output .temp/docx_placeholders/form_placeholder_descriptions.csv
+/export-csv .temp/docx_placeholders/form_placeholders.json
 ```
 
-导出文件保持最小化，仅包含：
+此命令会调用 `template_gen.export_placeholder_csv`，导出文件保持最小化，仅包含：
 - `placeholder`
 - `description`
 
-**步骤 3：将编辑后的描述导入回语义化 JSON**
+输出：`.temp/docx_placeholders/form_placeholder_descriptions.csv`
+
+**步骤 3：导入描述、生成填充数据并填充模板**
 ```bash
-uv run python -m template_gen.import_placeholder_csv \
-  --input .temp/docx_placeholders/form_placeholder_descriptions.csv \
-  --output .temp/docx_placeholders/form_placeholder_descriptions.json
+/fill-docx \
+  .temp/docx_placeholders/form_placeholder_descriptions.csv \
+  .temp/docx_template/form_template.docx \
+  .temp/docx_filled/output.docx
 ```
 
-**步骤 4：生成最终填充数据 JSON**
-```bash
-uv run python -m template_gen.generate_fill_data \
-  --input .temp/docx_placeholders/form_placeholder_descriptions.json \
-  --output .temp/docx_data/form_fill_data.json
-```
+此命令会依次：
+- 调用 `template_gen.import_placeholder_csv` 生成 `.temp/docx_placeholders/form_placeholder_descriptions.json`
+- 调用 `template_gen.generate_fill_data` 生成 `.temp/docx_data/form_fill_data.json`
+- 调用 `template_gen.fill_runner` 产出 `.temp/docx_filled/output.docx`
 
-此命令验证占位符-描述 JSON 结构，从 `.opencode/vault-config.json` 解析知识库根目录，并写入以规范化占位符为键的扁平填充数据 JSON。
-
-**步骤 5：填充模板**
-```bash
-uv run python -m template_gen.fill_runner \
-  --template .temp/docx_template/form_template.docx \
-  --data .temp/docx_data/form_fill_data.json \
-  --output .temp/docx_filled/output.docx
-```
+输出：`.temp/docx_placeholders/form_placeholder_descriptions.json`、`.temp/docx_data/form_fill_data.json`、`.temp/docx_filled/output.docx`
 
 ## 核心函数
 
@@ -61,6 +52,8 @@ uv run python -m template_gen.fill_runner \
 | `print_table_coordinates` | parser | 表格结构调试辅助 |
 | `generate_template` | filler | 从 `CoordinateMapping` 列表创建 Jinja 模板 |
 | `generate_template_from_json` | generate_template | 从占位符 JSON 创建 Jinja 模板 |
+| `export_placeholder_csv` | export_placeholder_csv | 从占位符 JSON 导出最小 CSV |
+| `import_placeholder_csv` | import_placeholder_csv | 从编辑后的 CSV 导回最小 JSON |
 | `fill_template` | filler | 用数据字典填充模板 |
 | `fill_document` | fill_runner | 从数据 JSON 文件填充模板 |
 | `generate_fill_data` | generate_fill_data | 从占位符描述生成填充数据 JSON |

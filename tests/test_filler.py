@@ -162,7 +162,38 @@ class TestFillTemplate:
         
         os.unlink(template_path)
         os.unlink(output_path)
-    
+
+    def test_fill_template_trims_trailing_blank_rows_for_loop_tables(self):
+        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
+            doc = Document()
+            table = doc.add_table(rows=3, cols=2)
+            table.rows[0].cells[0].text = "课程名称"
+            table.rows[0].cells[1].text = "学时"
+            table.rows[1].cells[0].text = "{% for course in courses %}{{ course.name }}"
+            table.rows[1].cells[1].text = "{{ course.hours }}{% endfor %}"
+            table.rows[2].cells[0].text = ""
+            table.rows[2].cells[1].text = ""
+            doc.save(f.name)
+            template_path = f.name
+
+        output_path = template_path.replace(".docx", "_filled.docx")
+
+        fill_template(
+            template_path,
+            {"courses": [{"name": "A", "hours": "1"}, {"name": "B", "hours": "2"}]},
+            output_path,
+        )
+
+        filled_doc = Document(output_path)
+        assert len(filled_doc.tables[0].rows) == 3
+        assert filled_doc.tables[0].rows[1].cells[0].text == "A"
+        assert filled_doc.tables[0].rows[1].cells[1].text == "1"
+        assert filled_doc.tables[0].rows[2].cells[0].text == "B"
+        assert filled_doc.tables[0].rows[2].cells[1].text == "2"
+
+        os.unlink(template_path)
+        os.unlink(output_path)
+
     def test_fill_template_raises_error_for_missing_template(self):
         with pytest.raises(FillError):
             fill_template("/nonexistent/template.docx", {}, "/tmp/output.docx")
