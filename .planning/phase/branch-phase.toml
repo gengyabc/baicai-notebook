@@ -1,0 +1,5 @@
+branch = "main"
+phaseTopic = "word-template-generation-and-filling"
+livePhasePath = ".planning/phase"
+status = "live"
+implementedStepKeys = []
