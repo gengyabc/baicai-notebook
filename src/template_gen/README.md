@@ -18,7 +18,25 @@ This command follows the `generate-template` workflow:
 - Generate placeholders → `.temp/docx_placeholders/form_placeholders.json`
 - Create template → `.temp/docx_template/form_template.docx`
 
-**Step 2: Prepare data**
+**Step 2: Export placeholders for human description editing**
+```bash
+uv run python -m template_gen.export_placeholder_csv \
+  --input .temp/docx_placeholders/form_placeholders.json \
+  --output .temp/docx_placeholders/form_placeholder_descriptions.csv
+```
+
+The export file is intentionally minimal and contains only:
+- `placeholder`
+- `description`
+
+**Step 3: Import edited descriptions back to semantic JSON**
+```bash
+uv run python -m template_gen.import_placeholder_csv \
+  --input .temp/docx_placeholders/form_placeholder_descriptions.csv \
+  --output .temp/docx_placeholders/form_placeholder_descriptions.json
+```
+
+**Step 4: Prepare data**
 Create a JSON file with values matching placeholder names:
 ```json
 {
@@ -28,7 +46,7 @@ Create a JSON file with values matching placeholder names:
 }
 ```
 
-**Step 3: Fill template**
+**Step 5: Fill template**
 ```bash
 uv run python -m template_gen.fill_runner \
   --template .temp/docx_template/form_template.docx \

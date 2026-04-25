@@ -12,6 +12,8 @@ from .generate_template import (
     parse_location,
 )
 from .fill_runner import fill_document, load_data_from_json
+from .export_placeholder_csv import export_placeholder_csv, load_placeholder_description_source
+from .import_placeholder_csv import import_placeholder_csv, validate_placeholder_description_csv
 from .schemas import (
     DocumentStructure,
     ParagraphInfo,
@@ -38,6 +40,10 @@ __all__ = [
     "parse_location",
     "fill_document",
     "load_data_from_json",
+    "export_placeholder_csv",
+    "load_placeholder_description_source",
+    "import_placeholder_csv",
+    "validate_placeholder_description_csv",
     "DocumentStructure",
     "ParagraphInfo",
     "TableInfo",
