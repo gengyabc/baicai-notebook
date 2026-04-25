@@ -1,57 +1,57 @@
-# Auto Frontmatter Plugin (v2)
+# Auto Frontmatter 插件 (v2)
 
-LLM ingestion pipeline that standardizes opted-in markdown content, marks processing status, and enables downstream LLM workflows.
+LLM 摄取管道，用于标准化已纳入管理的 markdown 内容，标记处理状态，并支持下游 LLM 工作流。
 
-## v2 Architecture
+## v2 架构
 
 ```
-[Any Source Write]
+[任意来源写入]
         │
         ▼
-  watch.mjs (chokidar + debounce 300ms)
+   watch.mjs (chokidar + 300ms 防抖)
         │
         ▼
-  waitForStableFile (size/mtime stability)
+   waitForStableFile (文件大小/mtime 稳定性检测)
         │
         ▼
-  backfill.mjs (v2 ingestion engine)
+   backfill.mjs (v2 摄取引擎)
         │
         ├─ ingest_status: pending
-        ├─ image_key: <slugified filename>
-        ├─ description: <extracted first paragraph>
-        ├─ llm_description_done: true (whitelisted) or false (needs enhancement)
+        ├─ image_key: <slugified 文件名>
+        ├─ description: <提取的首段内容>
+        ├─ llm_description_done: true (白名单) 或 false (待增强)
         │
         ▼
-  [Optional: /process-pending in OpenCode]
+   [可选：OpenCode 中执行 /process-pending]
         │
-        ├─ Find files: llm_description_done: false
-        ├─ LLM enhances description
-        ├─ Set llm_description_done: true
-        ├─ Set ingest_status: processed
+        ├─ 查找文件：llm_description_done: false
+        ├─ LLM 增强 description
+        ├─ 设置 llm_description_done: true
+        ├─ 设置 ingest_status: processed
 ```
 
-## Technical Notes
+## 技术说明
 
-- Runtime: Bun (not Node.js)
-- SQLite: `bun:sqlite` (not `node:sqlite` - Bun doesn't support Node.js 22+ built-in modules)
-- File watching: `chokidar` package
-- Both plugins run together via `bun run watch` script
+- 运行时：Bun（非 Node.js）
+- SQLite：`bun:sqlite`（非 `node:sqlite` — Bun 不支持 Node.js 22+ 内置模块）
+- 文件监听：`chokidar` 包
+- 两个插件通过 `bun run watch` 脚本同时运行
 
-## Target Folders
+## 目标文件夹
 
-Folder paths are configured in `.opencode/vault-config.json`. Current vault root: `workbook/`.
+文件夹路径在 `.opencode/vault-config.json` 中配置。当前知识库根目录：`workbook/`。
 
-Managed folders:
+托管文件夹：
 - `workbook/resources/`
 - `workbook/brainstorm/managed/`
 
-`workbook/brainstorm/` is human-managed by default. Only explicit managed subfolders should enter the LLM ingestion pipeline.
+`workbook/brainstorm/` 默认由人工管理。只有显式托管的子文件夹才应进入 LLM 摄取管道。
 
-Future expansion: `workbook/wiki/`, `workbook/output/`, `workbook/my-work/`
+未来扩展：`workbook/wiki/`、`workbook/output/`、`workbook/my-work/`
 
 ## v2 Frontmatter Schema
 
-### Ingestion Layer Fields
+### 摄取层字段
 
 ```yaml
 ingest_status: pending | processed | error
@@ -60,149 +60,149 @@ source_hash: a1b2c3d4e5f6...
 source_path: workbook/resources/web
 ```
 
-### Description Marker
+### 描述标记
 
 ```yaml
 llm_description_done: true | false
 ```
 
-- `true`: Description complete (whitelisted or LLM-enhanced)
-- `false`: Needs LLM enhancement via `/process-pending`
+- `true`：描述已完成（白名单或 LLM 增强）
+- `false`：需要通过 `/process-pending` 进行 LLM 增强
 
-**Whitelist** (automatically `true`):
-- `index.md` and `log.md`
-- Files with `github.com` in `source_ref`
+**白名单**（自动设为 `true`）：
+- `index.md` 和 `log.md`
+- `source_ref` 中包含 `github.com` 的文件
 
-## Core Principles
+## 核心原则
 
-1. **Process Only After File Stability**: Uses `size + mtime` stability check (800ms settle time)
-2. **Idempotent Write**: Only writes when content actually changes
-3. **backfill Independent of watcher**: Can run standalone (scan mode)
-4. **Atomic Write**: temp file → rename for safe concurrent access
-5. **LLM via OpenCode**: Use `/process-pending` command for description enhancement
+1. **文件稳定后才处理**：使用 `size + mtime` 稳定性检测（800ms 稳定时间）
+2. **幂等写入**：仅在内容实际变更时写入
+3. **backfill 独立于 watcher**：可独立运行（扫描模式）
+4. **原子写入**：临时文件 → 重命名，确保并发安全
+5. **LLM 通过 OpenCode**：使用 `/process-pending` 命令进行描述增强
 
-## Commands
+## 命令
 
-### File Watcher (bun scripts)
+### 文件监听器 (bun scripts)
 
 ```bash
-# Install dependencies first
+# 首先安装依赖
 bun run --cwd .opencode install
 
-# Start file watcher (combines frontmatter + sqlite index)
+# 启动文件监听器（合并 frontmatter + sqlite 索引）
 bun run --cwd .opencode watch
 
-# Or run separately:
-bun run --cwd .opencode frontmatter:watch      # Frontmatter watcher only
-bun run --cwd .opencode frontmatter:index:watch # SQLite index watcher only
+# 或单独运行：
+bun run --cwd .opencode frontmatter:watch      # 仅 Frontmatter 监听器
+bun run --cwd .opencode frontmatter:index:watch # 仅 SQLite 索引监听器
 
-# One-time batch scan
+# 一次性批量扫描
 bun run --cwd .opencode frontmatter:scan
 
-# Manual backfill
+# 手动 backfill
 bun run --cwd .opencode frontmatter:backfill
 
-# Scan for files needing description enhancement
+# 扫描需要描述增强的文件
 bun run --cwd .opencode frontmatter:scan-pending
 
-# SQLite index operations
-bun run --cwd .opencode frontmatter:index:scan     # Scan and index all files
-bun run --cwd .opencode frontmatter:index:rebuild  # Rebuild index from scratch
-bun run --cwd .opencode frontmatter:index:reconcile # Remove stale entries
+# SQLite 索引操作
+bun run --cwd .opencode frontmatter:index:scan     # 扫描并索引所有文件
+bun run --cwd .opencode frontmatter:index:rebuild  # 从头重建索引
+bun run --cwd .opencode frontmatter:index:reconcile # 清理过期条目
 ```
 
-**Note**: Use `bun run --cwd <dir> <script>` (not `bun --cwd <dir> run <script>`)
+**注意**：使用 `bun run --cwd <dir> <script>`（而非 `bun --cwd <dir> run <script>`）
 
-### LLM Processing (OpenCode)
+### LLM 处理 (OpenCode)
 
-In OpenCode session:
+在 OpenCode 会话中：
 ```
 /process-pending
 ```
 
-This processes all files with `llm_description_done: false` in managed folders:
-1. Enhances description with LLM
-2. Updates frontmatter
-3. Sets `llm_description_done: true`, `ingest_status: processed`
+此命令处理托管文件夹中所有 `llm_description_done: false` 的文件：
+1. 使用 LLM 增强 description
+2. 更新 frontmatter
+3. 设置 `llm_description_done: true`、`ingest_status: processed`
 
-## Configuration
+## 配置
 
-See `config.json`:
-- `debounceMs`: 300ms
-- `settleTimeMs`: 800ms
-- `pollIntervalMs`: 200ms
-- `maxWaitMs`: 10000ms
-- `antiLoopWindowMs`: 5000ms
+参见 `config.json`：
+- `debounceMs`：300ms
+- `settleTimeMs`：800ms
+- `pollIntervalMs`：200ms
+- `maxWaitMs`：10000ms
+- `antiLoopWindowMs`：5000ms
 
-## Workflow
+## 工作流
 
-### Automatic
+### 自动化
 
-1. File watcher adds frontmatter with `ingest_status: pending`
-2. Description extracted from first paragraph
-3. `llm_description_done` set based on whitelist
+1. 文件监听器添加 frontmatter，设置 `ingest_status: pending`
+2. 从首段提取 description
+3. 根据白名单设置 `llm_description_done`
 
-### Manual Enhancement
+### 手动增强
 
 ```bash
-bun run --cwd .opencode frontmatter:scan-pending  # List files needing enhancement
+bun run --cwd .opencode frontmatter:scan-pending  # 列出需要增强的文件
 ```
 
-Then in OpenCode:
+然后在 OpenCode 中：
 ```
 /process-pending
 ```
 
-## Whitelist
+## 白名单
 
-Files automatically marked `llm_description_done: true`:
-- `index.md` and `log.md` (structured files)
-- Files with `source_ref` containing `github.com` (source repos)
+自动标记为 `llm_description_done: true` 的文件：
+- `index.md` 和 `log.md`（结构化文件）
+- `source_ref` 包含 `github.com` 的文件（源仓库）
 
-## Anti-Loop Strategy
+## 防循环策略
 
-Primary: "If content unchanged, don't write → won't trigger change"
-Secondary: processedMap with 5s anti-loop window
+主要策略：「内容不变则不写入 → 不触发变更」
+次要策略：processedMap 带 5s 防循环窗口
 
-## Files
+## 文件
 
-| File | Purpose |
-|------|---------|
-| `watch.mjs` | File system watcher with chokidar |
-| `stable-check.mjs` | File stability detector |
-| `backfill.mjs` | Ingestion engine with v2 fields + whitelist |
-| `scan-pending.mjs` | Scan for files needing description enhancement |
-| `hash.mjs` | SHA1 hash computation |
-| `config.json` | Configuration schema |
-| `index.js` | OpenCode plugin compatibility |
+| 文件 | 用途 |
+|------|------|
+| `watch.mjs` | 使用 chokidar 的文件系统监听器 |
+| `stable-check.mjs` | 文件稳定性检测器 |
+| `backfill.mjs` | 带 v2 字段 + 白名单的摄取引擎 |
+| `scan-pending.mjs` | 扫描需要描述增强的文件 |
+| `hash.mjs` | SHA1 哈希计算 |
+| `config.json` | 配置 schema |
+| `index.js` | OpenCode 插件兼容性 |
 
-## Related Files
+## 相关文件
 
-| File | Purpose |
-|------|---------|
-| `.opencode/commands/process-pending.md` | OpenCode command for LLM enhancement |
-| `.opencode/workflows/process-pending-resources.md` | Workflow definition |
+| 文件 | 用途 |
+|------|------|
+| `.opencode/commands/process-pending.md` | OpenCode LLM 增强命令 |
+| `.opencode/workflows/process-pending-resources.md` | 工作流定义 |
 
-## Deployment
+## 部署
 
 ```bash
 bun run --cwd .opencode install
 bun run --cwd .opencode watch
 ```
 
-In OpenCode session:
+在 OpenCode 会话中：
 ```
-/process-pending  # Enhance descriptions when needed
+/process-pending  # 按需增强描述
 ```
 
-## Evolution
+## 演进
 
-v1: "补 frontmatter" → v2: "构建可计算的内容入口层" → v2.1: "描述增强与白名单"
+v1：「补 frontmatter」→ v2：「构建可计算的内容入口层」→ v2.1：「描述增强与白名单」
 
-From metadata completion → data standardization → whitelist-based description processing
+从元数据补全 → 数据标准化 → 基于白名单的描述处理
 
-## Scope boundary
+## 边界范围
 
-- Human-managed notes should not be enriched with LLM-only pipeline fields by default.
-- `workbook/resources/` is always in scope.
-- `workbook/brainstorm/` is only in scope when a note lives under an explicit managed subfolder such as `workbook/brainstorm/managed/`.
+- 人工管理笔记默认不应被 LLM 专用管道字段自动增强
+- `workbook/resources/` 始终在范围内
+- `workbook/brainstorm/` 仅当笔记位于显式托管子文件夹（如 `workbook/brainstorm/managed/`）时才在范围内

@@ -2,4 +2,4 @@ branch = "main"
 phaseTopic = "word-template-generation-and-filling"
 livePhasePath = ".planning/phase"
 status = "live"
-implementedStepKeys = ["word-form-template-filling", "placeholder-description-csv-roundtrip"]
+implementedStepKeys = ["word-form-template-filling", "placeholder-description-csv-roundtrip", "vault-grounded-data-fill"]

@@ -14,6 +14,12 @@ from .generate_template import (
 from .fill_runner import fill_document, load_data_from_json
 from .export_placeholder_csv import export_placeholder_csv, load_placeholder_description_source
 from .import_placeholder_csv import import_placeholder_csv, validate_placeholder_description_csv
+from .generate_fill_data import (
+    generate_fill_data,
+    load_placeholder_descriptions,
+    normalize_placeholder_key,
+    resolve_vault_root,
+)
 from .schemas import (
     DocumentStructure,
     ParagraphInfo,
@@ -44,6 +50,10 @@ __all__ = [
     "load_placeholder_description_source",
     "import_placeholder_csv",
     "validate_placeholder_description_csv",
+    "generate_fill_data",
+    "load_placeholder_descriptions",
+    "normalize_placeholder_key",
+    "resolve_vault_root",
     "DocumentStructure",
     "ParagraphInfo",
     "TableInfo",

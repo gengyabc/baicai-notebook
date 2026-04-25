@@ -1,86 +1,86 @@
 # Template Gen
 
-Word template generation and filling library using `python-docx` and `docxtpl`.
+基于 `python-docx` 和 `docxtpl` 的 Word 模板生成与填充库。
 
-## Purpose
+## 目的
 
-Convert Word empty forms into Jinja templates and batch fill with structured data.
+将 Word 空表转换为 Jinja 模板，并使用结构化数据批量填充。
 
-## Workflow
+## 工作流
 
-**Step 1: Generate template**
+**步骤 1：生成模板**
 ```
 /generate-template .temp/docx/form.docx
 ```
 
-This command follows the `generate-template` workflow:
-- Parse document → `.temp/docx_parsed/form.json`
-- Generate placeholders → `.temp/docx_placeholders/form_placeholders.json`
-- Create template → `.temp/docx_template/form_template.docx`
+此命令遵循 `generate-template` 工作流：
+- 解析文档 → `.temp/docx_parsed/form.json`
+- 生成占位符 → `.temp/docx_placeholders/form_placeholders.json`
+- 创建模板 → `.temp/docx_template/form_template.docx`
 
-**Step 2: Export placeholders for human description editing**
+**步骤 2：导出占位符供人工编辑描述**
 ```bash
 uv run python -m template_gen.export_placeholder_csv \
   --input .temp/docx_placeholders/form_placeholders.json \
   --output .temp/docx_placeholders/form_placeholder_descriptions.csv
 ```
 
-The export file is intentionally minimal and contains only:
+导出文件保持最小化，仅包含：
 - `placeholder`
 - `description`
 
-**Step 3: Import edited descriptions back to semantic JSON**
+**步骤 3：将编辑后的描述导入回语义化 JSON**
 ```bash
 uv run python -m template_gen.import_placeholder_csv \
   --input .temp/docx_placeholders/form_placeholder_descriptions.csv \
   --output .temp/docx_placeholders/form_placeholder_descriptions.json
 ```
 
-**Step 4: Prepare data**
-Create a JSON file with values matching placeholder names:
-```json
-{
-  "project_name": "培训项目名称",
-  "course_1_name": "课程名称",
-  ...
-}
+**步骤 4：生成最终填充数据 JSON**
+```bash
+uv run python -m template_gen.generate_fill_data \
+  --input .temp/docx_placeholders/form_placeholder_descriptions.json \
+  --output .temp/docx_data/form_fill_data.json
 ```
 
-**Step 5: Fill template**
+此命令验证占位符-描述 JSON 结构，从 `.opencode/vault-config.json` 解析知识库根目录，并写入以规范化占位符为键的扁平填充数据 JSON。
+
+**步骤 5：填充模板**
 ```bash
 uv run python -m template_gen.fill_runner \
   --template .temp/docx_template/form_template.docx \
-  --data .temp/docx_data/data.json \
+  --data .temp/docx_data/form_fill_data.json \
   --output .temp/docx_filled/output.docx
 ```
 
-## Key Functions
+## 核心函数
 
-| Function | Module | Purpose |
-|----------|--------|---------|
-| `parse_document` | parser | Extract paragraphs, tables, styles from `.docx` |
-| `print_table_coordinates` | parser | Debug helper for table structure |
-| `generate_template` | filler | Create Jinja template from `CoordinateMapping` list |
-| `generate_template_from_json` | generate_template | Create Jinja template from placeholders JSON |
-| `fill_template` | filler | Fill template with data dict |
-| `fill_document` | fill_runner | Fill template from data JSON file |
-| `batch_fill` | filler | Generate multiple documents from records |
-| `set_cell_text_keep_basic_style` | filler | Preserve style when setting cell text |
+| 函数 | 模块 | 用途 |
+|------|------|------|
+| `parse_document` | parser | 从 `.docx` 提取段落、表格、样式 |
+| `print_table_coordinates` | parser | 表格结构调试辅助 |
+| `generate_template` | filler | 从 `CoordinateMapping` 列表创建 Jinja 模板 |
+| `generate_template_from_json` | generate_template | 从占位符 JSON 创建 Jinja 模板 |
+| `fill_template` | filler | 用数据字典填充模板 |
+| `fill_document` | fill_runner | 从数据 JSON 文件填充模板 |
+| `generate_fill_data` | generate_fill_data | 从占位符描述生成填充数据 JSON |
+| `batch_fill` | filler | 从记录批量生成多个文档 |
+| `set_cell_text_keep_basic_style` | filler | 设置单元格文本时保留样式 |
 
-## Data Schemas
+## 数据结构
 
-- `DocumentStructure`: paragraphs, tables, styles
-- `FieldInfo`: location, text, context, suggested_name
-- `CoordinateMapping`: table/row/col indices to placeholder
-- `PlaceholderMapping`: Jinja placeholder to field path
+- `DocumentStructure`：段落、表格、样式
+- `FieldInfo`：位置、文本、上下文、建议名称
+- `CoordinateMapping`：表格/行/列索引到占位符的映射
+- `PlaceholderMapping`：Jinja 占位符到字段路径的映射
 
-## Style Preservation
+## 样式保留
 
-`set_cell_text_keep_basic_style()` modifies only the first run's text, preserving font, size, bold, italic. Secondary runs are cleared but not deleted.
+`set_cell_text_keep_basic_style()` 仅修改第一个 run 的文本，保留字体、字号、粗体、斜体。次要 run 会被清空但不会删除。
 
-## Constraints
+## 约束
 
-- Only `.docx` format
-- Fixed table rows (no `{% for %}` loops)
-- Empty cells only (skip non-empty)
-- No table/paragraph rebuilding
+- 仅支持 `.docx` 格式
+- 固定表格行（不支持 `{% for %}` 循环）
+- 仅处理空单元格（跳过非空单元格）
+- 不重建表格或段落
