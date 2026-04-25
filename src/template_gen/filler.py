@@ -194,6 +194,136 @@ def _fill_loop_tables(doc: Document, data: dict, specs: list[dict]) -> None:
                     cell.text = ""
 
 
+def _snake_case(text: str) -> str:
+    """Convert Chinese/English text to snake_case placeholder name."""
+    import re
+    text = text.strip()
+    # Remove common filler words
+    text = re.sub(r'[（(].*?[)）]', '', text)
+    text = text.replace(' ', '').replace('　', '')
+    # Simple pinyin-like transliteration for common Chinese chars isn't available,
+    # so we'll use a direct mapping for common terms and fallback to generic names.
+    return text
+
+
+def _extract_header_text(table, row_idx: int, col_idx: int, merged_map: dict, header_row_set: set = None) -> str:
+    """Try to extract column header text from header rows above the given cell."""
+    for hr in range(row_idx - 1, -1, -1):
+        if hr >= len(table.rows):
+            continue
+        # Skip non-header rows if header_row_set is provided
+        if header_row_set is not None and hr not in header_row_set:
+            continue
+        row = table.rows[hr]
+        if col_idx >= len(row.cells):
+            continue
+        cell = row.cells[col_idx]
+        primary = merged_map.get((hr, col_idx), (hr, col_idx))
+        if primary != (hr, col_idx):
+            continue
+        txt = cell.text.strip()
+        if txt:
+            return txt
+    return ""
+
+
+def _extract_row_label(table, row_idx: int, merged_map: dict) -> str:
+    """Try to extract row label from the first column of the given row."""
+    if len(table.rows[row_idx].cells) == 0:
+        return ""
+    cell = table.rows[row_idx].cells[0]
+    txt = cell.text.strip()
+    return txt
+
+
+def _build_auto_placeholder_internal(table, row_idx: int, col_idx: int, merged_map: dict, existing: set, header_row_set: set) -> str:
+    """Build an auto-generated placeholder name for an empty cell."""
+    import re
+    header = _extract_header_text(table, row_idx, col_idx, merged_map, header_row_set)
+    row_label = _extract_row_label(table, row_idx, merged_map)
+
+    # Common Chinese term mappings
+    term_map = {
+        '获奖时间': 'award_time',
+        '获奖种类': 'award_category',
+        '获奖等级': 'award_level',
+        '授奖部门': 'award_issuer',
+        '教材名称': 'textbook_name',
+        '编写': 'writing_staff',
+        '第一主编': 'first_editor',
+        '第一主编所属单位': 'first_editor_unit',
+        '申报单位联系方式': 'applicant_contact',
+        '适用专业代码及名称': 'applicable_major',
+        '编写团队成员': 'writing_team',
+        '对应课程性质': 'course_nature',
+        '对应领域': 'corresponding_field',
+        '书号': 'isbn',
+        '版次': 'version',
+        '出版时间': 'publish_date',
+        '初版时间': 'initial_publish_date',
+        '印数': 'print_count',
+        '累计发行量': 'cumulative_circulation',
+        '单位名称': 'unit_name',
+        '主管部门': 'supervising_department',
+        '联系人': 'contact_person',
+        '联系电话': 'contact_phone',
+        '电子邮箱': 'email',
+        '通讯地址': 'postal_address',
+        '邮政编码': 'postal_code',
+    }
+
+    # Normalize header for matching (remove spaces and newlines)
+    header_normalized = header.replace(' ', '').replace('　', '').replace('\n', '').replace('\r', '')
+
+    # Try to match header
+    name = None
+    for key, val in term_map.items():
+        if key in header_normalized:
+            name = val
+            break
+
+    if not name:
+        # Clean header for a basic name
+        name = re.sub(r'[^\w\u4e00-\u9fff]+', '_', header_normalized).strip('_')
+        if not name:
+            name = f"cell_{col_idx}"
+
+    # Detect award rows and use indexed names like award_1_category
+    if '教材获奖情况' in row_label or '获奖' in row_label:
+        # Find the header row for this section using pre-scanned header_row_set
+        header_row_idx = None
+        for hr in range(row_idx, -1, -1):
+            hr_label = _extract_row_label(table, hr, merged_map)
+            if '教材获奖情况' in hr_label or '获奖' in hr_label:
+                if hr in header_row_set:
+                    header_row_idx = hr
+                    break
+        
+        # Count data rows after header
+        if header_row_idx is not None:
+            award_index = row_idx - header_row_idx
+            # Use simpler naming: award_1_category instead of award_1_award_category
+            # Remove 'award_' prefix from name if already present
+            simple_name = name.replace('award_', '')
+            base = f"award_{award_index}_{simple_name}"
+        else:
+            base = name
+    else:
+        base = name
+
+    candidate = f"{{{{ {base} }}}}"
+    counter = 1
+    while candidate in existing:
+        candidate = f"{{{{ {base}_{counter} }}}}"
+        counter += 1
+    return candidate
+
+
+def _build_auto_placeholder(table, row_idx: int, col_idx: int, merged_map: dict, existing: set) -> str:
+    """Legacy wrapper for backward compatibility."""
+    return _build_auto_placeholder_internal(table, row_idx, col_idx, merged_map, existing, set())
+
+
 def generate_template(
     input_path: str,
     output_path: str,
@@ -205,11 +335,23 @@ def generate_template(
     for t_idx, table in enumerate(doc.tables):
         merged_maps[t_idx] = detect_merged_cells(table)
     
+    # Pre-scan to identify header rows based on original content (BEFORE any modifications)
+    header_rows = {}  # table_idx -> set of header row indices
+    for t_idx, table in enumerate(doc.tables):
+        header_rows[t_idx] = set()
+        for r_idx, row in enumerate(table.rows):
+            # A row is considered a header if most cells have non-empty text
+            non_empty = sum(1 for cc in row.cells if cc.text.strip())
+            if non_empty > len(row.cells) // 2:
+                header_rows[t_idx].add(r_idx)
+    
     processed_cells = set()
+    existing_placeholders = set()
     
     for mapping in mappings:
         if not mapping.is_empty:
             continue
+        existing_placeholders.add(mapping.placeholder)
 
         if mapping.target_type == "paragraph":
             if mapping.paragraph_index is None or mapping.paragraph_index >= len(doc.paragraphs):
@@ -253,6 +395,43 @@ def generate_template(
 
         set_cell_text_keep_style(cell, mapping.placeholder, style_source_run=style_source_run)
         processed_cells.add(cell_key)
+    
+    # Pass header row info to placeholder builder
+    def _build_auto_placeholder_with_headers(table, row_idx, col_idx, merged_map, existing, header_row_set):
+        return _build_auto_placeholder_internal(table, row_idx, col_idx, merged_map, existing, header_row_set)
+    
+    # Auto-fill remaining empty primary cells
+    for t_idx, table in enumerate(doc.tables):
+        merged_map = merged_maps.get(t_idx, {})
+        header_row_set = header_rows.get(t_idx, set())
+        for r_idx, row in enumerate(table.rows):
+            for c_idx, cell in enumerate(row.cells):
+                cell_key = (t_idx, r_idx, c_idx)
+                if cell_key in processed_cells:
+                    continue
+                
+                primary_key = merged_map.get((r_idx, c_idx), (r_idx, c_idx))
+                if primary_key != (r_idx, c_idx):
+                    continue
+                
+                if cell.text.strip():
+                    continue
+                
+                # Skip the very first column if it's acting as a row label
+                if c_idx == 0:
+                    continue
+                
+                auto_placeholder = _build_auto_placeholder_with_headers(
+                    table, r_idx, c_idx, merged_map, existing_placeholders, header_row_set
+                )
+                existing_placeholders.add(auto_placeholder)
+                
+                style_source_run = None
+                if not cell.paragraphs[0].runs:
+                    style_source_run = _find_style_source_run(table, r_idx, c_idx)
+                
+                set_cell_text_keep_style(cell, auto_placeholder, style_source_run=style_source_run)
+                processed_cells.add(cell_key)
     
     doc.save(output_path)
     
