@@ -61,7 +61,17 @@ def _find_style_source_run(table, row_idx: int, col_idx: int):
     return None
 
 
-def set_cell_text_keep_style(cell, text: str, style_source_run=None) -> None:
+def _apply_rpr_to_run(run, rpr_element) -> None:
+    if rpr_element is None:
+        return
+    target_rpr = run._element.get_or_add_rPr()
+    for child in list(target_rpr):
+        target_rpr.remove(child)
+    for child in rpr_element:
+        target_rpr.append(deepcopy(child))
+
+
+def set_cell_text_keep_style(cell, text: str, style_source_run=None, style_rpr=None) -> None:
     """Set cell text while preserving or borrowing run formatting."""
     paragraph = cell.paragraphs[0]
 
@@ -70,9 +80,14 @@ def set_cell_text_keep_style(cell, text: str, style_source_run=None) -> None:
         run.text = text
         for extra_run in paragraph.runs[1:]:
             extra_run.text = ""
+        if style_rpr is not None:
+            _apply_rpr_to_run(run, style_rpr)
     else:
         run = paragraph.add_run(text)
-        _copy_run_style(style_source_run, run)
+        if style_rpr is not None:
+            _apply_rpr_to_run(run, style_rpr)
+        elif style_source_run is not None:
+            _copy_run_style(style_source_run, run)
 
 
 def set_paragraph_text_keep_style(paragraph, text: str) -> None:
@@ -104,7 +119,7 @@ def _collect_loop_table_specs(doc: Document) -> list[dict]:
             loop_var = loop_match.group(1)
             list_name = loop_match.group(2)
             field_map: dict[int, str] = {}
-            style_sources: dict[int, object] = {}
+            style_rprs: dict[int, object] = {}
 
             for col_index, cell in enumerate(row.cells):
                 cell_match = LOOP_FIELD_PATTERN.search(cell.text)
@@ -112,7 +127,11 @@ def _collect_loop_table_specs(doc: Document) -> list[dict]:
                     continue
 
                 field_map[col_index] = cell_match.group(2)
-                style_sources[col_index] = cell.paragraphs[0].runs[0] if cell.paragraphs[0].runs else None
+                run = cell.paragraphs[0].runs[0] if cell.paragraphs[0].runs else None
+                if run is not None and run._element.rPr is not None:
+                    style_rprs[col_index] = deepcopy(run._element.rPr)
+                else:
+                    style_rprs[col_index] = None
 
             if field_map:
                 specs.append(
@@ -121,7 +140,7 @@ def _collect_loop_table_specs(doc: Document) -> list[dict]:
                         "row_index": row_index,
                         "list_name": list_name,
                         "field_map": field_map,
-                        "style_sources": style_sources,
+                        "style_rprs": style_rprs,
                     }
                 )
 
@@ -148,7 +167,7 @@ def _fill_loop_tables(doc: Document, data: dict, specs: list[dict]) -> None:
 
         start_row = spec["row_index"]
         field_map = spec["field_map"]
-        style_sources = spec["style_sources"]
+        style_rprs = spec["style_rprs"]
 
         for offset, item in enumerate(items):
             row_index = start_row + offset
@@ -165,7 +184,7 @@ def _fill_loop_tables(doc: Document, data: dict, specs: list[dict]) -> None:
                 set_cell_text_keep_style(
                     row.cells[col_index],
                     str(value),
-                    style_source_run=style_sources.get(col_index),
+                    style_rpr=style_rprs.get(col_index),
                 )
 
         for row_index in range(start_row + len(items), len(table.rows)):
@@ -232,7 +251,7 @@ def generate_template(
     doc.save(output_path)
     
     from .parser import parse_document
-    return parse_document(output_path)
+    return parse_document(output_path, save_json=False)
 
 
 def fill_template(

@@ -194,6 +194,57 @@ class TestFillTemplate:
         os.unlink(template_path)
         os.unlink(output_path)
 
+    def test_fill_template_preserves_style_for_loop_table_rows(self):
+        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
+            doc = Document()
+            table = doc.add_table(rows=3, cols=2)
+            table.rows[0].cells[0].text = "课程名称"
+            table.rows[0].cells[1].text = "学时"
+            
+            run1 = table.rows[1].cells[0].paragraphs[0].add_run("{% for course in courses %}{{ course.name }}")
+            run1.font.name = "仿宋"
+            run1.font.size = Pt(14)
+            run1.bold = True
+            
+            run2 = table.rows[1].cells[1].paragraphs[0].add_run("{{ course.hours }}{% endfor %}")
+            run2.font.name = "仿宋"
+            run2.font.size = Pt(14)
+            run2.bold = True
+            
+            table.rows[2].cells[0].text = ""
+            table.rows[2].cells[1].text = ""
+            doc.save(f.name)
+            template_path = f.name
+
+        output_path = template_path.replace(".docx", "_filled.docx")
+
+        fill_template(
+            template_path,
+            {"courses": [{"name": "人工智能概述与基础", "hours": "3"}, {"name": "机器学习", "hours": "2"}]},
+            output_path,
+        )
+
+        filled_doc = Document(output_path)
+        
+        first_data_row = filled_doc.tables[0].rows[1]
+        first_name_run = first_data_row.cells[0].paragraphs[0].runs[0]
+        assert first_name_run.text == "人工智能概述与基础"
+        assert first_name_run.font.name == "仿宋"
+        assert first_name_run.font.size == Pt(14)
+        assert first_name_run.bold
+        
+        first_hours_run = first_data_row.cells[1].paragraphs[0].runs[0]
+        assert first_hours_run.text == "3"
+        assert first_hours_run.font.name == "仿宋"
+        
+        second_data_row = filled_doc.tables[0].rows[2]
+        second_name_run = second_data_row.cells[0].paragraphs[0].runs[0]
+        assert second_name_run.text == "机器学习"
+        assert second_name_run.font.name == "仿宋"
+
+        os.unlink(template_path)
+        os.unlink(output_path)
+
     def test_fill_template_raises_error_for_missing_template(self):
         with pytest.raises(FillError):
             fill_template("/nonexistent/template.docx", {}, "/tmp/output.docx")

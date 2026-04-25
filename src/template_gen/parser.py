@@ -43,7 +43,7 @@ def _extract_style(paragraph) -> Optional[StyleInfo]:
     return style_info if has_style else None
 
 
-def parse_document(file_path: str) -> DocumentStructure:
+def parse_document(file_path: str, save_json: bool = True) -> DocumentStructure:
     try:
         doc = Document(file_path)
     except Exception as e:
@@ -88,11 +88,12 @@ def parse_document(file_path: str) -> DocumentStructure:
     
     structure = DocumentStructure(paragraphs=paragraphs, tables=tables, styles=styles)
     
-    _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_filename = Path(file_path).stem + ".json"
-    output_path = _OUTPUT_DIR / output_filename
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(asdict(structure), f, ensure_ascii=False, indent=2)
+    if save_json:
+        _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        output_filename = Path(file_path).stem + ".json"
+        output_path = _OUTPUT_DIR / output_filename
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(asdict(structure), f, ensure_ascii=False, indent=2)
     
     return structure
 

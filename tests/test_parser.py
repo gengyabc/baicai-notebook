@@ -20,7 +20,7 @@ class TestToolChainValidation:
             doc.save(f.name)
             temp_path = f.name
         
-        structure = parse_document(temp_path)
+        structure = parse_document(temp_path, save_json=False)
         
         assert isinstance(structure, DocumentStructure)
         assert len(structure.paragraphs) >= 2
@@ -40,7 +40,7 @@ class TestToolChainValidation:
             doc.save(f.name)
             temp_path = f.name
         
-        structure = parse_document(temp_path)
+        structure = parse_document(temp_path, save_json=False)
         
         assert len(structure.tables) == 1
         assert len(structure.tables[0].rows) == 2
