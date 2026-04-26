@@ -8,6 +8,13 @@
 - 在此 `README.md` 中保持面向人类的项目概览和维护命令
 - 将仓库作为持久知识和智能体行为的记录系统
 
+## 教程与文档
+
+- **[使用教程](docs/tutorial.md)**：完整的使用指南，包括正常流程、异常处理和自动填表功能
+- **[路由流程图](docs/routing-flows.md)**：系统命令、工作流、技能和规则的完整路由图
+- **[元数据字段矩阵](docs/metadata-field-matrix.md)**：所有 frontmatter 字段的详细说明
+- **[SQLite 数据视图对齐](docs/sqlite-dataview-alignment.md)**：SQLite 索引机制说明
+
 ## 运行服务
 
 从仓库根目录执行：

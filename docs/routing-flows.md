@@ -4,7 +4,7 @@ System-wide routing documentation for OpenCode commands, workflows, skills, and 
 
 ## Source Files Inventory
 
-### Commands (7)
+### Commands (12)
 
 | File | Purpose |
 |------|---------|
@@ -15,8 +15,13 @@ System-wide routing documentation for OpenCode commands, workflows, skills, and 
 | `.opencode/commands/process-pending.md` | Process pending items |
 | `.opencode/commands/solidify.md` | Promote brainstorm to wiki |
 | `.opencode/commands/write_plan.md` | Write execution plan |
+| `.opencode/commands/generate-template.md` | Generate Jinja template from Word document |
+| `.opencode/commands/export-csv.md` | Export placeholder descriptions as CSV |
+| `.opencode/commands/fill-docx.md` | Import edited CSV and fill DOCX template |
+| `.opencode/commands/rename-vault.md` | Rename vault root directory |
+| `.opencode/commands/pdf2md.md` | Convert PDF to Markdown |
 
-### Workflows (7)
+### Workflows (9)
 
 | File | Purpose |
 |------|---------|
@@ -27,6 +32,8 @@ System-wide routing documentation for OpenCode commands, workflows, skills, and 
 | `.opencode/workflows/process-pending-resources.md` | Process pending resources |
 | `.opencode/workflows/query-vault.md` | Query vault knowledge |
 | `.opencode/workflows/solidify-to-wiki.md` | Promote to wiki |
+| `.opencode/workflows/generate-template.md` | Parse DOCX and generate Jinja template |
+| `.opencode/workflows/fill-docx.md` | Fill DOCX template from vault data |
 
 ### Rules (11)
 
@@ -61,11 +68,14 @@ System-wide routing documentation for OpenCode commands, workflows, skills, and 
 |------|---------|
 | `.opencode/plugins/auto-frontmatter/README.md` | Auto frontmatter |
 
-### Docs (1)
+### Docs (4)
 
 | File | Purpose |
 |------|---------|
 | `docs/sqlite-dataview-alignment.md` | SQLite mirror for Dataview-aligned retrieval |
+| `docs/tutorial.md` | 中文使用教程 |
+| `docs/metadata-field-matrix.md` | Frontmatter 字段矩阵 |
+| `docs/metadata-policy-audit-2026-04-24.md` | 元数据策略审计记录 |
 
 ---
 
@@ -118,6 +128,66 @@ flowchart TD
 **Routing Standards:**
 - Only `solidify` is the promotion gate into `workbook/wiki/`
 - Requires grounded claims with provenance
+
+### Generate Template Command
+
+```mermaid
+flowchart TD
+    A[generate-template $DOCX] --> B{DOCX provided?}
+    B -->|yes| C[Use specified file]
+    B -->|no| D[Find newest in .temp/*/input/]
+    C --> E[Parse document structure]
+    D --> E
+    E --> F[Generate semantic placeholders]
+    F --> G[Create Jinja template]
+    G --> H[Output: template.docx + placeholders.json]
+```
+
+**Routing Standards:**
+- Uses `snake_case` for placeholder names
+- Table rows get numeric prefixes
+- Chinese context clues inform naming
+
+### Export CSV Command
+
+```mermaid
+flowchart TD
+    A[export-csv $MODE] --> B{Mode?}
+    B -->|default| C[Export from placeholders.json]
+    B -->|edit| D[Rebuild from template.docx]
+    C --> E[Generate descriptions.csv]
+    D --> E
+    E --> F[LLM fills Chinese descriptions]
+    F --> G[Output: descriptions.csv]
+```
+
+**Routing Standards:**
+- Default mode: existing placeholders.json
+- Edit mode: rebuild from current template
+- Descriptions must be quoted and in Chinese
+
+### Fill DOCX Command
+
+```mermaid
+flowchart TD
+    A[fill-docx $FREE] --> B[Import descriptions.csv]
+    B --> C[Validate freshness vs placeholders.json]
+    C -->|match| D[Generate fill_data.json schema]
+    C -->|mismatch| E[Error: rerun export-csv edit]
+    D --> F{Free mode?}
+    F -->|no| G[Query vault only]
+    F -->|yes| H[Query vault + web search]
+    G --> I[Fill template]
+    H --> I
+    I --> J[Output: filled template.docx]
+    E --> K[Exit with error message]
+```
+
+**Routing Standards:**
+- Vault data takes priority
+- Free mode allows web search for missing content
+- Never invent personal information
+- Fail fast on template mismatch
 
 ---
 
@@ -184,6 +254,50 @@ flowchart TD
     E --> F
     F --> G[Return answer with provenance]
 ```
+
+### Generate Template Workflow
+
+```mermaid
+flowchart TD
+    A[DOCX file] --> B[Parse document structure]
+    B --> C[Extract tables and fields]
+    C --> D[Generate semantic placeholders]
+    D --> E[Create placeholders.json]
+    E --> F[Run template generator]
+    F --> G[Output: template.docx]
+```
+
+**Routing Standards:**
+- Parser extracts structure to JSON
+- Placeholders use snake_case naming
+- Template generator creates Jinja template from placeholders
+
+### Fill DOCX Workflow
+
+```mermaid
+flowchart TD
+    A[descriptions.csv] --> B[Import to JSON]
+    B --> C[Validate vs placeholders.json]
+    C -->|valid| D[Generate fill_data.json schema]
+    C -->|invalid| E[Fail: template changed]
+    D --> F[Query vault for each field]
+    F --> G{Data found?}
+    G -->|yes| H[Use vault data]
+    G -->|no| I{Free mode?}
+    I -->|yes| J[Search web/generate]
+    I -->|no| K[Leave empty]
+    H --> L[Run fill_runner]
+    J --> L
+    K --> L
+    L --> M[Output: filled.docx]
+    E --> N[Exit with error]
+```
+
+**Routing Standards:**
+- Freshness validation ensures template consistency
+- Vault data is primary source
+- Free mode supplements with web/reasonable content
+- Empty strings for missing data in non-free mode
 
 ---
 
