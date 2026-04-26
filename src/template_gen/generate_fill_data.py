@@ -13,7 +13,8 @@ LOOP_END_PATTERN = re.compile(r"\{%\s*endfor\s*%\}")
 LOOP_FIELD_PATTERN = re.compile(r"\{\{\s*(\w+)\.(\w+)\s*\}\}")
 
 
-def load_placeholder_descriptions(json_path: str) -> list[dict[str, str]]:
+def _load_placeholders_json(json_path: str) -> list[dict]:
+    """Load and validate the placeholders array from a JSON file."""
     source = Path(json_path)
     if not source.exists():
         raise TemplateGenError(f"Input file not found: {json_path}")
@@ -26,6 +27,12 @@ def load_placeholder_descriptions(json_path: str) -> list[dict[str, str]]:
     placeholders = payload.get("placeholders") if isinstance(payload, dict) else None
     if not isinstance(placeholders, list):
         raise TemplateGenError("Input JSON must contain a 'placeholders' array")
+
+    return placeholders
+
+
+def load_placeholder_descriptions(json_path: str) -> list[dict[str, str]]:
+    placeholders = _load_placeholders_json(json_path)
 
     rows: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -42,9 +49,7 @@ def load_placeholder_descriptions(json_path: str) -> list[dict[str, str]]:
                 f"placeholders[{index}].placeholder must be a non-empty string"
             )
         if not isinstance(description, str):
-            raise TemplateGenError(
-                f"placeholders[{index}].description must be a string"
-            )
+            raise TemplateGenError(f"placeholders[{index}].description must be a string")
         if placeholder in seen:
             raise TemplateGenError(f"Duplicate placeholder found in input JSON: {placeholder}")
 
@@ -84,11 +89,11 @@ def resolve_vault_root(repo_root: str | Path | None = None) -> Path:
 def parse_placeholder(placeholder: str) -> list[dict]:
     """
     Parse a placeholder and return a list of parsed components.
-    
+
     Handles combined placeholders like:
     - `{% for course in courses %}{{ course.name }}` (loop_start + loop_field)
     - `{{ course.hours }}{% endfor %}` (loop_field + loop_end)
-    
+
     Returns:
         list of dicts with keys:
         - type: "simple", "loop_start", "loop_end", "loop_field"
@@ -97,37 +102,32 @@ def parse_placeholder(placeholder: str) -> list[dict]:
         - list_name: list name (for loop_start)
         - sub_field: sub-field name (for loop_field)
     """
-    results = []
-    
     simple_match = SIMPLE_PLACEHOLDER_PATTERN.match(placeholder)
     if simple_match:
-        results.append({"type": "simple", "field": simple_match.group(1)})
-        return results
-    
+        return [{"type": "simple", "field": simple_match.group(1)}]
+
+    results = []
+
     loop_start_match = LOOP_START_PATTERN.search(placeholder)
     if loop_start_match:
         results.append({
             "type": "loop_start",
             "loop_var": loop_start_match.group(1),
-            "list_name": loop_start_match.group(2)
+            "list_name": loop_start_match.group(2),
         })
-    
+
     loop_field_match = LOOP_FIELD_PATTERN.search(placeholder)
     if loop_field_match:
         results.append({
             "type": "loop_field",
             "loop_var": loop_field_match.group(1),
-            "sub_field": loop_field_match.group(2)
+            "sub_field": loop_field_match.group(2),
         })
-    
-    loop_end_match = LOOP_END_PATTERN.search(placeholder)
-    if loop_end_match:
+
+    if LOOP_END_PATTERN.search(placeholder):
         results.append({"type": "loop_end"})
-    
-    if not results:
-        results.append({"type": "unknown"})
-    
-    return results
+
+    return results or [{"type": "unknown"}]
 
 
 def normalize_placeholder_key(placeholder: str) -> str:
@@ -139,42 +139,76 @@ def normalize_placeholder_key(placeholder: str) -> str:
     return match.group(1)
 
 
+def load_canonical_placeholder_sequence(json_path: str) -> list[str]:
+    placeholders = _load_placeholders_json(json_path)
+
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for index, item in enumerate(placeholders, start=1):
+        if not isinstance(item, dict):
+            raise TemplateGenError(f"placeholders[{index}] must be an object")
+        placeholder = item.get("placeholder")
+        if not isinstance(placeholder, str) or placeholder == "":
+            raise TemplateGenError(
+                f"placeholders[{index}].placeholder must be a non-empty string"
+            )
+        if placeholder in seen:
+            continue
+        seen.add(placeholder)
+        ordered.append(placeholder)
+
+    return ordered
+
+
+def validate_placeholder_freshness(
+    canonical_placeholders_path: str,
+    imported_rows: list[dict[str, str]],
+) -> None:
+    expected = load_canonical_placeholder_sequence(canonical_placeholders_path)
+    actual = [row["placeholder"] for row in imported_rows]
+    if set(expected) != set(actual):
+        raise TemplateGenError(
+            "Imported descriptions have different placeholders than current template. "
+            "Run /export-csv edit, re-edit descriptions.csv, then run /fill-docx again."
+        )
+
+
 def generate_fill_data(
     input_path: str,
     output_path: str,
     repo_root: str | Path | None = None,
+    canonical_placeholders_path: str | None = None,
 ) -> str:
     rows = load_placeholder_descriptions(input_path)
+    if canonical_placeholders_path is not None:
+        validate_placeholder_freshness(canonical_placeholders_path, rows)
     _ = resolve_vault_root(repo_root)
 
     data: dict = {}
     current_loop: dict | None = None
     loop_fields: dict = {}
-    
+
     for row in rows:
-        parsed_list = parse_placeholder(row["placeholder"])
-        
-        for parsed in parsed_list:
-            if parsed["type"] == "simple":
-                data[parsed["field"]] = ""
-            elif parsed["type"] == "loop_start":
-                list_name = parsed["list_name"]
-                current_loop = {"list_name": list_name, "loop_var": parsed["loop_var"]}
-                loop_fields[list_name] = {}
-                if list_name not in data:
-                    data[list_name] = []
-            elif parsed["type"] == "loop_field":
-                if current_loop:
-                    sub_field = parsed["sub_field"]
-                    loop_fields[current_loop["list_name"]][sub_field] = ""
-            elif parsed["type"] == "loop_end":
-                if current_loop:
-                    list_name = current_loop["list_name"]
-                    fields = loop_fields.get(list_name, {})
-                    if fields and len(data[list_name]) == 0:
-                        data[list_name] = [fields]
-                current_loop = None
-    
+        for parsed in parse_placeholder(row["placeholder"]):
+            match parsed["type"]:
+                case "simple":
+                    data[parsed["field"]] = ""
+                case "loop_start":
+                    list_name = parsed["list_name"]
+                    current_loop = {"list_name": list_name, "loop_var": parsed["loop_var"]}
+                    loop_fields[list_name] = {}
+                    data.setdefault(list_name, [])
+                case "loop_field":
+                    if current_loop:
+                        loop_fields[current_loop["list_name"]][parsed["sub_field"]] = ""
+                case "loop_end":
+                    if current_loop:
+                        list_name = current_loop["list_name"]
+                        fields = loop_fields.get(list_name, {})
+                        if fields and not data[list_name]:
+                            data[list_name] = [fields]
+                    current_loop = None
+
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -193,18 +227,27 @@ def main() -> None:
         "--output",
         help="Output final fill-data JSON path (optional)",
     )
+    parser.add_argument(
+        "--placeholders",
+        help="Current canonical placeholders JSON for freshness validation (optional)",
+    )
     args = parser.parse_args()
 
     if args.input and args.output:
-        output = generate_fill_data(args.input, args.output)
-        print(f"Fill data JSON generated at: {output}")
+        output = generate_fill_data(
+            args.input,
+            args.output,
+            canonical_placeholders_path=args.placeholders,
+        )
     else:
         task_paths = TaskPaths.get_current()
         output = generate_fill_data(
             str(task_paths.descriptions_json),
             str(task_paths.fill_data_json),
+            canonical_placeholders_path=str(task_paths.placeholders_json),
         )
-        print(f"Fill data JSON generated at: {output}")
+
+    print(f"Fill data JSON generated at: {output}")
 
 
 if __name__ == "__main__":

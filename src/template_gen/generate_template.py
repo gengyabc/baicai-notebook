@@ -71,8 +71,69 @@ def generate_template_from_json(
     output_path: str,
 ) -> None:
     mappings = load_placeholders_json(placeholders_json)
-    _generate_template(source_docx, output_path, mappings)
+    document_structure = _generate_template(source_docx, output_path, mappings)
+    
+    # After template generation, sync placeholders.json with actual template content
+    # This captures both explicit and auto-generated placeholders
+    _sync_placeholders_with_template(output_path, placeholders_json)
+    
     print(f"Template saved to: {output_path}")
+
+
+def _sync_placeholders_with_template(template_path: str, placeholders_json_path: str) -> None:
+    """Update placeholders.json to reflect all placeholders in the generated template."""
+    import re
+    from docx import Document
+    
+    doc = Document(template_path)
+    seen: set[str] = set()
+    synced: list[dict] = []
+    
+    # Load existing placeholders.json to preserve context info
+    with open(placeholders_json_path, 'r', encoding='utf-8') as f:
+        existing_data = json.load(f)
+    
+    existing_by_placeholder: dict[str, dict] = {}
+    for item in existing_data.get('placeholders', []):
+        ph = item.get('placeholder', '')
+        if ph and ph not in existing_by_placeholder:
+            existing_by_placeholder[ph] = item
+    
+    placeholder_pattern = re.compile(r'\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}')
+    
+    # Scan paragraphs
+    for para_idx, paragraph in enumerate(doc.paragraphs):
+        for match in placeholder_pattern.finditer(paragraph.text):
+            ph = f"{{{{ {match.group(1)} }}}}"
+            if ph not in seen:
+                seen.add(ph)
+                existing = existing_by_placeholder.get(ph, {})
+                synced.append({
+                    "location": f"paragraphs[{para_idx}]",
+                    "placeholder": ph,
+                    "context": existing.get("context", ""),
+                    "field_path": existing.get("field_path", match.group(1)),
+                })
+    
+    # Scan tables
+    for table_idx, table in enumerate(doc.tables):
+        for row_idx, row in enumerate(table.rows):
+            for col_idx, cell in enumerate(row.cells):
+                for match in placeholder_pattern.finditer(cell.text):
+                    ph = f"{{{{ {match.group(1)} }}}}"
+                    if ph not in seen:
+                        seen.add(ph)
+                        existing = existing_by_placeholder.get(ph, {})
+                        synced.append({
+                            "location": f"tables[{table_idx}].rows[{row_idx}].cells[{col_idx}]",
+                            "placeholder": ph,
+                            "context": existing.get("context", ""),
+                            "field_path": existing.get("field_path", match.group(1)),
+                        })
+    
+    # Write updated placeholders.json
+    with open(placeholders_json_path, 'w', encoding='utf-8') as f:
+        json.dump({"placeholders": synced}, f, ensure_ascii=False, indent=2)
 
 
 if __name__ == '__main__':

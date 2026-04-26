@@ -15,11 +15,19 @@ All for current task
 uv run python -m template_gen.import_placeholder_csv
 ```
 
-### Step 2: Generate Empty Fill Data Schema
+### Step 2: Validate Freshness And Generate Empty Fill Data Schema
 
 ```bash
 uv run python -m template_gen.generate_fill_data
 ```
+
+Before generating `fill_data.json`, this step validates that imported `descriptions.json`
+matches the current canonical placeholder sequence from `temp-v{N}/placeholders.json`.
+If mismatch is detected, fail fast and require:
+
+- rerun `/export-csv edit`
+- update the regenerated `descriptions.csv`
+- rerun `/fill-docx`
 
 ### Step 3: Query Sources for Fill Data
 
@@ -37,7 +45,7 @@ Then follow `@.opencode/workflows/query-vault.md` to query the vault (`workbook/
 
 If `--free yes` or `-f yes`:
 - fill missing content with reasonable non-vault content
-- search the web for content not available in the vault
+- fill as mush as you can, search the web for content you don't know or not available in the vault
 - prefer vault data first when both vault and web sources exist
 - Never invent personal info
 

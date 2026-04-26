@@ -6,8 +6,8 @@ model: bailian-coding-plan/glm-5
 
 Process the edited placeholder descriptions and fill the template.
 
-**Arguments:**
-- `--free` or `-f` (optional): Source mode
+**Arguments:** `$ARGUMENTS`, optional
+- `--free` or `-f` : Source mode
   - `no` (default): only use vault content
   - `yes`: may fill with non-vault content and search the web
 

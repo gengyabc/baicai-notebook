@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import pytest
+from docx import Document
 
 from template_gen.exceptions import TemplateGenError
 from template_gen.export_placeholder_csv import export_placeholder_csv, main as export_main
@@ -115,6 +116,85 @@ class TestExportPlaceholderCsv:
         export_main()
 
         assert out_csv.exists()
+
+    def test_export_edit_rebuilds_placeholders_and_overwrites_csv(self, tmp_path: Path):
+        placeholders_json = tmp_path / "temp" / "placeholders.json"
+        out_csv = tmp_path / "output" / "descriptions.csv"
+        template_docx = tmp_path / "output" / "template.docx"
+
+        _write_json(
+            placeholders_json,
+            {
+                "placeholders": [
+                    {"location": "paragraphs[0]", "placeholder": "{{ stale_field }}"},
+                ]
+            },
+        )
+
+        doc = Document()
+        doc.add_paragraph("标题：{{ project_name }}")
+        table = doc.add_table(rows=3, cols=1)
+        table.cell(0, 0).text = "{{ contact_name }}"
+        table.cell(1, 0).text = "{{ contact_name }}"
+        table.cell(2, 0).text = "{{ project_name }}"
+        template_docx.parent.mkdir(parents=True, exist_ok=True)
+        doc.save(template_docx)
+
+        export_placeholder_csv(
+            str(placeholders_json),
+            str(out_csv),
+            edit=True,
+            template_docx_path=str(template_docx),
+            placeholders_output_path=str(placeholders_json),
+        )
+
+        refreshed = json.loads(placeholders_json.read_text(encoding="utf-8"))
+        assert refreshed == {
+            "placeholders": [
+                {"location": "paragraphs[0]", "placeholder": "{{ project_name }}"},
+                {"location": "tables[0].rows[0].cells[0]", "placeholder": "{{ contact_name }}"},
+                {"location": "tables[0].rows[1].cells[0]", "placeholder": "{{ contact_name }}"},
+                {"location": "tables[0].rows[2].cells[0]", "placeholder": "{{ project_name }}"},
+            ]
+        }
+        assert _read_csv_rows(out_csv) == [
+            {"placeholder": "{{ project_name }}", "description": ""},
+            {"placeholder": "{{ contact_name }}", "description": ""},
+        ]
+
+    def test_export_edit_fails_when_template_missing(self, tmp_path: Path):
+        placeholders_json = tmp_path / "temp" / "placeholders.json"
+        out_csv = tmp_path / "output" / "descriptions.csv"
+        _write_json(placeholders_json, {"placeholders": [{"placeholder": "{{ a }}"}]})
+
+        with pytest.raises(TemplateGenError):
+            export_placeholder_csv(
+                str(placeholders_json),
+                str(out_csv),
+                edit=True,
+                template_docx_path=str(tmp_path / "output" / "template.docx"),
+                placeholders_output_path=str(placeholders_json),
+            )
+
+    def test_export_edit_fails_when_template_has_no_supported_placeholders(self, tmp_path: Path):
+        placeholders_json = tmp_path / "temp" / "placeholders.json"
+        out_csv = tmp_path / "output" / "descriptions.csv"
+        template_docx = tmp_path / "output" / "template.docx"
+        _write_json(placeholders_json, {"placeholders": [{"placeholder": "{{ a }}"}]})
+
+        doc = Document()
+        doc.add_paragraph("没有占位符")
+        template_docx.parent.mkdir(parents=True, exist_ok=True)
+        doc.save(template_docx)
+
+        with pytest.raises(TemplateGenError):
+            export_placeholder_csv(
+                str(placeholders_json),
+                str(out_csv),
+                edit=True,
+                template_docx_path=str(template_docx),
+                placeholders_output_path=str(placeholders_json),
+            )
 
 
 class TestImportPlaceholderCsv:

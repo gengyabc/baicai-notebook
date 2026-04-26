@@ -28,7 +28,7 @@
 ## 工作流
 
 **步骤 1：生成模板**
-```
+```bash
 /generate-template [docx-file]
 ```
 
@@ -43,9 +43,17 @@
 /export-csv
 ```
 
+当模板已人工修改后，使用：
+
+```bash
+/export-csv edit
+```
+
 此命令会调用 `template_gen.export_placeholder_csv`，从当前任务的 `placeholders.json` 读取，导出为最小 CSV，仅包含：
 - `placeholder`
 - `description`
+
+`edit` 模式会先从当前 `template.docx` 重新提取占位符并覆盖 `placeholders.json`，再覆盖导出新的 `descriptions.csv`。
 
 输出：`.temp/{task}/output-v{N}/descriptions.csv`
 
@@ -56,7 +64,7 @@
 
 此命令会依次：
 - 调用 `template_gen.import_placeholder_csv` → `.temp/{task}/temp-v{N}/descriptions.json`
-- 调用 `template_gen.generate_fill_data` → `.temp/{task}/temp-v{N}/fill_data.json`
+- 调用 `template_gen.generate_fill_data`（先校验 `placeholders.json` 与 `descriptions.json` 一致性）→ `.temp/{task}/temp-v{N}/fill_data.json`
 - LLM 查询知识库（或网络搜索，当 `--free yes`）填充 `fill_data.json`
 - 调用 `template_gen.fill_runner` → `.temp/{task}/output-v{N}/filled.docx`
 

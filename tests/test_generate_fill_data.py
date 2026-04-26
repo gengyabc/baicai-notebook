@@ -182,3 +182,85 @@ class TestGenerateFillDataCommandBoundary:
         )
         generate_main()
         assert output.exists()
+
+    def test_fails_fast_when_descriptions_are_stale_against_current_placeholders(
+        self, tmp_path: Path
+    ):
+        repo = tmp_path / "repo"
+        (repo / ".opencode").mkdir(parents=True, exist_ok=True)
+        (repo / ".opencode" / "vault-config.json").write_text(
+            '{"vaultRoot": "workbook"}', encoding="utf-8"
+        )
+        (repo / "workbook").mkdir(parents=True, exist_ok=True)
+
+        source = repo / "descriptions.json"
+        placeholders = repo / "placeholders.json"
+        output = repo / "out" / "fill_data.json"
+
+        _write_json(
+            source,
+            {
+                "placeholders": [
+                    {"placeholder": "{{ b }}", "description": "字段B"},
+                    {"placeholder": "{{ a }}", "description": "字段A"},
+                ]
+            },
+        )
+        _write_json(
+            placeholders,
+            {
+                "placeholders": [
+                    {"location": "paragraphs[0]", "placeholder": "{{ a }}"},
+                    {"location": "paragraphs[1]", "placeholder": "{{ b }}"},
+                    {"location": "paragraphs[2]", "placeholder": "{{ a }}"},
+                ]
+            },
+        )
+
+        with pytest.raises(TemplateGenError):
+            generate_fill_data(
+                str(source),
+                str(output),
+                repo_root=repo,
+                canonical_placeholders_path=str(placeholders),
+            )
+
+    def test_accepts_matching_sequence_against_current_placeholders(self, tmp_path: Path):
+        repo = tmp_path / "repo"
+        (repo / ".opencode").mkdir(parents=True, exist_ok=True)
+        (repo / ".opencode" / "vault-config.json").write_text(
+            '{"vaultRoot": "workbook"}', encoding="utf-8"
+        )
+        (repo / "workbook").mkdir(parents=True, exist_ok=True)
+
+        source = repo / "descriptions.json"
+        placeholders = repo / "placeholders.json"
+        output = repo / "out" / "fill_data.json"
+
+        _write_json(
+            source,
+            {
+                "placeholders": [
+                    {"placeholder": "{{ a }}", "description": "字段A"},
+                    {"placeholder": "{{ b }}", "description": "字段B"},
+                ]
+            },
+        )
+        _write_json(
+            placeholders,
+            {
+                "placeholders": [
+                    {"location": "paragraphs[0]", "placeholder": "{{ a }}"},
+                    {"location": "paragraphs[1]", "placeholder": "{{ a }}"},
+                    {"location": "paragraphs[2]", "placeholder": "{{ b }}"},
+                ]
+            },
+        )
+
+        result = generate_fill_data(
+            str(source),
+            str(output),
+            repo_root=repo,
+            canonical_placeholders_path=str(placeholders),
+        )
+        assert result == str(output)
