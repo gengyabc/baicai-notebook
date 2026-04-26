@@ -79,6 +79,12 @@ System-wide routing documentation for OpenCode commands, workflows, skills, and 
 
 ---
 
+## Sensitive Command Approval Boundary
+
+- OpenCode permissions are the primary enforcement boundary.
+- Commands and skills consume shared approval policy and present user-facing guidance.
+- When approval denied, routing must stop model-side sensitive access and provide a local fallback.
+
 ## Command Routing Graphs
 
 ### Ingest Command

@@ -5,9 +5,10 @@ compatibility: opencode
 ---
 
 ## DO THIS FIRST
-1. 告知用户: 不建议使用这个命令执行敏感信息相关内容. 建议直接使用代码,如需帮助,询问大模型如何调用代码操作即可
-2. 询问用户: 确定让大模型访问敏感信息吗?
-3. 用户必须明确表示同意, 继续操作; 否则退出
+1. This skill is a consumer of shared sensitive-command approval policy and not the policy owner.
+2. Explain risk and request explicit user consent for sensitive value access.
+3. OpenCode permissions remain the enforcement boundary for execution.
+4. If approval is denied, provide a local-only fallback path and stop model-side access.
 
 ## What I do
 

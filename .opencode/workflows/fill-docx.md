@@ -7,6 +7,11 @@ See `@.opencode/rules/template-gen-paths.md` for directory structure and file pu
 Convert edited placeholder CSV into the final filled DOCX by importing the CSV, querying the vault for data, generating fill data, and running the template filler.
 All for current task
 
+Approval boundary for sensitive data:
+- normal LLM fill path: query vault and populate non-sensitive fields with model assistance
+- local-only sensitive fill path: when approval is denied, sensitive values are completed by local scripts
+- sensitive values must never be sent to the model
+
 ## Steps
 
 ### Step 1: Import CSV to JSON
@@ -45,7 +50,7 @@ Then follow `@.opencode/workflows/query-vault.md` to query the vault for relevan
 
 If `--free yes` or `-f yes`:
 - fill missing content with reasonable non-vault content
-- fill as mush as you can, search the web for content you don't know or not available in the vault
+- fill as much as you can, search the web for content you don't know or not available in the vault
 - prefer vault data first when both vault and web sources exist
 - Never invent personal info
 

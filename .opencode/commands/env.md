@@ -4,7 +4,13 @@ model: bailian-coding-plan/glm-5
 ---
 Manage sensitive data: `$ARGUMENTS`
 
+## Shared Approval Contract
+
+- This command is a consumer of the shared sensitive-command approval policy.
+- OpenCode permissions remain the enforcement boundary for command execution.
+- This command only provides user-facing context and local fallback guidance.
+
 ## Steps
-1. 告知用户: 不建议使用这个命令执行敏感信息相关内容. 建议直接使用代码,如需帮助,询问大模型如何调用代码操作即可
-2. 询问用户: 确定让大模型访问敏感信息吗?
-3. 用户必须明确表示同意, 继续操作; 否则退出
+1. Explain the risk and ask for explicit user consent before any sensitive operation.
+2. If user approves, continue under OpenCode permission checks.
+3. If approval is denied, stop and provide a local-only fallback path so the user can finish outside model access.
