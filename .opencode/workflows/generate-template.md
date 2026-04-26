@@ -1,5 +1,7 @@
 # Workflow: Generate Template
 
+See `@.opencode/rules/template-gen-paths.md` for directory structure and file purposes.
+
 ## Goal
 
 Convert a Word document into a Jinja template by parsing structure, generating semantic placeholders, and creating the final template file.
@@ -18,16 +20,9 @@ Run the parser to extract document structure:
 uv run python -m template_gen.parser <docx_file>
 ```
 
-Output: `.temp/docx_parsed/{filename}.json`
-
 ### Step 2: Generate Placeholders
 
 Read the parsed JSON and generate semantic placeholders:
-
-1. Read `.temp/docx_parsed/{filename}.json`
-2. Analyze empty cells and fillable fields
-3. Generate **semantic placeholder names** based on context
-4. Write to `.temp/docx_placeholders/{filename}_placeholders.json`
 
 **Naming Rules:**
 - Use `snake_case` naming (English)
@@ -54,31 +49,15 @@ Read the parsed JSON and generate semantic placeholders:
 
 ### Step 3: Generate Template
 
-Run the template generator:
+Run the template generator for current task:
 
 ```bash
-uv run python -m template_gen.generate_template \
-  --source <docx_file> \
-  --placeholders ".temp/docx_placeholders/{filename}_placeholders.json" \
-  --output ".temp/docx_template/{filename}_template.docx"
+uv run python -m template_gen.generate_template
 ```
-
-Output: `.temp/docx_template/{filename}_template.docx`
 
 ## Outputs
 
 Print summary after completion:
-- Source file: `{filename}.docx`
-- Parsed structure: `.temp/docx_parsed/{filename}.json`
-- Placeholders: `.temp/docx_placeholders/{filename}_placeholders.json` (X placeholders)
-- Template: `.temp/docx_template/{filename}_template.docx`
-
-## Next Step
-
-User fills template with data:
-```bash
-uv run python -m template_gen.fill_runner \
-  --template .temp/docx_template/{filename}_template.docx \
-  --data <data.json> \
-  --output .temp/docx_filled/output.docx
-```
+- Task name and version
+- Number of placeholders
+- Template file path

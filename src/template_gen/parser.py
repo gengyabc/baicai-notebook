@@ -1,14 +1,13 @@
 import json
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 from .schemas import DocumentStructure, ParagraphInfo, TableInfo, RowInfo, CellInfo, StyleInfo
-from .exceptions import ParseError
+from .exceptions import ParseError, TemplateGenError
+from .task_paths import TaskPaths, TaskState
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from typing import Optional
-
-
-_OUTPUT_DIR = Path(__file__).parent.parent.parent / ".temp" / "docx_parsed"
 
 
 def _extract_style(paragraph) -> Optional[StyleInfo]:
@@ -43,7 +42,7 @@ def _extract_style(paragraph) -> Optional[StyleInfo]:
     return style_info if has_style else None
 
 
-def parse_document(file_path: str, save_json: bool = True) -> DocumentStructure:
+def parse_document(file_path: str, output_path: Optional[str] = None, save_json: bool = True) -> DocumentStructure:
     try:
         doc = Document(file_path)
     except Exception as e:
@@ -88,10 +87,8 @@ def parse_document(file_path: str, save_json: bool = True) -> DocumentStructure:
     
     structure = DocumentStructure(paragraphs=paragraphs, tables=tables, styles=styles)
     
-    if save_json:
-        _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        output_filename = Path(file_path).stem + ".json"
-        output_path = _OUTPUT_DIR / output_filename
+    if save_json and output_path:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(asdict(structure), f, ensure_ascii=False, indent=2)
     
@@ -116,12 +113,30 @@ if __name__ == '__main__':
     import argparse
     
     parser = argparse.ArgumentParser(description='Parse Word document structure')
-    parser.add_argument('docx_file', help='Path to .docx file')
+    parser.add_argument('docx_file', nargs='?', help='Path to .docx file (optional, finds latest if not provided)')
     
     args = parser.parse_args()
     
-    structure = parse_document(args.docx_file)
-    output_path = _OUTPUT_DIR / (Path(args.docx_file).stem + ".json")
-    print(f"Parsed: {args.docx_file}")
-    print(f"Output: {output_path}")
+    if args.docx_file:
+        task_paths = TaskPaths.create_or_next_version(args.docx_file)
+        structure = parse_document(str(task_paths.input_docx), str(task_paths.parsed_json))
+        print(f"Parsed: {args.docx_file}")
+    else:
+        docx_path = TaskPaths.find_latest_input_docx()
+        if docx_path:
+            task = docx_path.stem
+            version = TaskPaths._get_latest_version(task) or 1
+            task_paths = TaskPaths(task=task, version=version)
+            TaskPaths._write_state(TaskState(
+                task=task,
+                version=version,
+                updated_at=datetime.now().isoformat(timespec="seconds"),
+            ))
+            structure = parse_document(str(docx_path), str(task_paths.parsed_json), save_json=True)
+            print(f"Found latest: {docx_path}")
+        else:
+            raise TemplateGenError("No docx files found in .temp/*/input/")
+    
+    print(f"Task: {task_paths.task}, Version: {task_paths.version}")
+    print(f"Output: {task_paths.parsed_json}")
     print(f"Tables: {len(structure.tables)}, Paragraphs: {len(structure.paragraphs)}")

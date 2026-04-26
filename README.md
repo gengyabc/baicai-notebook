@@ -72,7 +72,9 @@ node .opencode/scripts/migrate-vault-path.mjs <oldRoot> <newRoot>
 - `/lint-vault`: 审计元数据、索引和知识库卫生
 - `/process-pending`: 处理待 LLM 描述的笔记
 - `/debug`: 启动只读沙箱会话用于知识库行为调试
-- `/generate-template <docx-file>`: 从 Word 空表生成 Jinja 模板（解析结构 -> 生成语义化占位符 -> 写出模板）
+- `/generate-template [docx-file]`: 从 Word 空表生成 Jinja 模板（提供路径或使用 `.temp/*/input/` 中最新的 docx）
+- `/export-csv`: 导出占位符描述为 CSV 供人工编辑
+- `/fill-docx [--free yes/no]`: 导入编辑后的占位符 CSV 并填充模板（`--free yes` 允许使用非知识库内容）
 
 ## 检索与提升
 

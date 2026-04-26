@@ -6,43 +6,61 @@
 
 将 Word 空表转换为 Jinja 模板，并使用结构化数据批量填充。
 
+## 目录结构
+
+```
+.temp/
+├── .current_task.json       # 状态文件（task, version, updated_at）
+├── {task}/
+│   ├── input/
+│   │   └── {task}.docx       # 输入文档
+│   ├── temp-v{N}/           # 机器可读（JSON）
+│   │   ├── parsed.json       # 文档结构
+│   │   ├── placeholders.json # 占位符列表
+│   │   ├── descriptions.json # 占位符+描述
+│   │   └── fill_data.json    # 填充数据
+│   └── output-v{N}/         # 人类可读（CSV, DOCX）
+│       ├── descriptions.csv  # 可编辑的占位符描述
+│       ├── template.docx     # Jinja 模板
+│       └── filled.docx       # 最终输出
+```
+
 ## 工作流
 
 **步骤 1：生成模板**
 ```
-/generate-template .temp/docx/form.docx
+/generate-template [docx-file]
 ```
 
+参数可选；未提供时使用 `.temp/*/input/` 中最新的 docx。
 此命令遵循 `generate-template` 工作流：
-- 解析文档 → `.temp/docx_parsed/form.json`
-- 生成占位符 → `.temp/docx_placeholders/form_placeholders.json`
-- 创建模板 → `.temp/docx_template/form_template.docx`
+- 解析文档 → `.temp/{task}/temp-v{N}/parsed.json`
+- 生成占位符 → `.temp/{task}/temp-v{N}/placeholders.json`
+- 创建模板 → `.temp/{task}/output-v{N}/template.docx`
 
 **步骤 2：导出占位符供人工编辑描述**
 ```bash
-/export-csv .temp/docx_placeholders/form_placeholders.json
+/export-csv
 ```
 
-此命令会调用 `template_gen.export_placeholder_csv`，导出文件保持最小化，仅包含：
+此命令会调用 `template_gen.export_placeholder_csv`，从当前任务的 `placeholders.json` 读取，导出为最小 CSV，仅包含：
 - `placeholder`
 - `description`
 
-输出：`.temp/docx_placeholders/form_placeholder_descriptions.csv`
+输出：`.temp/{task}/output-v{N}/descriptions.csv`
 
-**步骤 3：导入描述、生成填充数据并填充模板**
+**步骤 3：导入描述、查询数据并填充模板**
 ```bash
-/fill-docx \
-  .temp/docx_placeholders/form_placeholder_descriptions.csv \
-  .temp/docx_template/form_template.docx \
-  .temp/docx_filled/output.docx
+/fill-docx [--free yes/no]
 ```
 
 此命令会依次：
-- 调用 `template_gen.import_placeholder_csv` 生成 `.temp/docx_placeholders/form_placeholder_descriptions.json`
-- 调用 `template_gen.generate_fill_data` 生成 `.temp/docx_data/form_fill_data.json`
-- 调用 `template_gen.fill_runner` 产出 `.temp/docx_filled/output.docx`
+- 调用 `template_gen.import_placeholder_csv` → `.temp/{task}/temp-v{N}/descriptions.json`
+- 调用 `template_gen.generate_fill_data` → `.temp/{task}/temp-v{N}/fill_data.json`
+- LLM 查询知识库（或网络搜索，当 `--free yes`）填充 `fill_data.json`
+- 调用 `template_gen.fill_runner` → `.temp/{task}/output-v{N}/filled.docx`
 
-输出：`.temp/docx_placeholders/form_placeholder_descriptions.json`、`.temp/docx_data/form_fill_data.json`、`.temp/docx_filled/output.docx`
+默认仅使用知识库内容填充；添加 `--free yes` 可使用非知识库内容和网络搜索。
 
 ## 核心函数
 

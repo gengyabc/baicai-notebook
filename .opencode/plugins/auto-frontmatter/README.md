@@ -35,7 +35,7 @@ LLM 摄取管道，用于标准化已纳入管理的 markdown 内容，标记处
 - 运行时：Bun（非 Node.js）
 - SQLite：`bun:sqlite`（非 `node:sqlite` — Bun 不支持 Node.js 22+ 内置模块）
 - 文件监听：`chokidar` 包
-- 两个插件通过 `bun run watch` 脚本同时运行
+- 两个插件通过 `bun run watch` 脚本同时运行（`watch.mjs` + `sqlite-index.mjs` 并行）
 
 ## 目标文件夹
 

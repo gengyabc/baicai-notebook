@@ -3,6 +3,7 @@ from pathlib import Path
 
 from .exceptions import TemplateGenError
 from .schemas import CoordinateMapping
+from .task_paths import TaskPaths
 from .filler import generate_template as _generate_template
 
 
@@ -78,11 +79,19 @@ if __name__ == '__main__':
     import argparse
     
     parser = argparse.ArgumentParser(description='Generate Jinja template from DOCX')
-    parser.add_argument('--source', required=True, help='Source DOCX file')
-    parser.add_argument('--placeholders', required=True, help='Placeholders JSON file')
-    parser.add_argument('--output', required=True, help='Output template DOCX file')
+    parser.add_argument('--source', help='Source DOCX file (optional, uses current task if not provided)')
+    parser.add_argument('--placeholders', help='Placeholders JSON file (optional)')
+    parser.add_argument('--output', help='Output template DOCX file (optional)')
     
     args = parser.parse_args()
     
-    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-    generate_template_from_json(args.source, args.placeholders, args.output)
+    if args.source and args.placeholders and args.output:
+        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+        generate_template_from_json(args.source, args.placeholders, args.output)
+    else:
+        task_paths = TaskPaths.get_current()
+        generate_template_from_json(
+            str(task_paths.input_docx),
+            str(task_paths.placeholders_json),
+            str(task_paths.template_docx),
+        )

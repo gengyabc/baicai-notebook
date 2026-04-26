@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from .exceptions import TemplateGenError
+from .task_paths import TaskPaths
 
 
 SIMPLE_PLACEHOLDER_PATTERN = re.compile(r"^\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$")
@@ -186,18 +187,24 @@ def main() -> None:
     )
     parser.add_argument(
         "--input",
-        required=True,
-        help="Placeholder description JSON from CSV roundtrip",
+        help="Placeholder description JSON from CSV roundtrip (optional)",
     )
     parser.add_argument(
         "--output",
-        required=True,
-        help="Output final fill-data JSON path",
+        help="Output final fill-data JSON path (optional)",
     )
     args = parser.parse_args()
 
-    output = generate_fill_data(args.input, args.output)
-    print(f"Fill data JSON generated at: {output}")
+    if args.input and args.output:
+        output = generate_fill_data(args.input, args.output)
+        print(f"Fill data JSON generated at: {output}")
+    else:
+        task_paths = TaskPaths.get_current()
+        output = generate_fill_data(
+            str(task_paths.descriptions_json),
+            str(task_paths.fill_data_json),
+        )
+        print(f"Fill data JSON generated at: {output}")
 
 
 if __name__ == "__main__":

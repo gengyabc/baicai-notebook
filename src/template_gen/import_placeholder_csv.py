@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from .exceptions import TemplateGenError
+from .task_paths import TaskPaths
 
 
 def validate_placeholder_description_csv(csv_path: str) -> list[dict[str, str]]:
@@ -66,12 +67,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Import placeholder/description CSV into a minimal placeholders JSON"
     )
-    parser.add_argument("--input", required=True, help="Edited placeholder CSV file")
-    parser.add_argument("--output", required=True, help="Output placeholders JSON file")
+    parser.add_argument("--input", help="Edited placeholder CSV file (optional)")
+    parser.add_argument("--output", help="Output placeholders JSON file (optional)")
     args = parser.parse_args()
 
-    output = import_placeholder_csv(args.input, args.output)
-    print(f"Placeholder JSON imported to: {output}")
+    if args.input and args.output:
+        output = import_placeholder_csv(args.input, args.output)
+        print(f"Placeholder JSON imported to: {output}")
+    else:
+        task_paths = TaskPaths.get_current()
+        output = import_placeholder_csv(
+            str(task_paths.descriptions_csv),
+            str(task_paths.descriptions_json),
+        )
+        print(f"Placeholder JSON imported to: {output}")
 
 
 if __name__ == "__main__":

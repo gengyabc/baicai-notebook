@@ -1,3 +1,4 @@
+from .task_paths import TaskPaths, TEMP_BASE, STATE_FILE
 from .parser import parse_document, print_table_coordinates
 from .filler import (
     batch_fill,
@@ -34,6 +35,9 @@ from .schemas import (
 from .exceptions import ParseError, FillError, TemplateGenError
 
 __all__ = [
+    "TaskPaths",
+    "TEMP_BASE",
+    "STATE_FILE",
     "parse_document",
     "print_table_coordinates",
     "fill_template",
