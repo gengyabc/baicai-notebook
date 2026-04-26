@@ -7,7 +7,6 @@ requires-python = ">=3.13"
 dependencies = [
     "cli-anything-drawio>=1.0.0",
     "docxtpl>=0.20.2",
-    "keyring>=25.7.0",
     "markitdown[pdf]>=0.1.5",
     "python-docx>=1.1.0",
 ]
@@ -17,9 +16,6 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
-secure = [
-    "keyring>=25.0.0",
-]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=5.0.0",
