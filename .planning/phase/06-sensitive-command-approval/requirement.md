@@ -2,7 +2,7 @@
 step-key: sensitive-command-approval
 step-number: 06
 step-folder: 06-sensitive-command-approval
-phase-topic: command-approval-control
+phase-topic: word-template-generation-and-filling
 status: discovered
 requirement-version: 1
 updated-at: 2026-04-26

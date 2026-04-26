@@ -2,7 +2,7 @@
 step-key: env-registry
 step-number: 05
 step-folder: 05-env-registry
-phase-topic: secure-personal-info-management
+phase-topic: word-template-generation-and-filling
 status: discovered
 requirement-version: 1
 updated-at: 2026-04-26
