@@ -16,6 +16,8 @@ const FOLDER_ALIASES = {
   "wiki": ["Wiki"],
   "output": ["Output"],
 }
+const TEXT_FILE_EXTENSIONS = new Set([".md", ".py", ".mjs", ".js", ".ts", ".json", ".yaml", ".yml", ".txt"])
+const IGNORED_DIRECTORIES = new Set(["node_modules", ".git", ".venv", "__pycache__"])
 
 async function main() {
   const args = process.argv.slice(2)
@@ -23,7 +25,7 @@ async function main() {
   if (args.length < 2) {
     console.error("Usage: node migrate-vault-path.mjs <oldRoot> <newRoot> [--dry-run]")
     console.error("Example: node migrate-vault-path.mjs workbook notebook")
-    console.error("  This will update vault-config.json and all .md references")
+    console.error("  This will update vault-config.json and text references")
     process.exit(1)
   }
   
@@ -55,16 +57,16 @@ async function main() {
     description: `vaultRoot: ${oldRoot} -> ${newRoot}`,
   })
   
-  const mdFiles = await collectMarkdownFiles(VAULT_ROOT)
-  
-  for (const mdFile of mdFiles) {
-    const relativePath = path.relative(PROJECT_ROOT, mdFile)
-    const content = await fs.readFile(mdFile, "utf8")
+  const textFiles = await collectTextFiles(PROJECT_ROOT)
+
+  for (const textFile of textFiles) {
+    const relativePath = path.relative(PROJECT_ROOT, textFile)
+    const content = await fs.readFile(textFile, "utf8")
     const newContent = migrateContent(content, oldRoot, newRoot)
-    
+
     if (content !== newContent) {
       changes.push({
-        file: mdFile,
+        file: textFile,
         relativePath,
         type: "doc",
         description: `Updated folder references`,
@@ -139,25 +141,36 @@ function migrateContent(content, oldRoot, newRoot) {
       result = result.split(pattern).join(newPattern)
     }
   }
-  
+
+  result = result.replace(new RegExp(`\\b${escapeRegExp(oldRoot)}\\b`, "g"), newRoot)
+
   return result
 }
 
-async function collectMarkdownFiles(dir, files = []) {
+async function collectTextFiles(dir, files = []) {
   const entries = await fs.readdir(dir, { withFileTypes: true })
-  
+
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name)
     
     if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || entry.name === ".git") continue
-      await collectMarkdownFiles(fullPath, files)
-    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      if (IGNORED_DIRECTORIES.has(entry.name)) continue
+      await collectTextFiles(fullPath, files)
+    } else if (entry.isFile() && shouldProcessFile(entry.name)) {
       files.push(fullPath)
     }
   }
-  
+
   return files
+}
+
+function shouldProcessFile(fileName) {
+  const ext = path.extname(fileName)
+  return TEXT_FILE_EXTENSIONS.has(ext) || fileName === "AGENTS.md"
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

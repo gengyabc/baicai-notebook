@@ -35,7 +35,7 @@ If mismatch is detected, fail fast and require:
 
 Read the fill_data JSON to see the field structure and descriptions.
 
-Then follow `@.opencode/workflows/query-vault.md` to query the vault (`workbook/`) for relevant data.
+Then follow `@.opencode/workflows/query-vault.md` to query the vault for relevant data.
 
 **Fill data rules:**
 - Use real data from vault when found

@@ -80,7 +80,7 @@ class TestLoadPlaceholderDescriptions:
 
 
 class TestResolveVaultRoot:
-    def test_uses_vault_root_from_config_instead_of_hardcoded_workbook(self, tmp_path: Path):
+    def test_uses_vault_root_from_config_instead_of_hardcoded_vault(self, tmp_path: Path):
         repo = tmp_path / "repo"
         config_path = repo / ".opencode" / "vault-config.json"
         custom_root = repo / "knowledge"
