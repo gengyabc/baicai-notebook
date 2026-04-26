@@ -52,13 +52,84 @@ bun run --cwd .opencode frontmatter:scan
 
 知识库根目录为 `workbook/`，包含以下层级：
 
-| 目录 | 用途 |
-|------|------|
-| `workbook/my-work/` | 当前意图、草稿、决策和项目思考 |
-| `workbook/resources/` | 捕获的外部来源和支撑证据 |
-| `workbook/brainstorm/` | 推测性笔记（`todo/` 和 `active/`） |
-| `workbook/wiki/` | 稳定知识，索引优先维护 |
-| `workbook/output/` | 交付物，索引优先维护 |
+| 目录 | 用途 | 管理模式 |
+|------|------|----------|
+| `workbook/my-work/` | 当前意图、草稿、决策和项目思考 | 人工管理 |
+| `workbook/resources/` | 捕获的外部来源和支撑证据 | LLM 管理 |
+| `workbook/brainstorm/` | 推测性笔记（`todo/` 和 `active/`） | 人工管理（`managed/` 子目录可显式启用 LLM 管理） |
+| `workbook/wiki/` | 稳定知识，索引优先维护 | 合作管理（人工决策 + LLM 辅助提升） |
+| `workbook/output/` | 交付物，索引优先维护 | 合作管理 |
+
+### 管理模式说明
+
+**人工管理**
+- 用户完全控制内容的创建、编辑和删除
+- 使用最小必需 frontmatter（`type`、`kind`、`created`、`updated`、`description`、`status`、`tags`）
+- 不进入 LLM 自动化流程
+- 适合：个人思考、临时草稿、项目规划
+
+**LLM 管理**
+- 通过 `/ingest` 等命令自动创建和维护
+- 使用完整的 frontmatter schema（包含 `source_type`、`content_role`、`trust_level`、`verification`、`llm_stage` 等）
+- 自动进入 frontmatter 监听和索引更新流程
+- 适合：外部资源捕获、证据提取、知识整理
+
+**合作管理**
+- 人工决策内容是否稳定、是否提升
+- LLM 辅助格式化、溯源和索引维护
+- 通过 `/solidify` 命令将资源提升为稳定知识
+- 适合：经确认的知识、交付物
+
+### 目录结构与子文件夹
+
+#### `workbook/resources/` — 来源证据层
+
+| 子目录 | 用途 | 说明 |
+|--------|------|------|
+| `inbox/` | 待处理资源 | 新导入的资源暂存，等待分类 |
+| `web/` | 网络来源 | URL 捕获、网页笔记 |
+| `local/` | 本地来源 | 本地文件导入（PDF、笔记等） |
+| `archive/` | 归档资源 | 不再活跃但保留的证据 |
+
+`source_type` 字段与子目录对应：`web` → `web/`，`local` → `local/`
+
+#### `workbook/brainstorm/` — 推测性思考层
+
+| 子目录/文件 | 用途 | 说明 |
+|-------------|------|------|
+| `todo/` | 排队想法 | 待探索的想法队列 |
+| `active/` | 活跃想法 | 正在处理的想法 |
+| `managed/` | LLM 托管（可选） | 显式启用 LLM 管理的子目录 |
+| `index.md` | 索引文件 | 列出活跃和排队的想法 |
+
+**特殊规则：**
+- 默认为人工管理，保持轻量级
+- 如需启用 LLM 管理，需显式创建 `managed/` 子目录
+- 该目录下的笔记才会进入 LLM frontmatter 流程
+
+#### `workbook/wiki/` — 稳定知识层
+
+| 文件 | 用途 | 说明 |
+|------|------|------|
+| `index.md` | 知识索引 | **必需**，wiki 入口，列出所有稳定知识主题 |
+| `log.md` | 变更日志 | **推荐**，记录 wiki 变更历史 |
+
+子目录按主题组织，如 `workbook/wiki/programming/`、`workbook/wiki/projects/`
+
+#### `workbook/output/` — 交付物层
+
+| 文件 | 用途 | 说明 |
+|------|------|------|
+| `index.md` | 交付物索引 | **必需**，列出所有交付物 |
+
+子目录按项目或类型组织
+
+#### `workbook/my-work/` — 个人工作区
+
+无固定子目录结构，由用户自组织。常见用法：
+- 按项目创建子目录
+- 存放会议记录、决策文档、草稿
+- 不进入 LLM 自动化流程
 
 ---
 

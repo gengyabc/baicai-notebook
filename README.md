@@ -1,12 +1,19 @@
 # 个人知识库
 
 基于 OpenCode 的个人知识系统，用于摄取来源、查询有据可依的知识，并将稳定的笔记提升至 `workbook/wiki/` 并保留溯源信息。
+(采用半自动模式,很多行为采用命令驱动,消耗词元较少,适合节俭度日的小伙伴)
 
-## 目的
+## 功能简介
 
-- 在 `AGENTS.md` 中保持仓库指令简洁且面向路由
-- 在此 `README.md` 中保持面向人类的项目概览和维护命令
-- 将仓库作为持久知识和智能体行为的记录系统
+- [知识摄取](.opencode/workflows/ingest-resources.md)：通过 `/ingest` 命令导入本地笔记、文件、URL 或会话产物
+- [知识查询](.opencode/workflows/query-vault.md)：从 wiki/resources 检索有据可依的知识
+- [知识提升](.opencode/workflows/solidify-to-wiki.md)：通过 `/solidify` 将稳定知识提升至 `workbook/wiki/`
+- [知识库审计](.opencode/workflows/lint-vault.md)：`/lint-vault` 检查元数据、索引和卫生问题
+- [待处理笔记](docs/tutorial.md)：`/process-pending` 批量处理待 LLM 描述的笔记
+- [沙箱调试](docs/tutorial.md)：`/debug` 启动只读会话用于调试
+- [文档模板](docs/tutorial.md)：从 Word 模板生成 Jinja 模板、导出/导入 CSV 填充
+- [自动监听](#运行服务)：实时监听文件变化并更新 frontmatter
+- [SQLite 索引](docs/sqlite-dataview-alignment.md)：构建和维护 frontmatter 索引
 
 ## 教程与文档
 
@@ -14,6 +21,44 @@
 - **[路由流程图](docs/routing-flows.md)**：系统命令、工作流、技能和规则的完整路由图
 - **[元数据字段矩阵](docs/metadata-field-matrix.md)**：所有 frontmatter 字段的详细说明
 - **[SQLite 数据视图对齐](docs/sqlite-dataview-alignment.md)**：SQLite 索引机制说明
+
+## 安装
+
+### 前置要求
+
+- [Bun](https://bun.sh/) >= 1.0.0
+- [Node.js](https://nodejs.org/) >= 18.0.0（可选，Bun 可独立运行）
+- [Python](https://www.python.org/) >= 3.10
+- [uv](https://docs.astral.sh/uv/) >= 0.1.0（Python 包管理器）
+
+### 安装步骤
+
+1. **克隆仓库**
+
+```bash
+git clone https://github.com/gengyabc/baicai-notebook.git
+cd baicai-notebook
+```
+
+2. **安装 JavaScript 依赖**
+
+```bash
+bun run --cwd .opencode install
+```
+
+3. **安装 Python 依赖**
+
+```bash
+uv sync
+```
+
+4. **验证安装**
+
+```bash
+bun run --cwd .opencode frontmatter:scan
+```
+
+如果看到扫描结果输出，说明安装成功。
 
 ## 运行服务
 
@@ -34,28 +79,10 @@
 - `bun run --cwd .opencode frontmatter:index:reconcile`: 重扫并清理陈旧的 SQLite 索引记录
 - `bun run --cwd .opencode frontmatter:index:watch`: 持续监听并增量更新 SQLite frontmatter 索引
 
-**首次运行需安装依赖**
-
-```bash
-bun run --cwd .opencode install
-```
-
-## 运行模型
-
-仓库使用以下调用栈：
-
-`命令 -> 工作流 -> 技能 -> 规则`
-
-- 命令是面向用户的入口点
-- 工作流编排多步骤行为
-- 技能提供专注的能力
-- 规则定义可复用的约束和策略
-
-`AGENTS.md` 是智能体的入口地图。详细行为位于 `.opencode/` 下，应延迟加载。
 
 ## 知识库层级
 
-知识库根目录由 `.opencode/vault-config.json` 定义，当前为 `workbook/`。
+知识库根目录由 `.opencode/vault-config.json` 定义，当前为 `workbook/`,建议使用obsidian打开查看编辑。
 
 - `workbook/my-work/`: 当前意图、草稿、决策和项目思考
 - `workbook/resources/`: 捕获的来源和支撑证据
