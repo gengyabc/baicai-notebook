@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "env_vars": [
+    {
+      "name": "ID_CARD",
+      "description": "身份证号码"
+    },
+    {
+      "name": "PHONE_NUMBER",
+      "description": "手机号码"
+    }
+  ]
+}

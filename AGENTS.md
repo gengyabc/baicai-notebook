@@ -50,6 +50,7 @@ node .opencode/scripts/migrate-vault-path.mjs <oldRoot> <newRoot>
 - For ingesting sources into the vault, read `.opencode/workflows/ingest-resources.md`.
 - For promoting grounded knowledge into `workbook/wiki/`, read `.opencode/workflows/solidify-to-wiki.md`.
 - For vault linting or hygiene work, read `.opencode/workflows/lint-vault.md`.
+- For personal information needed in notes or forms, read `.opencode/skills/env-registry/SKILL.md`.
 
 ## Vault query policy
 
