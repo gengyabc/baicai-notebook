@@ -28,15 +28,14 @@ function getFolderPaths() {
 
 function getManagedPaths() {
   const paths = []
-  const vaultRoot = VAULT_CONFIG.vaultRoot
   
   for (const [key, folderName] of Object.entries(VAULT_CONFIG.folders)) {
     if (key === "resources") {
-      paths.push(path.join(vaultRoot, folderName))
+      paths.push(folderName)
     } else if (key === "brainstorm") {
       const managedSubfolders = VAULT_CONFIG.managedSubfolders?.brainstorm || ["managed"]
       for (const subfolder of managedSubfolders) {
-        paths.push(path.join(vaultRoot, folderName, subfolder))
+        paths.push(path.join(folderName, subfolder))
       }
     }
   }

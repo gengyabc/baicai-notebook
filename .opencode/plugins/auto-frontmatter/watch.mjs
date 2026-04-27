@@ -8,8 +8,12 @@ import { computeHash } from "./hash.mjs"
 import { createRequire } from "module"
 const require = createRequire(import.meta.url)
 const config = require("./config.json")
+const vaultConfig = require("../../vault-config.json")
 
 const VAULT_ROOT = path.resolve(import.meta.dirname, "../../..")
+const VAULT_DIR = path.join(VAULT_ROOT, vaultConfig.vaultRoot)
+const watchDirs = Object.values(vaultConfig.folders).map((dir) => path.join(VAULT_DIR, dir))
+
 const RESOLVED_EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.join(VAULT_ROOT, dir))
 const EXCLUDE_PATTERNS = config.excludePatterns
 
@@ -43,15 +47,15 @@ async function main() {
 }
 
 async function runWatchMode() {
-  const watchDirs = await resolveUniquePaths(config.watchDirs.map((dir) => path.join(VAULT_ROOT, dir)))
+  const resolvedWatchDirs = await resolveUniquePaths(watchDirs)
   console.log(`[watch] Starting file watcher`)
-  console.log(`[watch] Watching: ${watchDirs.join(", ")}`)
+  console.log(`[watch] Watching: ${resolvedWatchDirs.join(", ")}`)
   console.log(`[watch] Vault root: ${VAULT_ROOT}`)
   console.log(`[watch] Use /process-pending in OpenCode for LLM title/description generation`)
   
   cleanupInterval = setInterval(cleanupProcessedMap, config.antiLoopWindowMs || 10000)
   
-  watcher = chokidar.watch(watchDirs, {
+  watcher = chokidar.watch(resolvedWatchDirs, {
     ignored: createIgnorePatterns(),
     persistent: true,
     ignoreInitial: false,
@@ -93,10 +97,10 @@ function shutdown() {
 
 async function runScanMode() {
   console.log(`[scan] Scanning target directories`)
-  const watchDirs = await resolveUniquePaths(config.watchDirs.map((dir) => path.join(VAULT_ROOT, dir)))
+  const resolvedWatchDirs = await resolveUniquePaths(watchDirs)
   
   const files = []
-  for (const dir of watchDirs) {
+  for (const dir of resolvedWatchDirs) {
     await collectMarkdownFiles(dir, files)
   }
   

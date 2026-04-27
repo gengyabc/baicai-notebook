@@ -7,16 +7,6 @@
 - Prefer progressive disclosure: start from this file, then load the smallest relevant next document.
 - Do not assume files in `.opencode/rules/` auto-execute just because they exist. Follow the routing described here.
 
-## Operating model
-
-Use this stack consistently:
-
-`Command -> Workflow -> Skill -> Rules`
-
-- Commands dispatch user intent into workflows.
-- Workflows orchestrate multi-step behavior.
-- Skills provide focused capabilities.
-- Rules define reusable constraints and policies.
 
 ## Session guard
 
@@ -29,10 +19,6 @@ The vault root folder is defined in `.opencode/vault-config.json`. Current setti
 
 When folder names are referenced in documentation and workflows, they should be prefixed with the vault root (e.g., `workbook/wiki/`).
 
-To rename the vault root folder, run:
-```bash
-node .opencode/scripts/migrate-vault-path.mjs <oldRoot> <newRoot>
-```
 
 ## Folder roles
 
@@ -75,3 +61,11 @@ This project uses the following toolchain:
 - **JavaScript/TypeScript**: Use `bun` for all JS/TS package management and runtime
 
 When working with Python dependencies, prefer `uv` commands over `pip`. When working with JS/TS dependencies, prefer `bun` commands over `npm` or `yarn`.
+
+## Approach
+- Read existing files before writing. Don't re-read unless changed.
+- Thorough in reasoning, concise in output.
+- Skip files over 100KB unless required.
+- No sycophantic openers or closing fluff.
+- No emojis or em-dashes.
+- Do not guess APIs, versions, flags, commit SHAs, or package names. Verify by reading code or docs before asserting.
