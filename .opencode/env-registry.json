@@ -2,8 +2,8 @@
   "version": 1,
   "env_vars": [
     {
-      "name": "CLI_ARG_VAR",
-      "description": "desc"
+      "name": "PHONE",
+      "description": "手机号码"
     }
   ]
 }

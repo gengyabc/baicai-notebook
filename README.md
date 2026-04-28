@@ -231,6 +231,23 @@ llm_description_done: false
 - 例如：`start_date`、`end_date`、`location`、`host`、`participants`、`organizer`
 - 不要为了统一 schema 删除这些字段
 
+## 敏感信息管理
+
+本系统支持安全地存储和管理个人敏感信息（如身份证号、手机号等）。
+
+- **发现范围**：模型只能发现敏感条目的 `name`（名称）和 `description`（描述），绝不会读取或返回原始值
+- **值由用户本地设置**：通过交互式 `set` 命令将值存入系统 Keychain，模型无法获取
+- **安全消费**：需要使用密钥的操作通过 `secure_action` 插件执行，返回脱敏结果
+
+示例：注册一个身份证号条目
+
+```bash
+bun run .opencode/scripts/env-registry.mjs add MY_ID_CARD "身份证号"
+bun run .opencode/scripts/env-registry.mjs set MY_ID_CARD   # 交互式输入值，不回显
+```
+
+详细操作指南见 [.opencode/env-registry-README.md](.opencode/env-registry-README.md)。
+
 ## 注意事项
 
 - `/debug` 会话禁用知识库自动化策略，并阻止写入 `workbook/wiki/`、`workbook/resources/` 和 `workbook/brainstorm/`

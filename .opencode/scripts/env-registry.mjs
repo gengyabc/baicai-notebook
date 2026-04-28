@@ -143,6 +143,22 @@ async function cmdAdd(args) {
   registry.env_vars.push({ name: args.name, description: args.description });
   await saveRegistry(registry);
   process.stdout.write(`Added '${args.name}' to registry.\n`);
+  const value = await readValueInteractive(args.name);
+  if (!value) {
+    process.stderr.write(
+      `Warning: No value provided for '${args.name}'. Use 'set ${args.name}' later to store a value.\n`
+    );
+    return;
+  }
+  const result = await setValue(args.name, value);
+  if (!result.ok) {
+    process.stderr.write(
+      `Warning: Keychain store failed for '${args.name}': ${result.message}\n` +
+      `Use 'set ${args.name}' later to retry.\n`
+    );
+    return;
+  }
+  process.stdout.write(`Value for '${args.name}' stored successfully.\n`);
 }
 
 async function cmdRemove(args) {

@@ -6,7 +6,7 @@ compatibility: opencode
 
 ## DO THIS FIRST
 1. This skill is a consumer of shared sensitive-command approval policy and not the policy owner.
-2. Explain risk and request explicit user consent for sensitive value access.
+2. Explain risk and request explicit user consent before consuming a secret via `secure_action` (the model never sees the raw secret).
 3. OpenCode permissions remain the enforcement boundary for execution.
 4. If approval is denied, provide a local-only fallback path and stop model-side access.
 

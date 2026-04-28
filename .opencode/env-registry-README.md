@@ -2,10 +2,20 @@
 
 本系统用于安全存储和管理个人敏感信息（如身份证号、手机号等），采用两层存储架构确保安全性。
 
+## 元数据可见性边界
+
+模型的敏感信息发现范围**仅限于**条目的 `name`（名称）和 `description`（描述）。模型不能读取、推断或返回任何敏感条目的原始值。
+
+- **模型可发现**：通过 `list` 命令查看已注册条目的名称和描述
+- **模型不可访问**：原始值、Keychain 内容、额外的隐藏元数据字段
+- **模型安全消费**：通过 `secure_action` 插件使用密钥执行操作，返回脱敏结果
+
+用户可以在终端直接访问系统 Keychain 管理自己的敏感信息（见下方"方式二"），这是用户本地操作，不受模型能力边界限制。
+
 ## 架构说明
 
-- **元数据**：存储在 `.opencode/env-registry.json`（仅包含变量名和描述）
-- **敏感值**：存储在系统 Keychain（macOS Keychain / Windows Credential Manager / Linux Secret Service）
+- **元数据**：存储在 `.opencode/env-registry.json`（仅包含变量名和描述，不含任何值）
+- **敏感值**：存储在系统 Keychain（macOS Keychain / Windows Credential Manager / Linux Secret Service），模型无法直接读取
 
 ### macOS Keychain 说明
 
@@ -24,6 +34,26 @@ macOS 有两种密码管理界面：
 两者底层访问同一个 Keychain 数据库，但界面功能不同。
 
 ## 用户操作方法
+
+### 快速入门：自服务注册流程
+
+以下是从零开始注册并设置一个敏感条目的完整步骤：
+
+```bash
+# 1. 查看已有条目
+bun run .opencode/scripts/env-registry.mjs list
+
+# 2. 注册新条目（仅添加名称和描述，尚未设置值）
+bun run .opencode/scripts/env-registry.mjs add MY_ID_CARD "身份证号"
+
+# 3. 设置值（交互式输入，不回显，值存入 Keychain）
+bun run .opencode/scripts/env-registry.mjs set MY_ID_CARD
+
+# 4. 如需修改描述
+bun run .opencode/scripts/env-registry.mjs describe MY_ID_CARD "18位身份证号码"
+```
+
+**重要**：`set` 命令通过交互式输入或管道接收值，值直接存入系统 Keychain，不会出现在命令行参数中，也不会被模型读取。
 
 ### 方式一：通过 env-registry 脚本管理
 
@@ -123,6 +153,12 @@ secret-tool search --all service opencode-env-registry
 ```
 
 ## 安全机制
+
+### 元数据发现边界
+
+- 模型通过 `list` 命令**只能**发现条目的 `name` 和 `description`
+- `env-registry.json` 中**不存储任何值**，仅存储名称和描述
+- 模型面前的文档、技能和帮助文本不得暗示可以获取原始值
 
 ### 模型访问控制
 

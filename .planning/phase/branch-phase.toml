@@ -2,4 +2,4 @@ branch = "main"
 phaseTopic = "word-template-generation-and-filling"
 livePhasePath = ".planning/phase"
 status = "live"
-implementedStepKeys = ["word-form-template-filling", "placeholder-description-csv-roundtrip", "vault-grounded-data-fill", "template-edit-aware-csv-json-roundtrip", "env-registry", "sensitive-command-approval", "cross-keychain-migration", "secure-plugin-access"]
+implementedStepKeys = ["word-form-template-filling", "placeholder-description-csv-roundtrip", "vault-grounded-data-fill", "template-edit-aware-csv-json-roundtrip", "env-registry", "sensitive-command-approval", "cross-keychain-migration", "secure-plugin-access", "sensitive-metadata-and-user-docs"]
