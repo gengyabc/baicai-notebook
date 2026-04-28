@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "services": {
+    "fixture-secret": {
+      "operations": {
+        "derive-digest": {
+          "secretName": "SECURE_PLUGIN_FIXTURE_SECRET",
+          "handler": "fixtureSecretDeriveDigest",
+          "allowedArgs": ["salt"]
+        }
+      }
+    }
+  }
+}

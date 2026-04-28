@@ -2,7 +2,7 @@ import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
-import { getPassword, setPassword, deletePassword } from "cross-keychain";
+import { setPassword, deletePassword } from "cross-keychain";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REGISTRY_PATH = join(__dirname, "..", "env-registry.json");
@@ -53,19 +53,6 @@ function validateName(name) {
 
 function findEntry(registry, name) {
   return registry.env_vars.findIndex((e) => e.name === name);
-}
-
-async function getValue(name) {
-  try {
-    const value = await getPassword(KEYRING_SERVICE, name);
-    if (value !== null && value !== undefined) return value;
-  } catch (e) {
-    process.stderr.write(
-      `Warning: keychain read failed for '${name}': ${e.message || e}\n`
-    );
-  }
-  if (process.env[name] !== undefined) return process.env[name];
-  return null;
 }
 
 async function setValue(name, value) {
@@ -185,21 +172,11 @@ async function cmdRemove(args) {
 }
 
 async function cmdGet(args) {
-  const registry = await loadRegistry();
-  if (findEntry(registry, args.name) === -1) {
-    process.stderr.write(
-      `Error: '${args.name}' is not registered in whitelist.\n`
-    );
-    process.exit(2);
-  }
-  const value = await getValue(args.name);
-  if (value === null) {
-    process.stderr.write(
-      `Error: Value for '${args.name}' not found in keychain or environment. Please set it first.\n`
-    );
-    process.exit(2);
-  }
-  process.stdout.write(value + "\n");
+  process.stderr.write(
+    "Error: The 'get' command is deprecated. Raw secret retrieval is no longer available.\n" +
+    "Use the secure plugin workflow (runSecureAction) for secret-backed operations.\n"
+  );
+  process.exit(1);
 }
 
 async function cmdSet(args) {
