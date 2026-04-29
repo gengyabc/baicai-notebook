@@ -6,6 +6,17 @@ Answer a user question from the vault with the right confidence level and proven
 
 This workflow is enforced by a retrieval hook plus a SQLite-backed shortlist tool with a structured retrieval decision chain.
 
+## Governance assumptions
+
+This workflow relies on the metadata governance policy defined in `.opencode/rules/metadata-conventions.md`:
+
+- **Structured fields are the primary retrieval carriers**: time semantics are in `created`, `updated`, `start_date`, and `end_date`; location semantics are in `country`, `province`, and `city`. Tags are a retrieval aid, not the primary carrier for time or location.
+- **Tags follow the alias registry**: canonical tag values and accepted aliases are defined in `docs/metadata-alias-registry.md`. The alias registry is the governance reference for human review and lint checks. Alias-aware query-time expansion (matching notes by alias as well as canonical value) is a future enhancement; the current Stage 1 retrieval flow reads canonical values directly from the index.
+- **Location values follow the alias registry**: `country`, `province`, and `city` values may have aliases defined in the registry. Alias-aware location matching at query time is a future enhancement; the current Stage 1 retrieval flow matches location values as stored in the index. The alias registry serves as the governance reference for human review and normalization guidance.
+- **`canonical_topic` is optional and governed only where retrieval depends on it**: not all note families require `canonical_topic`; it is governed by the alias registry only when a workflow materially depends on it.
+- **Hierarchical tags remain valid**: `topic/*`, `state/*`, `source/*`, and `role/*` forms are supported by the SQLite retrieval layer.
+- **China default is metadata-level**: when a note's `country` field is absent, retrieval treats it as China at the metadata/index layer, not at query time.
+
 ## Inputs
 
 - user question

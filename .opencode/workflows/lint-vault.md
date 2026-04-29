@@ -2,7 +2,7 @@
 
 ## Goal
 
-Audit the knowledge vault for metadata drift, missing provenance, indexing gaps, attachment locality issues, structural drift, and promotion opportunities.
+Audit the knowledge vault for metadata drift, missing provenance, indexing gaps, attachment locality issues, structural drift, promotion opportunities, and metadata governance compliance.
 
 ## Inputs
 
@@ -20,7 +20,22 @@ Audit the knowledge vault for metadata drift, missing provenance, indexing gaps,
 8. Flag brainstorm notes that have enough support to consider promotion.
 9. Flag resource notes that lack summaries, provenance, or link targets.
 10. Check whether `workbook/wiki/log.md` entries use a consistent date-prefixed format when the file exists.
-11. Report findings in order of severity and suggest the smallest corrective next steps.
+11. Check for alias drift: flag tags, location values (`country`, `province`, `city`), and `canonical_topic` values that do not match canonical entries in `docs/metadata-alias-registry.md`. Report as advisory findings, not hard-blocking errors.
+12. Check for uncontrolled tag growth: flag notes with unusually large tag lists or tags that appear only once in the vault, suggesting drift rather than intentional categorization.
+13. Check for non-canonical retrieval metadata: flag notes where time or location semantics have been duplicated into tags rather than expressed through dedicated structured fields (`created`, `updated`, `start_date`, `end_date`, `country`, `province`, `city`).
+14. Report findings in order of severity and suggest the smallest corrective next steps.
+
+## Governance checks
+
+The lint workflow includes advisory governance checks based on the metadata policy in `.opencode/rules/metadata-conventions.md` and the alias registry in `docs/metadata-alias-registry.md`.
+
+These checks are advisory during first-stage governance:
+
+- Alias drift findings suggest normalization but do not block note authoring.
+- Tag growth findings suggest consolidation but do not prevent note creation.
+- Non-canonical metadata findings suggest alignment with structured fields but do not auto-rewrite frontmatter.
+
+Stronger whitelist-style admission control may be introduced later when scale and drift justify it. Until then, all governance findings are reported for human review rather than enforced automatically.
 
 ## Skills
 
@@ -31,3 +46,4 @@ Audit the knowledge vault for metadata drift, missing provenance, indexing gaps,
 - prioritized findings
 - promotion candidates
 - concrete cleanup suggestions
+- advisory governance findings (alias drift, tag growth, non-canonical retrieval metadata)

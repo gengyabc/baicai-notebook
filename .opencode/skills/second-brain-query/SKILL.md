@@ -13,6 +13,17 @@ compatibility: opencode
 - Use `workbook/brainstorm/` only for tentative synthesis
 - Call out uncertainty, conflict, and support level clearly
 
+## Governance alignment
+
+Retrieval follows the metadata governance policy from `.opencode/rules/metadata-conventions.md`:
+
+- Time and location are retrieved via dedicated structured fields (`created`, `updated`, `start_date`, `end_date`, `country`, `province`, `city`), not via tags. Tags are a retrieval aid, not the primary carrier for time or location semantics.
+- Tag values are governed by the alias registry at `docs/metadata-alias-registry.md`, which defines canonical values and accepted aliases for human review and lint checks. Alias-aware query-time expansion is a future enhancement; the current retrieval flow matches canonical values as stored in the index.
+- Location values (`country`, `province`, `city`) are governed by the alias registry, which serves as the governance reference for human review and normalization guidance. Alias-aware location matching at query time is a future enhancement; the current retrieval flow matches values as stored in the index.
+- `canonical_topic` is governed by the alias registry only where a retrieval workflow materially depends on it; it is not universally required.
+- Hierarchical tags (`topic/*`, `state/*`, `source/*`, `role/*`) remain valid retrieval aids.
+- The China default for missing `country` values is applied at the metadata/index level, not at query time.
+
 ## When to use me
 
 Use this for vault Q&A that needs confidence-aware retrieval and provenance.

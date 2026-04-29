@@ -38,7 +38,9 @@ tags: []
 
 Allowed and encouraged:
 
-- domain-specific fields such as `start_date`, `end_date`, `participants`, `location`, `host`, `organizer`, and similar structured properties
+- domain-specific fields such as `start_date`, `end_date`, `participants`, `host`, `organizer`, and similar structured properties
+- structured location fields `country`, `province`, and `city` for retrieval-sensitive notes (when `country` is omitted, retrieval defaults to China at the metadata/index layer)
+- `canonical_topic` when a retrieval workflow materially depends on it (optional, not universally required)
 - folder-local or note-type-specific metadata when it improves retrieval or human maintenance
 
 Not required for human-managed notes:
@@ -143,6 +145,7 @@ Legend:
 - `R`: required
 - `O`: optional
 - `D`: domain-specific
+- `G`: governed by alias registry (see `docs/metadata-alias-registry.md`)
 - `-`: not needed by default
 
 | Field | Human-managed | LLM-managed base | Ingestion notes |
@@ -154,7 +157,7 @@ Legend:
 | `imageNameKey` | R | R | R |
 | `description` | R | R | R |
 | `status` | R | R | R |
-| `tags` | R | R | R |
+| `tags` | R/G | R/G | R/G |
 | `source_type` | - | R | R |
 | `content_role` | - | R | R |
 | `trust_level` | - | R | R |
@@ -162,10 +165,13 @@ Legend:
 | `llm_stage` | - | R | R |
 | `source_ref` | O | O | O |
 | `source` | O | O | O |
-| `canonical_topic` | - | O | O |
+| `canonical_topic` | -/G | O/G | O/G |
 | `derived_from` | O | O | O |
 | `entity_refs` | - | O | O |
 | `topic_refs` | - | O | O |
+| `country` | D/G | D/G | D/G |
+| `province` | D/G | D/G | D/G |
+| `city` | D/G | D/G | D/G |
 | `llm_description_done` | - | - | R |
 | `ingest_status` | - | - | R |
 | `normalized_at` | - | - | R |
@@ -200,6 +206,47 @@ llm_stage: unprocessed | parsed | linked | summarized | integrated
 ingest_status: pending | processed | error
 ```
 
+## Structured fields versus tags
+
+### Core principle
+
+Time and location semantics belong in dedicated structured fields, not in tags.
+
+- **Time**: use `created`, `updated`, `start_date`, and `end_date` as the primary carriers. Do not duplicate time semantics into tags (e.g., avoid `year/2026` or `month/april` as a substitute for date fields).
+- **Location**: use `country`, `province`, and `city` as the primary carriers. Do not move location semantics into tags (e.g., avoid `location/shenzhen` as a substitute for structured location fields). When a note-level `country` field is absent, retrieval defaults to `China` at the metadata/index layer; this default is not a reason to omit the field when location matters.
+- **Domain-specific fields**: fields like `host`, `organizer`, `participants`, and similar structured properties remain first-class metadata. They are not replaced by tags.
+
+### When tags are allowed as retrieval aids
+
+Tags are a controlled retrieval aid, not the primary carrier for time, location, or other structured semantics. Tags are appropriate when:
+
+1. They provide a lightweight categorization that complements structured fields (e.g., `topic/training` alongside `start_date` and structured location fields `country` / `province` / `city`).
+2. They express Obsidian-style hierarchical forms such as `topic/*`, `state/*`, `source/*`, and `role/*` that are already consumed by the SQLite retrieval layer.
+3. They encode a cross-cutting concern that does not have a dedicated frontmatter field and is genuinely useful for retrieval filtering.
+
+Tags must not be used to:
+
+- Carry time semantics (use `created`, `updated`, `start_date`, `end_date` instead).
+- Carry location semantics (use `country`, `province`, `city` instead).
+- Replace structured judgment fields like `trust_level` or `verification`.
+
+### Hierarchical tags
+
+Obsidian-style hierarchical tags remain supported and encouraged where they improve retrieval:
+
+- `topic/*` forms for subject-area categorization.
+- `state/*`, `source/*`, `role/*` for LLM-managed note classification.
+- Other hierarchies that match retrieval patterns documented in `query-vault.md`.
+
+### Tag governance
+
+First-stage tag governance is advisory and alias-based:
+
+- The alias registry at `docs/metadata-alias-registry.md` defines canonical tag values and accepted aliases.
+- Lint reports non-canonical tags and uncontrolled tag growth as advisory findings, not hard-blocking errors.
+- New tags and suspicious canonical candidates require human review before being added to the registry.
+- Stronger whitelist-style admission control may be introduced later when scale and drift justify it.
+
 ## Tag rules
 
 - All durable human-managed and LLM-managed notes should include tags.
@@ -208,6 +255,7 @@ ingest_status: pending | processed | error
 - Use `topic/*` tags only when they improve retrieval.
 - Keep total tags small whenever practical.
 - Do not move precise judgment fields like `trust_level` or `verification` into tags.
+- Do not use tags as the primary carrier for time or location semantics; use dedicated structured fields instead.
 
 ## Templates
 
@@ -243,11 +291,15 @@ tags:
   - topic/training
 start_date:
 end_date:
-location:
+country:
+province:
+city:
 host:
 participants:
 ---
 ```
+
+Use `country`, `province`, and `city` as the structured location fields for retrieval-sensitive notes. When `country` is omitted, retrieval defaults to China at the metadata/index layer, but explicit values are preferred when location matters for the note. The freeform `location` field may still appear for backward compatibility or non-retrieval display purposes, but structured fields (`country`, `province`, `city`) are the retrieval-standard shape for location data.
 
 ### LLM-managed resource note
 
