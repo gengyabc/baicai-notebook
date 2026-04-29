@@ -4,6 +4,10 @@
     {
       "name": "PHONE",
       "description": "手机号码"
+    },
+    {
+      "name": "BIRTHDAY",
+      "description": "出生日期"
     }
   ]
 }

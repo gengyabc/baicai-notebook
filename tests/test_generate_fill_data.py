@@ -183,7 +183,7 @@ class TestGenerateFillDataCommandBoundary:
         generate_main()
         assert output.exists()
 
-    def test_fails_fast_when_descriptions_are_stale_against_current_placeholders(
+    def test_fails_fast_when_descriptions_have_different_placeholders_than_template(
         self, tmp_path: Path
     ):
         repo = tmp_path / "repo"
@@ -211,8 +211,7 @@ class TestGenerateFillDataCommandBoundary:
             {
                 "placeholders": [
                     {"location": "paragraphs[0]", "placeholder": "{{ a }}"},
-                    {"location": "paragraphs[1]", "placeholder": "{{ b }}"},
-                    {"location": "paragraphs[2]", "placeholder": "{{ a }}"},
+                    {"location": "paragraphs[1]", "placeholder": "{{ c }}"},
                 ]
             },
         )

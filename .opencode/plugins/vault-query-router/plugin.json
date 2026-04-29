@@ -1,0 +1,12 @@
+{
+  "name": "vault-query-router",
+  "version": "1.0.0",
+  "description": "Route vault queries through SQLite index for ranked shortlist retrieval",
+  "hooks": {
+    "experimental.chat.system.transform": true,
+    "command.execute.before": true,
+    "command.executed": true,
+    "session.idle": true,
+    "session.deleted": true
+  }
+}

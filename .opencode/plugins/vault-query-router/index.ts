@@ -4,10 +4,10 @@ import { createRequire } from "node:module"
 import { DatabaseSync } from "node:sqlite"
 import type { Plugin } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
-import { getDefaultFoldersWithRoot, getFolderPriorities, getVaultConfig } from "../scripts/vault-paths.mjs"
+import { getDefaultFoldersWithRoot, getFolderPriorities, getVaultConfig } from "../../scripts/vault-paths.mjs"
 
 const require = createRequire(import.meta.url)
-const frontmatterIndexConfig = require("./frontmatter-index/config.json") as {
+const frontmatterIndexConfig = require("../../frontmatter-index/config.json") as {
   dbPath: string
   folderPriorities?: Record<string, number>
 }
@@ -170,13 +170,26 @@ function escapeLikeValue(str: string) {
 
 function folderPriorityExpr(priorities: Record<string, number>) {
   const clauses: string[] = []
+  const params: Array<string | number> = []
   const sorted = Object.entries(priorities).sort((a, b) => b[1] - a[1])
   for (const [folder, score] of sorted) {
-    const escaped = escapeLikePattern(folder)
-    clauses.push(`WHEN n.path LIKE '${escaped}/%' ESCAPE '\\' OR n.path = '${escaped}' THEN ${score}`)
+    if (!Number.isFinite(score)) continue
+    clauses.push(`WHEN n.path LIKE ? ESCAPE '\\' OR n.path = ? THEN ${score}`)
+    params.push(`${escapeLikePattern(folder)}/%`, folder)
   }
   clauses.push("ELSE 0")
-  return `CASE ${clauses.join("\n      ")} END`
+  return { sql: `CASE ${clauses.join("\n      ")} END`, params }
+}
+
+function invalidateDatabase(dbPath: string) {
+  const cached = searchDatabases.get(dbPath)
+  if (!cached) return
+
+  try {
+    cached.db.close()
+  } catch {}
+
+  searchDatabases.delete(dbPath)
 }
 
 function buildSearchQuery(
@@ -219,8 +232,9 @@ function buildSearchQuery(
     queryLike,
   ]
 
+  const priorityExpr = folderPriorityExpr(priorities)
   const scoreParts = [
-    folderPriorityExpr(priorities),
+    priorityExpr.sql,
     "CASE WHEN lower(n.title) = ? THEN 150 ELSE 0 END",
     "CASE WHEN lower(n.path) = ? THEN 130 ELSE 0 END",
     "CASE WHEN lower(n.title) LIKE ? THEN 90 ELSE 0 END",
@@ -229,6 +243,7 @@ function buildSearchQuery(
     "COALESCE(n.property_score, 0) * 14",
   ]
   const scoreParams: Array<string | number> = [
+    ...priorityExpr.params,
     queryText,
     queryText,
     queryLike,
@@ -395,12 +410,22 @@ function searchIndex(
     effectivePriorities
   )
 
-  const db = getDatabase(dbPath)
+  let db = getDatabase(dbPath)
 
-  const rows = db.query(sql).all(...finalParams) as SearchRow[]
-  return {
-    rows,
-    output: formatResults(query, rows),
+  try {
+    const rows = db.query(sql).all(...finalParams) as SearchRow[]
+    return {
+      rows,
+      output: formatResults(query, rows),
+    }
+  } catch (error) {
+    invalidateDatabase(dbPath)
+    db = getDatabase(dbPath)
+    const rows = db.query(sql).all(...finalParams) as SearchRow[]
+    return {
+      rows,
+      output: formatResults(query, rows),
+    }
   }
 }
 

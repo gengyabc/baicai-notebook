@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from .exceptions import TemplateGenError
+from .secret_binding import SECRET_BINDING_FIELD
 from .task_paths import TaskPaths
 
 
@@ -37,9 +38,19 @@ def load_placeholder_descriptions(json_path: str) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     seen: set[str] = set()
     for index, item in enumerate(placeholders, start=1):
-        if not isinstance(item, dict) or set(item.keys()) != {"placeholder", "description"}:
+        if not isinstance(item, dict):
+            raise TemplateGenError(f"placeholders[{index}] must be an object")
+
+        allowed_keys = {"placeholder", "description", SECRET_BINDING_FIELD}
+        extra_keys = set(item.keys()) - allowed_keys
+        if extra_keys:
             raise TemplateGenError(
-                f"placeholders[{index}] must contain only 'placeholder' and 'description'"
+                f"placeholders[{index}] contains unrecognized keys: {', '.join(sorted(extra_keys))}"
+            )
+
+        if "placeholder" not in item or "description" not in item:
+            raise TemplateGenError(
+                f"placeholders[{index}] must contain 'placeholder' and 'description'"
             )
 
         placeholder = item["placeholder"]
@@ -54,7 +65,10 @@ def load_placeholder_descriptions(json_path: str) -> list[dict[str, str]]:
             raise TemplateGenError(f"Duplicate placeholder found in input JSON: {placeholder}")
 
         seen.add(placeholder)
-        rows.append({"placeholder": placeholder, "description": description})
+        row: dict[str, str] = {"placeholder": placeholder, "description": description}
+        if SECRET_BINDING_FIELD in item and isinstance(item[SECRET_BINDING_FIELD], str):
+            row[SECRET_BINDING_FIELD] = item[SECRET_BINDING_FIELD]
+        rows.append(row)
 
     return rows
 

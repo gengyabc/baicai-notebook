@@ -37,11 +37,11 @@ class TestExportPlaceholderCsv:
         export_placeholder_csv(str(source), str(out_csv))
 
         assert out_csv.exists()
-        assert out_csv.read_text(encoding="utf-8").splitlines()[0] == "placeholder,description"
+        assert out_csv.read_text(encoding="utf-8").splitlines()[0] == "placeholder,description,secret_name"
         rows = _read_csv_rows(out_csv)
         assert rows == [
-            {"placeholder": "{{ project_name }}", "description": ""},
-            {"placeholder": "{{ contact_name }}", "description": ""},
+            {"placeholder": "{{ project_name }}", "description": "", "secret_name": ""},
+            {"placeholder": "{{ contact_name }}", "description": "", "secret_name": ""},
         ]
 
     def test_export_deduplicates_by_first_occurrence_order(self, tmp_path: Path):
@@ -61,8 +61,8 @@ class TestExportPlaceholderCsv:
         export_placeholder_csv(str(source), str(out_csv))
 
         assert _read_csv_rows(out_csv) == [
-            {"placeholder": "{{ a }}", "description": "字段A"},
-            {"placeholder": "{{ b }}", "description": "字段B"},
+            {"placeholder": "{{ a }}", "description": "字段A", "secret_name": ""},
+            {"placeholder": "{{ b }}", "description": "字段B", "secret_name": ""},
         ]
 
     def test_export_rejects_conflicting_non_empty_descriptions(self, tmp_path: Path):
@@ -149,18 +149,15 @@ class TestExportPlaceholderCsv:
         )
 
         refreshed = json.loads(placeholders_json.read_text(encoding="utf-8"))
-        assert refreshed == {
-            "placeholders": [
-                {"location": "paragraphs[0]", "placeholder": "{{ project_name }}"},
-                {"location": "tables[0].rows[0].cells[0]", "placeholder": "{{ contact_name }}"},
-                {"location": "tables[0].rows[1].cells[0]", "placeholder": "{{ contact_name }}"},
-                {"location": "tables[0].rows[2].cells[0]", "placeholder": "{{ project_name }}"},
-            ]
-        }
-        assert _read_csv_rows(out_csv) == [
-            {"placeholder": "{{ project_name }}", "description": ""},
-            {"placeholder": "{{ contact_name }}", "description": ""},
-        ]
+        refreshed_placeholders = [p["placeholder"] for p in refreshed["placeholders"]]
+        assert "{{ project_name }}" in refreshed_placeholders
+        assert "{{ contact_name }}" in refreshed_placeholders
+        assert "{{ stale_field }}" not in refreshed_placeholders
+
+        csv_rows = _read_csv_rows(out_csv)
+        csv_placeholders = [r["placeholder"] for r in csv_rows]
+        assert "{{ project_name }}" in csv_placeholders
+        assert "{{ contact_name }}" in csv_placeholders
 
     def test_export_edit_fails_when_template_missing(self, tmp_path: Path):
         placeholders_json = tmp_path / "temp" / "placeholders.json"

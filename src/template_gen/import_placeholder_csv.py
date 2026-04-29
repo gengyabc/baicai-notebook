@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from .exceptions import TemplateGenError
+from .secret_binding import SECRET_BINDING_FIELD
 from .task_paths import TaskPaths
 
 
@@ -14,9 +15,23 @@ def validate_placeholder_description_csv(csv_path: str) -> list[dict[str, str]]:
 
     with source.open("r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
-        if reader.fieldnames != ["placeholder", "description"]:
+        if reader.fieldnames is None:
+            raise TemplateGenError("CSV has no header row")
+        required = {"placeholder", "description"}
+        missing = required - set(reader.fieldnames)
+        if missing:
             raise TemplateGenError(
-                "CSV header must be exactly: placeholder,description"
+                f"CSV header must include: {', '.join(sorted(missing))}"
+            )
+        allowed = {"placeholder", "description", SECRET_BINDING_FIELD}
+        extra = set(reader.fieldnames) - allowed
+        if extra:
+            raise TemplateGenError(
+                f"CSV header contains unrecognized columns: {', '.join(sorted(extra))}"
+            )
+        if reader.fieldnames[:2] != ["placeholder", "description"]:
+            raise TemplateGenError(
+                "CSV header must start with: placeholder,description"
             )
 
         seen: set[str] = set()
@@ -45,7 +60,11 @@ def validate_placeholder_description_csv(csv_path: str) -> list[dict[str, str]]:
                 )
 
             seen.add(placeholder)
-            rows.append({"placeholder": placeholder, "description": description})
+            entry: dict[str, str] = {"placeholder": placeholder, "description": description}
+            secret_val = row.get(SECRET_BINDING_FIELD, "")
+            if secret_val:
+                entry[SECRET_BINDING_FIELD] = secret_val
+            rows.append(entry)
 
     return rows
 

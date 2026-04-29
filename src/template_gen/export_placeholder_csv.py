@@ -7,6 +7,7 @@ from pathlib import Path
 from docx import Document
 
 from .exceptions import TemplateGenError
+from .secret_binding import SECRET_BINDING_FIELD
 from .task_paths import TaskPaths
 
 
@@ -57,16 +58,30 @@ def extract_template_placeholders(template_docx_path: str) -> list[dict[str, str
 def rebuild_placeholders_from_template(template_docx_path: str, placeholders_output_path: str) -> str:
     placeholders = extract_template_placeholders(template_docx_path)
     
-    # Deduplicate: keep only first occurrence of each unique placeholder
+    prior_bindings: dict[str, str] = {}
+    output = Path(placeholders_output_path)
+    if output.exists():
+        try:
+            prior_data = json.loads(output.read_text(encoding="utf-8"))
+            if isinstance(prior_data, dict) and isinstance(prior_data.get("placeholders"), list):
+                for item in prior_data["placeholders"]:
+                    if isinstance(item, dict) and SECRET_BINDING_FIELD in item:
+                        ph = item.get("placeholder", "")
+                        if ph and isinstance(item[SECRET_BINDING_FIELD], str):
+                            prior_bindings[ph] = item[SECRET_BINDING_FIELD]
+        except (json.JSONDecodeError, OSError):
+            print(f"Warning: could not read prior placeholders from {output}, secret bindings may be lost")
+    
     seen: set[str] = set()
     deduped: list[dict[str, str]] = []
     for ph in placeholders:
         placeholder = ph["placeholder"]
         if placeholder not in seen:
             seen.add(placeholder)
+            if placeholder in prior_bindings:
+                ph[SECRET_BINDING_FIELD] = prior_bindings[placeholder]
             deduped.append(ph)
     
-    output = Path(placeholders_output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps({"placeholders": deduped}, ensure_ascii=False, indent=2),
@@ -113,7 +128,10 @@ def load_placeholder_description_source(json_path: str) -> list[dict[str, str]]:
             continue
 
         first_seen_descriptions[raw_placeholder] = description
-        unique_rows.append({"placeholder": raw_placeholder, "description": description})
+        row = {"placeholder": raw_placeholder, "description": description}
+        if SECRET_BINDING_FIELD in item and isinstance(item[SECRET_BINDING_FIELD], str):
+            row[SECRET_BINDING_FIELD] = item[SECRET_BINDING_FIELD]
+        unique_rows.append(row)
 
     return unique_rows
 
@@ -143,7 +161,7 @@ def export_placeholder_csv(
     output.parent.mkdir(parents=True, exist_ok=True)
 
     with output.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["placeholder", "description"])
+        writer = csv.DictWriter(f, fieldnames=["placeholder", "description", SECRET_BINDING_FIELD])
         writer.writeheader()
         writer.writerows(rows)
 

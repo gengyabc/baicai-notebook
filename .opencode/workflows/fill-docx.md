@@ -34,6 +34,16 @@ If mismatch is detected, fail fast and require:
 - update the regenerated `descriptions.csv`
 - rerun `/fill-docx`
 
+### Step 2.5: Bind Secrets To Placeholders
+
+For each placeholder in `descriptions.json` that has a `secret_name` field,
+the field is marked as secret-backed. The `secret_name` is preserved from
+env-registry metadata when a high-confidence match exists between the
+placeholder field name and a registered secret name.
+
+Fields with `secret_name` will be filled by the opaque sensitive fill path
+(not by the LLM). The LLM must leave these fields empty in `fill_data.json`.
+
 ### Step 3: Query Sources for Fill Data
 
 **This step must be performed by the LLM.**
@@ -47,6 +57,7 @@ Then follow `@.opencode/workflows/query-vault.md` to query the vault for relevan
 - Leave empty string `""` if no data found (do not invent data)
 - For arrays: populate with actual items from vault, or keep single empty template item
 - Preserve data provenance by noting source in comments
+- **For fields with `secret_name` in descriptions.json: leave the value as empty string `""`; these fields will be filled by the opaque sensitive fill path**
 
 If `--free yes` or `-f yes`:
 - fill missing content with reasonable non-vault content
@@ -61,6 +72,21 @@ Update the fill_data JSON with the populated values.
 ```bash
 uv run python -m template_gen.fill_runner
 ```
+
+### Step 5: Opaque Sensitive Fill
+
+For any field with `secret_name` in `descriptions.json`, the LLM must not
+fill that field. Instead, sensitive values are inserted by trusted local
+execution through `secure_action` after the non-sensitive fill is complete.
+
+**This step must NOT be performed by the LLM.** The LLM may trigger the
+opaque fill path, but secret consumption and insertion happen inside trusted
+local execution only.
+
+- Sensitive values must never appear in model-visible output, logs, or errors
+- `secure_action` is the preferred invocation path for sensitive document filling
+- Trusted fill operates only on placeholders with explicit stored `secret_name`
+- No semantic re-matching of secrets occurs at fill time
 
 ## Outputs
 
