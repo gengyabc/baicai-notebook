@@ -66,7 +66,7 @@ async function walkDir(dir, pendingFiles) {
         if (fm.llm_description_done !== true) {
           pendingFiles.push({
             path: fullPath,
-            imageKey: fm.image_key || path.basename(fullPath, ".md"),
+            imageKey: fm.imageNameKey || path.basename(fullPath, ".md"),
             description: fm.description || "(none)",
             preview: extractPreview(body),
             frontmatter: fm,

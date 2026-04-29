@@ -15,7 +15,7 @@ Turn active notes from `workbook/my-work/` into better-organized downstream arti
 2. Preserve active wording in place when the note is still live working material.
 3. Extract durable ideas, repeated themes, and explicit open questions.
 4. Route derived material by default into `workbook/brainstorm/`, not `workbook/wiki/`.
-5. If source references are mentioned but not captured, create or request `workbook/resources/` notes with provenance and `image_key`.
+5. If source references are mentioned but not captured, create or request `workbook/resources/` notes with provenance and `imageNameKey`.
 6. Only send clearly grounded material toward `workbook/wiki/` through the explicit `solidify` workflow.
 7. Add links between the active note and any derived brainstorm or wiki notes.
 8. If derived material is ready for `workbook/wiki/`, hand it off to `solidify` and let that workflow handle `workbook/wiki/` maintenance.

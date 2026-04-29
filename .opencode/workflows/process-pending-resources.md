@@ -43,7 +43,7 @@ Enhanced frontmatter:
 description: Concise summary of the resource content.
 llm_description_done: true
 ingest_status: processed
-image_key: some-long-filename  # unchanged
+imageNameKey: some-long-filename  # unchanged
 ```
 
 ## Skills

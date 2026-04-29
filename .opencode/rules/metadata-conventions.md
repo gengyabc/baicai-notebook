@@ -30,7 +30,7 @@ type:
 kind:
 created:
 updated:
-image_key:
+imageNameKey:
 description:
 status:
 tags: []
@@ -76,7 +76,7 @@ type:
 kind:
 created:
 updated:
-image_key:
+imageNameKey:
 description:
 status:
 tags: []
@@ -127,12 +127,12 @@ These linking fields should only be required when a workflow or query pattern ac
 
 | Note family | Profile | Required | Optional | Avoid by default |
 | --- | --- | --- | --- | --- |
-| `workbook/my-work/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | domain-specific fields, `source_ref` when useful | LLM pipeline fields |
-| `workbook/brainstorm/todo/`, `workbook/brainstorm/active/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | `derived_from`, `source_ref`, domain fields | LLM pipeline fields unless explicitly opted in |
+| `workbook/my-work/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | domain-specific fields, `source_ref` when useful | LLM pipeline fields |
+| `workbook/brainstorm/todo/`, `workbook/brainstorm/active/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | `derived_from`, `source_ref`, domain fields | LLM pipeline fields unless explicitly opted in |
 | `workbook/brainstorm/managed/` | LLM-managed | LLM base fields, plus ingestion fields when auto-managed | linking fields | nothing beyond the profile |
 | `workbook/resources/` | LLM-managed | LLM base fields, ingestion fields, `source_ref` when externally sourced | `source`, linking fields, `author`, `published` | human-only domain fields unrelated to the source |
 | generated `workbook/wiki/` | LLM-managed | LLM base fields | `canonical_topic`, linking fields, `source_ref` or backlinks | ingestion fields unless the note is actually in that pipeline |
-| human `workbook/output/` | human-managed | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | deliverable-specific fields, `source_ref` | LLM pipeline fields |
+| human `workbook/output/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | deliverable-specific fields, `source_ref` | LLM pipeline fields |
 | generated `workbook/output/` | LLM-managed | LLM base fields | provenance and linking fields | ingestion fields unless auto-managed |
 | root and folder indexes/logs | whichever manages them | same as their owning profile; keep concise | provenance fields when useful | unnecessary pipeline state |
 
@@ -151,7 +151,7 @@ Legend:
 | `kind` | R | R | R |
 | `created` | R | R | R |
 | `updated` | R | R | R |
-| `image_key` | R | R | R |
+| `imageNameKey` | R | R | R |
 | `description` | R | R | R |
 | `status` | R | R | R |
 | `tags` | R | R | R |
@@ -219,7 +219,7 @@ type: my-work
 kind: note
 created:
 updated:
-image_key:
+imageNameKey:
 description:
 status: active
 tags:
@@ -235,7 +235,7 @@ type: my-work
 kind: training
 created:
 updated:
-image_key:
+imageNameKey:
 description:
 status: active
 tags:
@@ -259,7 +259,7 @@ source_type: web
 content_role: raw
 created:
 updated:
-image_key:
+imageNameKey:
 description:
 llm_description_done: false
 status: inbox
@@ -290,7 +290,7 @@ type: brainstorm
 kind: note
 created:
 updated:
-image_key:
+imageNameKey:
 description:
 status: active
 tags:
@@ -309,7 +309,7 @@ source_type: generated
 content_role: synthesis
 created:
 updated:
-image_key:
+imageNameKey:
 description:
 llm_description_done: false
 status: active

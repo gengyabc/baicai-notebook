@@ -1,6 +1,6 @@
 # Edit Policy
 
-For note schemas and `image_key`, see `.opencode/rules/metadata-conventions.md`. For folder semantics, duplicate control, and index expectations, see `.opencode/rules/core-vault.md`.
+For note schemas and `imageNameKey`, see `.opencode/rules/metadata-conventions.md`. For folder semantics, duplicate control, and index expectations, see `.opencode/rules/core-vault.md`.
 
 ## By folder
 

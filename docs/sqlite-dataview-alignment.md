@@ -581,7 +581,7 @@ FROM notes n
 WHERE NOT EXISTS (
   SELECT 1 FROM properties p
   WHERE p.note_id = n.id
-    AND p.key = 'image_key'
+    AND p.key = 'imageNameKey'
 );
 ```
 

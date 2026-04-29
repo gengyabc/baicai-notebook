@@ -124,7 +124,7 @@ function buildFrontmatter(existing, body, filePath) {
   next.content_role = existing.content_role || defaultContentRole(filePath)
   next.created = existing.created || now
   next.updated = now
-  next.image_key = imageKey
+  next.imageNameKey = imageKey
   next.description = description
   next.llm_description_done = descriptionDone
   next.status = status

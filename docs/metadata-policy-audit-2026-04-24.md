@@ -20,15 +20,15 @@ Current state: resolved.
 
 | Path | Missing fields | Notes |
 | --- | --- | --- |
-| `my-work/myself/对外培训/2025/index.md` | `kind`, `updated`, `image_key`, `description`, `status`, `tags` | Frontmatter only contains `type` and `created`. |
-| `my-work/myself/对外培训/2025/raw/index.md` | `type`, `kind`, `created`, `updated`, `image_key`, `description`, `status`, `tags` | File is empty. |
+| `my-work/myself/对外培训/2025/index.md` | `kind`, `updated`, `imageNameKey`, `description`, `status`, `tags` | Frontmatter only contains `type` and `created`. |
+| `my-work/myself/对外培训/2025/raw/index.md` | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | File is empty. |
 | `output/index.md` | `description` | Manual index note now falls short of the human-managed minimum. |
 
 ### LLM-managed notes missing required fields
 
 | Path | Missing fields | Notes |
 | --- | --- | --- |
-| `resources/web/提示词工程，上下文工程，驾驭工程.md` | `image_key` | `image_key` is present but empty string, so it fails the required-field check. |
+| `resources/web/提示词工程，上下文工程，驾驭工程.md` | `imageNameKey` | `imageNameKey` is present but empty string, so it fails the required-field check. |
 | `wiki/index.md` | `description` | Generated wiki index lacks the now-required summary field. |
 | `wiki/log.md` | `description` | Generated wiki log lacks the now-required summary field. |
 

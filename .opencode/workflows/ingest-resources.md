@@ -12,7 +12,7 @@ Convert external material into durable Markdown resources and connect them to th
 
 1. Determine the source type: web, pdf, zotero, local-file, note, or transcript.
 2. Check whether a matching resource note already exists.
-3. Create or update a Markdown resource note with provenance, summary, links, and `image_key`.
+3. Create or update a Markdown resource note with provenance, summary, links, and `imageNameKey`.
 4. Normalize metadata using the resource schema.
 5. Organize `workbook/resources/` incrementally when useful, but do not delete captured files, rename original files, or perform large tree-wide restructures.
 6. Link the resource to relevant brainstorm, wiki, or project notes.

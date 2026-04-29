@@ -11,7 +11,7 @@ Audit the knowledge vault for metadata drift, missing provenance, indexing gaps,
 ## Steps
 
 1. Check frontmatter coverage and schema fit for `workbook/resources/`, `workbook/brainstorm/`, `workbook/wiki/`, and `workbook/output/` notes.
-2. Flag missing `image_key` fields.
+2. Flag missing `imageNameKey` fields.
 3. Check whether `workbook/wiki/` and `workbook/output/` pages are represented in `workbook/wiki/index.md` and `workbook/output/index.md` when those indexes exist.
 4. Identify orphan notes, duplicate topics, weakly linked pages, and missing or stale index entries.
 5. Flag wiki claims that lack supporting sources.

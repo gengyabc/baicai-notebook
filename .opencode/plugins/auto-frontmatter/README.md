@@ -17,7 +17,7 @@ LLM 摄取管道，用于标准化已纳入管理的 markdown 内容，标记处
    backfill.mjs (v2 摄取引擎)
         │
         ├─ ingest_status: pending
-        ├─ image_key: <slugified 文件名>
+        ├─ imageNameKey: <slugified 文件名>
         ├─ description: <提取的首段内容>
         ├─ llm_description_done: true (白名单) 或 false (待增强)
         │

@@ -9,7 +9,7 @@ compatibility: opencode
 - identify orphan notes, missing index entries, and duplicate concepts
 - spot wiki notes with weak sourcing
 - spot brainstorm notes that are candidates for promotion
-- check attachment locality and `image_key` coverage
+- check attachment locality and `imageNameKey` coverage
 
 ## When to use me
 

@@ -147,7 +147,7 @@ node .opencode/scripts/migrate-vault-path.mjs <oldRoot> <newRoot>
 | `kind` | 内容分类：`note`/`index`/`log`/`topic`/`entity`/`concept`/`project`/`deliverable` |
 | `created` | 创建日期 |
 | `updated` | 最近更新日期 |
-| `image_key` | 图片/附件关联键 |
+| `imageNameKey` | 图片/附件关联键 |
 | `description` | 笔记的简短说明；人工笔记和 LLM 笔记都要求 |
 | `status` | 工作流状态，人工笔记至少要可区分当前状态 |
 | `tags` | 必填；人工笔记可以更自由，LLM 笔记应保持结构化 |
@@ -173,7 +173,7 @@ type:
 kind:
 created:
 updated:
-image_key:
+imageNameKey:
 description:
 status: active
 tags: []
@@ -186,7 +186,7 @@ type:
 kind:
 created:
 updated:
-image_key:
+imageNameKey:
 description:
 status:
 tags: []
@@ -251,4 +251,4 @@ bun run .opencode/scripts/env-registry.mjs set MY_ID_CARD   # 交互式输入值
 ## 注意事项
 
 - `/debug` 会话禁用知识库自动化策略，并阻止写入 `workbook/wiki/`、`workbook/resources/` 和 `workbook/brainstorm/`
-- 编辑知识库笔记时保持溯源信息、本地链接、`image_key` 和附件位置的完整性
+- 编辑知识库笔记时保持溯源信息、本地链接、`imageNameKey` 和附件位置的完整性

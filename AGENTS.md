@@ -52,7 +52,7 @@ When folder names are referenced in documentation and workflows, they should be 
 - Primary discovery: `workbook/wiki/index.md`, `workbook/output/index.md`
 - Structural log: `workbook/wiki/log.md` when present
 
-Keep provenance, local links, `image_key`, and attachment locality intact.
+Keep provenance, local links, `imageNameKey`, and attachment locality intact.
 
 ## Tool requirements
 

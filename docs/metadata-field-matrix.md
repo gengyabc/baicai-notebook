@@ -15,7 +15,7 @@ Legend:
 | `kind` | R | R | R | R | R | R | R |
 | `created` | R | R | R | R | R | R | R |
 | `updated` | R | R | R | R | R | R | R |
-| `image_key` | R | R | R | R | R | R | R |
+| `imageNameKey` | R | R | R | R | R | R | R |
 | `description` | R | R | R | R | R | R | R |
 | `status` | R | R | R | R | R | R | R |
 | `tags` | R | R | R | R | R | R | R |
