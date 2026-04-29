@@ -1,0 +1,5 @@
+branch = "main"
+phaseTopic = "enhance-info-retrieval"
+livePhasePath = ".planning/phase"
+status = "live"
+implementedStepKeys = []
