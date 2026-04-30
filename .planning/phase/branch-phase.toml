@@ -2,4 +2,4 @@ branch = "main"
 phaseTopic = "enhance-info-retrieval"
 livePhasePath = ".planning/phase"
 status = "live"
-implementedStepKeys = ["sqlite-shortlist-ranking-and-fallback", "frontmatter-tag-governance", "structured-query-constraint-extraction"]
+implementedStepKeys = ["sqlite-shortlist-ranking-and-fallback", "frontmatter-tag-governance", "structured-query-constraint-extraction", "retrieval-contract-and-safety-guardrails"]

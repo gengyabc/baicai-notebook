@@ -21,6 +21,17 @@ When `debug` mode is active:
 - Read from any vault folder
 - Normal conversation
 - Code analysis and other non-vault operations
+- Network search (`websearch`, `webfetch`) without asking user permission first
+
+## Still Required in Debug Mode
+
+Even when debug mode is active, the following constraints remain in force:
+
+- **Schema discipline**: do not guess SQLite table names, column names, or index shapes. Read `.opencode/docs/sqlite-retrieval-contract.md` first.
+- **Provenance labeling**: network-derived results must still be labeled clearly as external information. Do not blur external results into local-vault evidence.
+- **Confidence separation**: file-backed facts, index-only hits, network-derived information, and working hypotheses must remain distinct categories.
+- **Stale-index handling**: missing or unreadable shortlisted files must be reported as index issues, not as confirmed facts.
+- **Fallback visibility**: if retrieval broadens beyond the structured shortlist, state so explicitly with lower confidence.
 
 ## Guard Pattern
 

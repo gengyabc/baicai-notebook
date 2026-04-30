@@ -14,6 +14,25 @@ compatibility: opencode
 - Use `workbook/brainstorm/` only for tentative synthesis
 - Call out uncertainty, conflict, and support level clearly
 
+## Canonical Contract Consumption
+
+This skill **consumes** the retrieval contract and safety policy defined in:
+
+- `.opencode/docs/sqlite-retrieval-contract.md` - single canonical reference for schema, wrapper contract, provenance separation, and network permission policy
+- `.opencode/workflows/query-vault.md` - retrieval behavior authority for decision chain, thresholds, and fallback policy
+- `.opencode/rules/retrieval-safety.md` - enforcement of schema discipline, wrapper usage, provenance separation, and network access
+
+This skill must not redefine schema, wrapper shapes, constraint families, provenance categories, or network permission rules. When this skill's guidance conflicts with the canonical contract or safety rule, the contract and rule take precedence.
+
+## Provenance Separation
+
+This skill follows the provenance separation defined in `.opencode/docs/sqlite-retrieval-contract.md`. All answers must keep these four categories distinct:
+
+1. **File-backed local facts** - information confirmed by reading the source Markdown file from the vault.
+2. **Index-only hits** - information present in the SQLite index but not yet confirmed by reading the source file. These must not be presented as verified claims.
+3. **Network-derived information** - information obtained from `websearch` or `webfetch`. Must be labeled as external regardless of session mode.
+4. **Working hypotheses or inferred matches** - conclusions drawn by inference, pattern matching, or relaxation rather than by direct structured retrieval. Must be labeled as hypotheses.
+
 ## Governance alignment
 
 Retrieval follows the metadata governance policy from `.opencode/rules/metadata-conventions.md`:
@@ -34,7 +53,7 @@ Use this for vault Q&A that needs confidence-aware retrieval and provenance.
 Follow the six-stage retrieval decision chain from `query-vault.md`:
 
 1. **Stage 0 - Constraint Extraction**: Before any SQLite shortlist, extract structured constraints from the user request. Map user phrases to the normalized constraint payload defined in `.opencode/docs/sqlite-retrieval-contract.md`. Follow the frozen extraction priority: time -> location -> tags -> extraFields. Record each extraction in the `structuredTrace` with family, field, matched phrase, normalized value, and source (`literal`, `alias`, or `inference`). Note: `structuredTrace` is a planned input field; produce it during extraction so it is ready when the wrapper is updated.
-2. **Stage 1 - Structured SQLite Shortlist**: Pass the normalized constraint payload to `vault_index_search` using the current request shape (location fields are array-valued; wrap scalar extraction outputs as single-element arrays). Build a frontmatter query from time, location, tags, and allowlisted extra-field constraints. Note: `extraFields` is planned contract work not yet accepted by the live wrapper. Execute against `notes` and `properties` tables with intersection semantics.
+2. **Stage 1 - Structured SQLite Shortlist**: Pass the normalized constraint payload to `vault_index_search` using the current request shape (location fields are array-valued; wrap scalar extraction outputs as single-element arrays). Build a frontmatter query from time, location, tags, and allowlisted extra-field constraints. Note: `extraFields` is planned contract work not yet accepted by the live wrapper. Execute with intersection semantics using the schema and table conventions defined in `.opencode/docs/sqlite-retrieval-contract.md`.
 3. **Stage 2 - Candidate Count Decision**: Route based on shortlist size using frozen thresholds.
 4. **Stage 2.5 - Description Reranking**: When shortlist is 20-100, score by description relevance and read top N.
 5. **Stage 3 - Progressive Relaxation**: When shortlist is empty or insufficient, relax constraints in order: tags -> time -> location -> unstructured. The cap of 3 rounds means `full_constraint_removal` is the action of round 3 (the last round before Stage 5). Concretely:
@@ -97,7 +116,7 @@ Before running any SQLite shortlist, perform constraint extraction:
 
 ### Diagnostics
 
-The extraction pass (Stage 0) produces caller-side extraction artifacts only: a `structuredTrace` array recording each extracted constraint with its family, field, matched user phrase, normalized value, and normalization source (`literal`, `alias`, or `inference`). It also produces the normalized constraint values and matched phrases that will be passed to the wrapper. Note: `structuredTrace` is a planned input field not yet accepted by the live wrapper; produce it during extraction so it is ready when the wrapper is updated. Execution diagnostics such as `appliedConstraints`, `inferredConstraints`, `rejectedStructuredHints`, `candidateCounts`, and `fallbackReason` are response-side data produced exclusively by the wrapper after shortlist execution; they are defined in the wrapper response contract and must not be confused with extraction-stage outputs. The current wrapper does not yet expose these as structured fields.
+The extraction pass (Stage 0) produces caller-side extraction artifacts only: a `structuredTrace` array recording each extracted constraint with its family, field, matched user phrase, normalized value, and normalization source (`literal`, `alias`, or `inference`). It also produces the normalized constraint values to be passed to the live wrapper through the current request shape. Matched phrases are caller-side extraction artifacts; they are not currently carried through any live wrapper input field and will become available to the wrapper only when the planned `structuredTrace` input field is implemented. Note: `structuredTrace` is a planned input field not yet accepted by the live wrapper; produce it during extraction so it is ready when the wrapper is updated. Execution diagnostics such as `appliedConstraints`, `inferredConstraints`, `rejectedStructuredHints`, `candidateCounts`, and `fallbackReason` are response-side data produced exclusively by the wrapper after shortlist execution; they are defined in the wrapper response contract and must not be confused with extraction-stage outputs. The current wrapper does not yet expose these as structured fields.
 
 ## Constraint Rules
 
@@ -138,3 +157,7 @@ When fallback happens, expose:
 - never issue unbounded queries when constraints are empty
 - constraint extraction must run before any SQLite shortlist
 - constraint family priority is frozen: time -> location -> tags -> extraFields
+- maintain provenance separation: file-backed facts, index-only hits, network-derived information, and working hypotheses must remain distinct categories (defined in `.opencode/docs/sqlite-retrieval-contract.md`)
+- non-debug sessions require explicit user permission before `websearch` or `webfetch`; debug-mode exceptions must still label network-derived results clearly
+- stale or inconsistent index hits (missing or unreadable shortlisted files) must be reported as index issues, not as confirmed facts
+- fallback broadening beyond the structured shortlist must be stated explicitly with lower confidence

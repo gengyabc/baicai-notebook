@@ -1,6 +1,8 @@
 # SQLite Retrieval Contract
 
-Canonical reference for the vault SQLite retrieval index, schema, and the only supported first-pass retrieval entrypoint.
+**This document is the single canonical reference** for `.opencode/frontmatter-index.sqlite`, the `notes` and `properties` schema, retrieval-relevant indexed fields, and the `vault_index_search` wrapper contract. No other file may define a competing schema, wrapper shape, or retrieval-relevant field list.
+
+**Frozen at step 04.** Changes to schema, wrapper request/response shape, or constraint families require updating this document first and then aligning all consumers (`query-vault.md`, `second-brain-query/SKILL.md`, `retrieval-safety.md`).
 
 ## Purpose
 
@@ -11,6 +13,11 @@ This document exists to prevent:
 - guessing table names or columns
 - bypassing the retrieval wrapper with improvised SQL
 - mixing structured retrieval with broad text search too early
+- treating the SQLite index as the vault source of truth
+
+## Vault Source of Truth
+
+The Markdown vault files are the authoritative source of truth. `.opencode/frontmatter-index.sqlite` is a **derived retrieval index**. It exists solely to support fast structured shortlist generation. Index hits are not confirmed file facts until the source file is read and validated.
 
 ## Database File
 
@@ -20,9 +27,9 @@ This document exists to prevent:
 
 ## Canonical First-Pass Entrypoint
 
-- Use `vault_index_search` as the only supported first-pass retrieval entrypoint in non-debug sessions.
-- Do not write ad hoc SQL as the default retrieval path.
-- Manual SQL is allowed only for implementation, debugging, or verification of the retrieval layer itself.
+- `vault_index_search` is the **only** supported first-pass retrieval entrypoint in non-debug sessions.
+- Ad hoc SQL is **not** a default retrieval path. Manual SQL is allowed only for retrieval-layer implementation, debugging, or verification of the retrieval layer itself.
+- All retrieval consumers (`query-vault.md`, `second-brain-query/SKILL.md`, `retrieval-safety.md`) must reference this entrypoint and must not define competing entrypoints or bypass paths.
 
 ## Schema
 
@@ -321,12 +328,46 @@ All windows are inclusive on both endpoints, except that `before` and `after` ar
 
 The retrieval layer expects these indexes to exist:
 
-- `idx_notes_path`
-- `idx_properties_note_key`
-- `idx_properties_key_text_note`
-- `idx_properties_key_date_note`
+### Core retrieval indexes (used by structured shortlist)
+
+- `idx_notes_path` - path lookup on notes
+- `idx_properties_note_key` - note + key lookup on properties
+- `idx_properties_key_text_note` - key + text value + note lookup (tag, location, and text-value matching)
+- `idx_properties_key_date_note` - key + note + date value lookup (time filtering)
+
+### Additional storage indexes (present but not primary retrieval path)
+
+- `idx_properties_key_type_text` - key + type + text value composite
+- `idx_properties_key_type_num` - key + type + numeric value composite
+- `idx_properties_key_type_bool` - key + type + boolean value composite
+- `idx_properties_key_type_date` - key + type + date value composite
+- `idx_properties_array_group` - array group + key within a note
+
+### Auto indexes
+
+- `sqlite_autoindex_notes_1` - notes primary key
+- `sqlite_autoindex_notes_2` - notes path unique constraint
 
 Other indexes may exist for storage or compatibility reasons.
+
+## Provenance Separation (Canonical Categories)
+
+All retrieval consumers must keep these four answer-layer categories distinct in reasoning and final output:
+
+1. **File-backed local facts** - information confirmed by reading the source Markdown file from the vault.
+2. **Index-only hits** - information present in the SQLite index but not yet confirmed by reading the source file. These must not be presented as verified claims.
+3. **Network-derived information** - information obtained from `websearch` or `webfetch`. Must be labeled as external regardless of session mode.
+4. **Working hypotheses or inferred matches** - conclusions drawn by inference, pattern matching, or relaxation rather than by direct structured retrieval. Must be labeled as hypotheses.
+
+Do not merge these categories into a single undifferentiated answer. This separation applies across the contract doc, `query-vault.md`, `second-brain-query/SKILL.md`, and `retrieval-safety.md`.
+
+## Network Permission Policy
+
+In non-debug sessions, `websearch` and `webfetch` require explicit user permission before use. The permission request must be explicit and short, for example: `Local retrieval was insufficient. Do you want me to search the web?`
+
+In debug mode, network search is allowed without asking first, but all network-derived results must still be labeled clearly as external information.
+
+This policy is stated here as the canonical contract reference and must be consistently followed by all retrieval consumers.
 
 ## Anti-Patterns
 
@@ -346,5 +387,7 @@ Before trusting a retrieval answer:
 1. Did the query go through `vault_index_search` first?
 2. Were structured constraints applied when available?
 3. Were shortlisted files actually read?
-4. Are local facts, index-only hits, and network results clearly separated?
+4. Are file-backed facts, index-only hits, network-derived information, and hypotheses clearly separated?
 5. In non-debug sessions, was user permission obtained before network search?
+6. Are missing or unreadable shortlisted files reported as stale or inconsistent index evidence rather than as confirmed facts?
+7. Is fallback explicitly stated with lower confidence when retrieval broadened beyond the structured shortlist?

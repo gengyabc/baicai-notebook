@@ -8,12 +8,16 @@ This workflow is enforced by a retrieval hook plus a SQLite-backed shortlist too
 
 ## Canonical Contract
 
-Treat `.opencode/docs/sqlite-retrieval-contract.md` as the canonical reference for:
+Treat `.opencode/docs/sqlite-retrieval-contract.md` as the **single canonical reference** for:
 
 - the SQLite database path
 - the `notes` and `properties` schema
 - retrieval-relevant indexed fields
 - the required first-pass wrapper entrypoint: `vault_index_search`
+- the provenance separation categories (file-backed facts, index-only hits, network-derived information, working hypotheses)
+- the network permission policy
+
+No other file may define a competing schema, wrapper shape, or retrieval-relevant field list.
 
 This workflow remains the source of truth for retrieval behavior, decision order, thresholds, and fallback policy.
 
@@ -77,7 +81,7 @@ Before any Stage 1 shortlist execution, the retrieval flow must perform a constr
 
 **Diagnostics:**
 
-The extraction pass produces caller-side extraction artifacts: a `structuredTrace` array recording each extracted constraint with its family, field, matched user phrase, normalized value, and normalization source (`literal`, `alias`, or `inference`), plus the normalized constraint values and matched phrases to be passed to the wrapper. Note: `structuredTrace` is a planned input field not yet accepted by the live wrapper; the extraction stage should produce it so it is ready when the wrapper is updated. Execution diagnostics (`appliedConstraints`, `candidateCounts`, `fallbackReason`, `inferredConstraints`, `rejectedStructuredHints`) are response-side data produced exclusively by the wrapper after shortlist execution; they are defined in the wrapper response contract and must not be confused with extraction-stage outputs.
+The extraction pass produces caller-side extraction artifacts: a `structuredTrace` array recording each extracted constraint with its family, field, matched user phrase, normalized value, and normalization source (`literal`, `alias`, or `inference`), plus the normalized constraint values to be passed to the live wrapper through the current request shape. Matched phrases are caller-side extraction artifacts; they are not currently carried through any live wrapper input field and will become available to the wrapper only when the planned `structuredTrace` input field is implemented. Note: `structuredTrace` is a planned input field not yet accepted by the live wrapper; the extraction stage should produce it so it is ready when the wrapper is updated. Execution diagnostics (`appliedConstraints`, `candidateCounts`, `fallbackReason`, `inferredConstraints`, `rejectedStructuredHints`) are response-side data produced exclusively by the wrapper after shortlist execution; they are defined in the wrapper response contract and must not be confused with extraction-stage outputs.
 
 ### Stage 1: Structured SQLite Shortlist
 
@@ -100,6 +104,8 @@ The extraction pass produces caller-side extraction artifacts: a `structuredTrac
 - Do not substitute path heuristics such as `n.path LIKE '%2025%'` for time filtering when a time constraint is present.
 - Do not use `OR` to combine unrelated tag, time, and location constraint families in the same shortlist pass. `OR` is only valid within a single family when expressing alternatives, such as multiple accepted time keys.
 - If a user asks for `2025年在江苏的培训`, the shortlist query must apply the training tag, the 2025 time window, and the Jiangsu location constraint in the same SQL pass before any note reads.
+- **Shortlist-first reading order:** When usable structured clues exist, the retrieval flow must generate the structured shortlist before reading any broad file set. Do not read files outside the shortlist before the shortlist is generated. This is a local-first policy: structured SQLite shortlist first, then read only shortlisted files.
+- **Stale-index handling:** If a shortlisted file is missing or unreadable, report it as stale or inconsistent index evidence. Do not present such hits as confirmed facts. The index may lag behind the vault; missing files are an index consistency issue, not a retrieval success.
 
 **Constraint rules:**
 
@@ -111,8 +117,8 @@ The extraction pass produces caller-side extraction artifacts: a `structuredTrac
 
 **Tag matching detail:**
 
-- Exact match: `tags = 'edu/child'` returns notes tagged exactly `edu/child`.
-- Hierarchical match: `tags LIKE 'topic/%'` returns notes tagged with `topic/` and any subtopic beneath it.
+- Exact match: notes tagged with the exact canonical value are returned.
+- Hierarchical match: notes tagged with a prefix and any subtopic beneath it are returned (e.g., `topic/` matches `topic/subtopic`).
 
 **Time matching detail:**
 
@@ -120,67 +126,22 @@ The extraction pass produces caller-side extraction artifacts: a `structuredTrac
 - Note-timestamp queries: use `created` and `updated` only when the user explicitly asks about note creation time, note update time, or other document-management chronology.
 - Do not satisfy an event-time query with `created` or `updated` merely because those fields also fall inside the requested window.
 - Normalize year, half-year, month, and explicit date-range phrases into inclusive `[start, end]` windows using the time-phrase alias tables in `.opencode/docs/sqlite-retrieval-contract.md`.
-- Use `value_date` from the `properties` table for all time filtering.
+- For the schema columns used in time filtering (e.g., `value_date`), refer to `.opencode/docs/sqlite-retrieval-contract.md`.
 
 **Location matching detail:**
 
-- Use `value_text` column in the `properties` table with `key IN ('country', 'province', 'city')`.
+- Location filtering uses the schema and column conventions defined in `.opencode/docs/sqlite-retrieval-contract.md` (see Retrieval-Relevant Fields and Constraint Families).
 - Normalize location phrases only into `country`, `province`, and `city` using canonical values from `.opencode/alias-registry.md`.
 - When a note's `country` field is absent in the index, treat it as `中国` for retrieval purposes. Do not inject `country = 中国` into the query when the user omits a country; the default applies at the metadata/index level so that notes without an explicit `country` are still matched.
 - When both `province` and `city` can be extracted from the user request, emit both constraints.
 
 **SQL implementation patterns:**
 
-- `query-vault.md` is the source of truth for structured shortlist behavior. Use `.opencode/docs/sqlite-retrieval-contract.md` for schema and wrapper contract details instead of restating them elsewhere.
+- `query-vault.md` is the source of truth for structured shortlist behavior. Use `.opencode/docs/sqlite-retrieval-contract.md` for schema, table names, column names, and wrapper contract details instead of restating them here.
 - Preferred pattern: one `EXISTS` block per active constraint family so each family stays independently testable and the whole query remains an intersection.
 - Acceptable alternative: `JOIN` once per active family, with a final `SELECT DISTINCT n.path`.
 - For answer-generation reads, run a shortlist query first, then read only the shortlisted notes.
-
-Example shortlist for `2025年在江苏的培训`:
-
-```sql
-SELECT DISTINCT n.path
-FROM notes n
-WHERE EXISTS (
-  SELECT 1
-  FROM properties pt
-  WHERE pt.note_id = n.id
-    AND pt.key = 'tags'
-    AND pt.value_text = 'topic/training'
-)
-AND EXISTS (
-  SELECT 1
-  FROM properties pp
-  WHERE pp.note_id = n.id
-    AND pp.key = 'province'
-    AND pp.value_text = '江苏省'
-)
-AND EXISTS (
-  SELECT 1
-  FROM properties ps
-  WHERE ps.note_id = n.id
-    AND ps.key = 'start_date'
-    AND ps.value_date <= '2025-12-31'
-)
-AND EXISTS (
-  SELECT 1
-  FROM properties pe
-  WHERE pe.note_id = n.id
-    AND pe.key = 'end_date'
-    AND pe.value_date >= '2025-01-01'
-);
-```
-
-Example anti-pattern that must not be used for structured shortlist generation:
-
-```sql
-SELECT n.path, p.key, p.value_text, p.value_date
-FROM notes n
-JOIN properties p ON n.id = p.note_id
-WHERE p.value_text LIKE '%培训%'
-   OR p.value_date BETWEEN '2025-01-01' AND '2025-12-31'
-   OR n.path LIKE '%2025%';
-```
+- For concrete SQL shape and table/column conventions, refer to the Schema and Anti-Patterns sections in `.opencode/docs/sqlite-retrieval-contract.md`.
 
 ### Stage 2: Candidate Count Decision
 
@@ -269,6 +230,14 @@ If progressive relaxation exhausts its 3 rounds without finding sufficient infor
 2. This is a later fallback, not the primary retrieval path.
 3. When this fallback is used, mark the answer confidence as lower and explicitly state: "Retrieval was relaxed to an unstructured text pass; answer confidence may be reduced."
 
+### Network Search Permission
+
+After all local retrieval stages are exhausted, network search may be considered:
+
+1. In non-debug sessions, `websearch` and `webfetch` require explicit user permission. The permission request must be explicit and short, for example: `Local retrieval was insufficient. Do you want me to search the web?`
+2. In debug mode, network search is allowed without asking first, but all network-derived results must still be labeled clearly as external information.
+3. Network-derived results must never be blurred into local-vault evidence. Maintain the provenance separation defined in `.opencode/docs/sqlite-retrieval-contract.md`.
+
 ## Integration Topology
 
 ```
@@ -318,6 +287,17 @@ User Query
 
 - load `second-brain-query`
 
+## Provenance Separation
+
+All answers must keep these four categories distinct:
+
+1. **File-backed local facts** - information confirmed by reading the source Markdown file from the vault.
+2. **Index-only hits** - information present in the SQLite index but not yet confirmed by reading the source file. These must not be presented as verified claims.
+3. **Network-derived information** - information obtained from `websearch` or `webfetch`. Must be labeled as external regardless of session mode.
+4. **Working hypotheses or inferred matches** - conclusions drawn by inference, pattern matching, or relaxation rather than by direct structured retrieval. Must be labeled as hypotheses.
+
+This separation is defined in `.opencode/docs/sqlite-retrieval-contract.md` as the canonical source. All retrieval consumers must follow the same categories without redefining them.
+
 ## Outputs
 
 - concise answer
@@ -338,3 +318,8 @@ User Query
 - Empty constraint set produces no unbounded query
 - Constraint family priority is fixed: time/date -> location -> tags/topic -> allowlisted extra fields
 - Time mode is chosen at extraction time, before query construction
+- Shortlist hits are not confirmed evidence until the source file is read
+- Missing or unreadable shortlisted files are reported as stale or inconsistent index evidence, not as confirmed facts
+- Provenance separation is mandatory: file-backed facts, index-only hits, network-derived information, and working hypotheses must remain distinct categories in reasoning and answers
+- Non-debug sessions require explicit user permission before `websearch` or `webfetch`; debug-mode exceptions must still label network-derived results clearly
+- Fallback broadening beyond the structured shortlist must be stated explicitly with lower confidence
