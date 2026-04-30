@@ -7,7 +7,7 @@ Legend:
 - `R`: required
 - `O`: optional
 - `D`: domain-specific
-- `G`: governed by alias registry (see `docs/metadata-alias-registry.md`)
+- `G`: governed by alias registry (see `.opencode/alias-registry.md`)
 - `-`: not needed by default
 
 | Field | `workbook/my-work/` | `workbook/brainstorm/todo` + `active` | `workbook/brainstorm/managed` | `workbook/resources/` | generated `workbook/wiki/` | human `workbook/output/` | generated `workbook/output/` |
@@ -47,7 +47,7 @@ Legend:
 - `workbook/brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes.
 - Human-managed notes should preserve useful domain fields instead of being flattened into generic metadata.
 - LLM-managed notes should only carry provenance and pipeline fields that a workflow actually uses.
-- Fields marked `G` are governed by the alias registry at `docs/metadata-alias-registry.md`. Lint checks report non-canonical values as advisory findings.
+- Fields marked `G` are governed by the alias registry at `.opencode/alias-registry.md`. Lint checks report non-canonical values as advisory findings.
 - `tags` are governed for retrieval consistency: canonical tag values and accepted aliases are defined in the alias registry. Tags remain a retrieval aid; time and location semantics belong in structured fields.
-- `country`, `province`, and `city` are domain-specific (`D`) for most note families but governed (`G`) when present. When `country` is absent from a note, retrieval defaults to China at the metadata/index layer per the policy in `metadata-conventions.md`.
+- `country`, `province`, and `city` are domain-specific (`D`) for most note families but governed (`G`) when present. When `country` is absent from a note, retrieval defaults to `中国` at the metadata/index layer per the policy in `metadata-conventions.md`.
 - `canonical_topic` is optional and governed (`G`) only where a retrieval workflow materially depends on it. It is not a universal required field.

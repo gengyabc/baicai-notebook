@@ -10,7 +10,7 @@ compatibility: opencode
 - spot wiki notes with weak sourcing
 - spot brainstorm notes that are candidates for promotion
 - check attachment locality and `imageNameKey` coverage
-- check for alias drift against the alias registry at `docs/metadata-alias-registry.md`
+- check for alias drift against the alias registry at `.opencode/alias-registry.md`
 - check for uncontrolled tag growth and non-canonical retrieval metadata
 - flag tags, location values, and `canonical_topic` values that do not match canonical entries
 
@@ -20,7 +20,7 @@ Use this for periodic quality review, duplicate finding, promotion screening, or
 
 ## Governance checks
 
-Advisory governance checks are based on the metadata policy in `.opencode/rules/metadata-conventions.md` and the alias registry in `docs/metadata-alias-registry.md`.
+Advisory governance checks are based on the metadata policy in `.opencode/rules/metadata-conventions.md` and the alias registry in `.opencode/alias-registry.md`.
 
 - Alias drift: flag non-canonical tag, location, and `canonical_topic` values as advisory findings.
 - Tag growth: flag unusually large tag lists or singleton tags that suggest drift.

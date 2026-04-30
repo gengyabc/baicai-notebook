@@ -11,11 +11,11 @@ This workflow is enforced by a retrieval hook plus a SQLite-backed shortlist too
 This workflow relies on the metadata governance policy defined in `.opencode/rules/metadata-conventions.md`:
 
 - **Structured fields are the primary retrieval carriers**: time semantics are in `created`, `updated`, `start_date`, and `end_date`; location semantics are in `country`, `province`, and `city`. Tags are a retrieval aid, not the primary carrier for time or location.
-- **Tags follow the alias registry**: canonical tag values and accepted aliases are defined in `docs/metadata-alias-registry.md`. The alias registry is the governance reference for human review and lint checks. Alias-aware query-time expansion (matching notes by alias as well as canonical value) is a future enhancement; the current Stage 1 retrieval flow reads canonical values directly from the index.
+- **Tags follow the alias registry**: canonical tag values and accepted aliases are defined in `.opencode/alias-registry.md`. The alias registry is the governance reference for human review and lint checks. Alias-aware query-time expansion (matching notes by alias as well as canonical value) is a future enhancement; the current Stage 1 retrieval flow reads canonical values directly from the index.
 - **Location values follow the alias registry**: `country`, `province`, and `city` values may have aliases defined in the registry. Alias-aware location matching at query time is a future enhancement; the current Stage 1 retrieval flow matches location values as stored in the index. The alias registry serves as the governance reference for human review and normalization guidance.
 - **`canonical_topic` is optional and governed only where retrieval depends on it**: not all note families require `canonical_topic`; it is governed by the alias registry only when a workflow materially depends on it.
 - **Hierarchical tags remain valid**: `topic/*`, `state/*`, `source/*`, and `role/*` forms are supported by the SQLite retrieval layer.
-- **China default is metadata-level**: when a note's `country` field is absent, retrieval treats it as China at the metadata/index layer, not at query time.
+- **China default is metadata-level**: when a note's `country` field is absent, retrieval treats it as `中国` (canonical for China) at the metadata/index layer, not at query time.
 
 ## Inputs
 
@@ -32,9 +32,18 @@ The retrieval decision chain is the core of vault query behavior. It proceeds th
 1. Build a SQLite query from structured frontmatter constraints:
    - **Tags**: exact match or hierarchical match (e.g., `topic/*` matches `topic/subtopic`). Tags are stored in the `properties` table with `key = 'tags'`.
    - **Time fields**: range filters on `created`, `updated`, `start_date`, `end_date`. These are stored as `value_date` in the `properties` table.
-   - **Location fields**: filter on `country`, `province`, `city`. When a note's `country` field is absent in the index, treat it as `China` for retrieval purposes. Do not inject `country = China` into the query when the user does not specify a country; the default is applied at the metadata/index level when matching against notes that lack an explicit `country` value.
+   - **Location fields**: filter on `country`, `province`, `city`. When a note's `country` field is absent in the index, treat it as `中国` for retrieval purposes. Do not inject `country = 中国` into the query when the user does not specify a country; the default is applied at the metadata/index level when matching against notes that lack an explicit `country` value.
 2. Execute query against the `notes` and `properties` tables in `.opencode/frontmatter-index.sqlite`.
 3. Return a shortlist of candidate note paths with their `description` values.
+
+**Stage 1 execution contract:**
+
+- Structured constraints must be enforced inside SQLite, not by reading a broad result set and manually filtering afterward.
+- Mixed constraints must be combined as an intersection. Use `JOIN`, `EXISTS`, `GROUP BY ... HAVING`, or an equivalent SQL pattern that guarantees one candidate note satisfies every active constraint.
+- Determine the time-filter mode before building the shortlist query. Use event-time filtering for dated activities such as training, meetings, talks, or trips. Use note-timestamp filtering only when the user is asking about note creation or update time.
+- Do not substitute path heuristics such as `n.path LIKE '%2025%'` for time filtering when a time constraint is present.
+- Do not use `OR` to combine unrelated tag, time, and location constraint families in the same shortlist pass. `OR` is only valid within a single family when expressing alternatives, such as multiple accepted time keys.
+- If a user asks for `2025年在江苏的培训`, the shortlist query must apply the training tag, the 2025 time window, and the Jiangsu location constraint in the same SQL pass before any note reads.
 
 **Constraint rules:**
 
@@ -48,13 +57,68 @@ The retrieval decision chain is the core of vault query behavior. It proceeds th
 
 **Time matching detail:**
 
-- Use `value_date` column in the `properties` table with `key IN ('created', 'updated', 'start_date', 'end_date')`.
-- Apply range filtering: `value_date >= ? AND value_date <= ?`.
+- Event-time queries: use `start_date` and `end_date` when the user is asking when something happened. A note matches a requested time window when its event dates overlap that window. For single-day events, `start_date` and `end_date` may be the same day.
+- Note-timestamp queries: use `created` and `updated` only when the user explicitly asks about note creation time, note update time, or other document-management chronology.
+- Do not satisfy an event-time query with `created` or `updated` merely because those fields also fall inside the requested window.
+- Use `value_date` from the `properties` table for all time filtering.
 
 **Location matching detail:**
 
 - Use `value_text` column in the `properties` table with `key IN ('country', 'province', 'city')`.
-- When a note's `country` field is absent in the index, treat it as `China` for retrieval purposes. Do not inject `country = China` into the query when the user omits a country; the default applies at the metadata/index level so that notes without an explicit `country` are still matched.
+- When a note's `country` field is absent in the index, treat it as `中国` for retrieval purposes. Do not inject `country = 中国` into the query when the user omits a country; the default applies at the metadata/index level so that notes without an explicit `country` are still matched.
+
+**SQL implementation patterns:**
+
+- `query-vault.md` is the source of truth for structured shortlist SQL behavior. Other skills and prompts should reference this section rather than restating their own SQL rules.
+- Preferred pattern: one `EXISTS` block per active constraint family so each family stays independently testable and the whole query remains an intersection.
+- Acceptable alternative: `JOIN` once per active family, with a final `SELECT DISTINCT n.path`.
+- For answer-generation reads, run a shortlist query first, then read only the shortlisted notes.
+
+Example shortlist for `2025年在江苏的培训`:
+
+```sql
+SELECT DISTINCT n.path
+FROM notes n
+WHERE EXISTS (
+  SELECT 1
+  FROM properties pt
+  WHERE pt.note_id = n.id
+    AND pt.key = 'tags'
+    AND pt.value_text = 'topic/training'
+)
+AND EXISTS (
+  SELECT 1
+  FROM properties pp
+  WHERE pp.note_id = n.id
+    AND pp.key = 'province'
+    AND pp.value_text = '江苏省'
+)
+AND EXISTS (
+  SELECT 1
+  FROM properties ps
+  WHERE ps.note_id = n.id
+    AND ps.key = 'start_date'
+    AND ps.value_date <= '2025-12-31'
+)
+AND EXISTS (
+  SELECT 1
+  FROM properties pe
+  WHERE pe.note_id = n.id
+    AND pe.key = 'end_date'
+    AND pe.value_date >= '2025-01-01'
+);
+```
+
+Example anti-pattern that must not be used for structured shortlist generation:
+
+```sql
+SELECT n.path, p.key, p.value_text, p.value_date
+FROM notes n
+JOIN properties p ON n.id = p.note_id
+WHERE p.value_text LIKE '%培训%'
+   OR p.value_date BETWEEN '2025-01-01' AND '2025-12-31'
+   OR n.path LIKE '%2025%';
+```
 
 ### Stage 2: Candidate Count Decision
 
@@ -92,7 +156,7 @@ When the structured shortlist is empty or Stage 2.5 is insufficient, relax const
 
 1. **Remove low-value tag constraints first**: Drop tags that are least selective (i.e., tags that match the largest number of notes in the vault, or tags that are least specific to the query).
 2. **Broaden time constraints second**: Expand date ranges. First extend by 30 days on each side of the current range. If still insufficient, extend by 90 days on each side.
-3. **Broaden location constraints third**: Remove `city` first, then remove `province`, keeping `country` as the last location constraint. When the metadata-level China default was applied (i.e., the note had no explicit `country`), retain that default until this step.
+3. **Broaden location constraints third**: Remove `city` first, then remove `province`, keeping `country` as the last location constraint. When the metadata-level `中国` default was applied (i.e., the note had no explicit `country`), retain that default until this step.
 4. **Remove all structured constraints**: Fall back to unstructured pass.
 
 After each relaxation step, retry Stage 1 with the relaxed constraints. Evaluate the candidate count decision (Stage 2) again.
@@ -197,5 +261,5 @@ User Query
 - Frontmatter remains the source of truth; SQLite is a derived retrieval index
 - Progressive relaxation order is fixed: tags -> time -> location -> unstructured. With a 3-round cap, round 3 is either location broadening or full constraint removal (the last resort before Stage 5).
 - Fallback behavior is inspectable and logged
-- Location defaults to China at the metadata/index level when a note's `country` field is absent; not injected at query time
+- Location defaults to `中国` at the metadata/index level when a note's `country` field is absent; not injected at query time
 - Empty constraint set produces no unbounded query

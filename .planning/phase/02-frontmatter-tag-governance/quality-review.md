@@ -27,8 +27,8 @@ requirement-version: 1
 **Summary**: The alias registry omits canonical tags that the policy and templates already bless, so first-party metadata would be reported as drift.
 **Priority**: P1
 **Status**: open
-**Details**: `metadata-conventions.md` requires LLM-managed notes to carry one `state/*`, one `source/*`, and one `role/*` tag, and its templates already use `source/generated` and `role/synthesis`. But `docs/metadata-alias-registry.md` only defines a small subset of canonical `source/*` and `role/*` tags. Because `lint-vault.md` says alias drift should flag tags that do not match canonical entries in the registry, valid repo-owned tags would be misclassified as non-canonical. That makes the governance surface internally inconsistent and would create false-positive lint findings against approved templates.
-**Location**: `docs/metadata-alias-registry.md:Tag aliases`; `.opencode/rules/metadata-conventions.md:Tag rules`; `.opencode/rules/metadata-conventions.md:LLM-managed brainstorm note`
+**Details**: `metadata-conventions.md` requires LLM-managed notes to carry one `state/*`, one `source/*`, and one `role/*` tag, and its templates already use `source/generated` and `role/synthesis`. But `.opencode/alias-registry.md` only defines a small subset of canonical `source/*` and `role/*` tags. Because `lint-vault.md` says alias drift should flag tags that do not match canonical entries in the registry, valid repo-owned tags would be misclassified as non-canonical. That makes the governance surface internally inconsistent and would create false-positive lint findings against approved templates.
+**Location**: `.opencode/alias-registry.md:Tag aliases`; `.opencode/rules/metadata-conventions.md:Tag rules`; `.opencode/rules/metadata-conventions.md:LLM-managed brainstorm note`
 **Fix guidance**: Add all currently sanctioned canonical `state/*`, `source/*`, and `role/*` tags that appear in policy/templates to the registry, or narrow the lint/query wording so tags are only checked against an explicitly governed subset instead of the full allowed tag surface.
 
 <QR-02-P2-002> severity: required
@@ -78,7 +78,7 @@ assessment: clean
 base_sha: 98cc132fb55667ee062d3e97ed2693b4c83c5b25
 head_sha: 7b3155eb03483d9e182b8a52b728dc3e2383a69f
 scope:
-  - docs/metadata-alias-registry.md
+  - .opencode/alias-registry.md
   - .opencode/rules/metadata-conventions.md
   - .opencode/workflows/query-vault.md
   - .opencode/skills/second-brain-query/SKILL.md
@@ -102,7 +102,7 @@ Verified the delta for the three required findings. The alias registry now cover
   - Required: `yes`
   - Status: `closed`
   - Title: Alias registry omitted sanctioned canonical tags
-  - Location: `docs/metadata-alias-registry.md:20-40`
+  - Location: `.opencode/alias-registry.md:20-40`
   - Root Cause Cluster: `registry-policy-drift`
   - Batch Candidate: `QB-001`
   - Summary: Verified fixed. The registry now includes the canonical `state/*`, `source/*`, and `role/*` tags already sanctioned by the policy, enums, and templates, including `source/generated` and `role/synthesis`.
@@ -142,7 +142,7 @@ Verified the delta for the three required findings. The alias registry now cover
 - ID: `QR-02-P1-001`
   - Previous Status: `open`
   - Current Status: `closed`
-  - Notes: `docs/metadata-alias-registry.md` now contains the sanctioned canonical `state/*`, `source/*`, and `role/*` tags referenced by policy/templates.
+  - Notes: `.opencode/alias-registry.md` now contains the sanctioned canonical `state/*`, `source/*`, and `role/*` tags referenced by policy/templates.
 
 - ID: `QR-02-P2-002`
   - Previous Status: `open`

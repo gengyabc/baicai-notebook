@@ -26,7 +26,7 @@ lower-level only
 
 ### Batch 2: Alias Registry And Canonicalization Rules
 
-- `docs/metadata-alias-registry.md` exists with separate sections for tag aliases, location aliases, and canonical_topic aliases
+- `.opencode/alias-registry.md` exists with separate sections for tag aliases, location aliases, and canonical_topic aliases
 - Registry defines governed surface, canonical value, accepted aliases, and review rationale for each entry
 - Registry includes all canonical tags already sanctioned by policy enums and templates (QR-02-P1-001): `state/reviewed`, `state/draft`, `source/generated`, `source/local`, `source/chat`, `source/manual`, `role/synthesis`, `role/topic`, `role/entity`, `role/draft`, `role/index`, `role/log`
 - Policy explains new aliases and suspicious canonical candidates require human review, not silent acceptance

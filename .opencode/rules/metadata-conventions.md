@@ -39,7 +39,7 @@ tags: []
 Allowed and encouraged:
 
 - domain-specific fields such as `start_date`, `end_date`, `participants`, `host`, `organizer`, and similar structured properties
-- structured location fields `country`, `province`, and `city` for retrieval-sensitive notes (when `country` is omitted, retrieval defaults to China at the metadata/index layer)
+- structured location fields `country`, `province`, and `city` for retrieval-sensitive notes (when `country` is omitted, retrieval defaults to `中国` at the metadata/index layer)
 - `canonical_topic` when a retrieval workflow materially depends on it (optional, not universally required)
 - folder-local or note-type-specific metadata when it improves retrieval or human maintenance
 
@@ -145,7 +145,7 @@ Legend:
 - `R`: required
 - `O`: optional
 - `D`: domain-specific
-- `G`: governed by alias registry (see `docs/metadata-alias-registry.md`)
+- `G`: governed by alias registry (see `.opencode/alias-registry.md`)
 - `-`: not needed by default
 
 | Field | Human-managed | LLM-managed base | Ingestion notes |
@@ -213,7 +213,7 @@ ingest_status: pending | processed | error
 Time and location semantics belong in dedicated structured fields, not in tags.
 
 - **Time**: use `created`, `updated`, `start_date`, and `end_date` as the primary carriers. Do not duplicate time semantics into tags (e.g., avoid `year/2026` or `month/april` as a substitute for date fields).
-- **Location**: use `country`, `province`, and `city` as the primary carriers. Do not move location semantics into tags (e.g., avoid `location/shenzhen` as a substitute for structured location fields). When a note-level `country` field is absent, retrieval defaults to `China` at the metadata/index layer; this default is not a reason to omit the field when location matters.
+- **Location**: use `country`, `province`, and `city` as the primary carriers. Do not move location semantics into tags (e.g., avoid `location/shenzhen` as a substitute for structured location fields). When a note-level `country` field is absent, retrieval defaults to `中国` at the metadata/index layer; this default is not a reason to omit the field when location matters.
 - **Domain-specific fields**: fields like `host`, `organizer`, `participants`, and similar structured properties remain first-class metadata. They are not replaced by tags.
 
 ### When tags are allowed as retrieval aids
@@ -242,7 +242,7 @@ Obsidian-style hierarchical tags remain supported and encouraged where they impr
 
 First-stage tag governance is advisory and alias-based:
 
-- The alias registry at `docs/metadata-alias-registry.md` defines canonical tag values and accepted aliases.
+- The alias registry at `.opencode/alias-registry.md` defines canonical tag values and accepted aliases.
 - Lint reports non-canonical tags and uncontrolled tag growth as advisory findings, not hard-blocking errors.
 - New tags and suspicious canonical candidates require human review before being added to the registry.
 - Stronger whitelist-style admission control may be introduced later when scale and drift justify it.
@@ -299,7 +299,7 @@ participants:
 ---
 ```
 
-Use `country`, `province`, and `city` as the structured location fields for retrieval-sensitive notes. When `country` is omitted, retrieval defaults to China at the metadata/index layer, but explicit values are preferred when location matters for the note. The freeform `location` field may still appear for backward compatibility or non-retrieval display purposes, but structured fields (`country`, `province`, `city`) are the retrieval-standard shape for location data.
+Use `country`, `province`, and `city` as the structured location fields for retrieval-sensitive notes. When `country` is omitted, retrieval defaults to `中国` at the metadata/index layer, but explicit values are preferred when location matters for the note. The freeform `location` field may still appear for backward compatibility or non-retrieval display purposes, but structured fields (`country`, `province`, `city`) are the retrieval-standard shape for location data.
 
 ### LLM-managed resource note
 

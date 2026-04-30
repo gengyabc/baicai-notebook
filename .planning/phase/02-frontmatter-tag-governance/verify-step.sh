@@ -44,7 +44,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
 
 META_CONV="$REPO_ROOT/.opencode/rules/metadata-conventions.md"
 FIELD_MATRIX="$REPO_ROOT/docs/metadata-field-matrix.md"
-ALIAS_REG="$REPO_ROOT/docs/metadata-alias-registry.md"
+ALIAS_REG="$REPO_ROOT/.opencode/alias-registry.md"
 LINT_WF="$REPO_ROOT/.opencode/workflows/lint-vault.md"
 LINT_SKILL="$REPO_ROOT/.opencode/skills/second-brain-lint/SKILL.md"
 QUERY_WF="$REPO_ROOT/.opencode/workflows/query-vault.md"

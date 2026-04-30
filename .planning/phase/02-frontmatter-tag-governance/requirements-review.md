@@ -19,13 +19,13 @@ All in-scope items from `requirement.md` are covered:
 
 3. **Hierarchical tags preserved**: Obsidian-style `topic/*`, `state/*`, `source/*`, `role/*` forms explicitly supported (lines 235-239).
 
-4. **Alias-based normalization model**: Complete in `metadata-alias-registry.md` with three sections (Tag aliases, Location aliases, Canonical topic aliases) and clear review flow (lines 7-12).
+4. **Alias-based normalization model**: Complete in `.opencode/alias-registry.md` with three sections (Tag aliases, Location aliases, Canonical topic aliases) and clear review flow (lines 7-12).
 
 5. **Location governance for country/province/city**: Location aliases section keeps fields distinct with separate subsections for Country aliases, Province aliases, City aliases (lines 30-57).
 
 6. **Canonical_topic normalization**: Covered in dedicated section with explicit note that it's optional and only governed where retrieval depends on it (lines 59-67).
 
-7. **Staged policy with human review**: Advisory-first approach documented in metadata-conventions.md (lines 243-248), alias-registry.md (lines 7-14), and lint-vault.md (lines 32-38).
+7. **Staged policy with human review**: Advisory-first approach documented in metadata-conventions.md (lines 243-248), .opencode/alias-registry.md (lines 7-14), and lint-vault.md (lines 32-38).
 
 8. **Compatible with existing conventions**: Human-managed domain note template updated to use `country`, `province`, `city` instead of freeform `location` (lines 280-302).
 
@@ -54,7 +54,7 @@ All locked constraints respected:
 
 7. **Advisory governance**: Multiple documents explicitly state first-stage is advisory, not hard-blocking.
 
-8. **No auto-rewrite**: Explicitly stated in alias-registry.md line 12 ("Notes are not auto-rewritten by this step").
+8. **No auto-rewrite**: Explicitly stated in .opencode/alias-registry.md line 12 ("Notes are not auto-rewritten by this step").
 
 All execution constraints respected:
 - Doc-first and advisory-first approach maintained
@@ -105,7 +105,7 @@ The `verify-step.sh` script defines 37 assertions across 4 TDD batches, establis
 All 37 assertions pass per `implementation-result.md` (37/37). All implemented files contain the required content:
 - `metadata-conventions.md`: Structured fields section, tag governance, updated templates
 - `metadata-field-matrix.md`: Country/province/city rows with `G` legend
-- `metadata-alias-registry.md`: Three-section structure with distinct location fields
+- `.opencode/alias-registry.md`: Three-section structure with distinct location fields
 - `lint-vault.md`: Governance checks (lines 23-25, 30-38)
 - `second-brain-lint/SKILL.md`: Governance checks section
 - `query-vault.md`: Governance assumptions section
@@ -113,7 +113,7 @@ All 37 assertions pass per `implementation-result.md` (37/37). All implemented f
 
 ### Refactor Phase
 
-Implementation remains doc-first and advisory-first as specified. No over-engineering. Clear separation of concerns between policy document (`metadata-conventions.md`), operational matrix (`metadata-field-matrix.md`), and registry (`metadata-alias-registry.md`).
+Implementation remains doc-first and advisory-first as specified. No over-engineering. Clear separation of concerns between policy document (`metadata-conventions.md`), operational matrix (`metadata-field-matrix.md`), and registry (`.opencode/alias-registry.md`).
 
 ## Issues
 

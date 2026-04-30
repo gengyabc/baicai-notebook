@@ -126,7 +126,7 @@ First-stage review flow is fixed:
 
 - `.opencode/rules/metadata-conventions.md` - primary metadata governance policy
 - `docs/metadata-field-matrix.md` - folder-profile companion matrix
-- `docs/metadata-alias-registry.md` - new first-stage alias registry artifact
+- `.opencode/alias-registry.md` - first-stage alias registry artifact
 - `.opencode/workflows/lint-vault.md` - lint workflow consumption
 - `.opencode/skills/second-brain-lint/SKILL.md` - lint skill alignment
 - `.opencode/workflows/query-vault.md` - retrieval workflow alignment

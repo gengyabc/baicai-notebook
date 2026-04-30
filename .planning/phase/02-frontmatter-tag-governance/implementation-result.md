@@ -28,7 +28,7 @@ implementation-status: complete
 
 - `.opencode/rules/metadata-conventions.md`
 - `docs/metadata-field-matrix.md`
-- `docs/metadata-alias-registry.md`
+- `.opencode/alias-registry.md`
 - `.opencode/workflows/lint-vault.md`
 - `.opencode/skills/second-brain-lint/SKILL.md`
 - `.opencode/workflows/query-vault.md`
@@ -41,7 +41,7 @@ implementation-status: complete
 - Added "Structured fields versus tags" policy section to `metadata-conventions.md` defining that time and location belong in structured fields, tags are controlled retrieval aids, hierarchical tags are preserved, and first-stage governance is advisory
 - Added `country`, `province`, `city` rows and `G` (governed) legend to the field matrix in both `metadata-conventions.md` and `metadata-field-matrix.md`
 - Updated human-managed domain note template to use `country`, `province`, `city` instead of freeform `location`
-- Created `docs/metadata-alias-registry.md` with three sections (Tag aliases, Location aliases, Canonical topic aliases), each row containing governed surface, canonical value, accepted aliases, and review rationale
+- Created `.opencode/alias-registry.md` with three sections (Tag aliases, Location aliases, Canonical topic aliases), each row containing governed surface, canonical value, accepted aliases, and review rationale
 - Added alias review flow documentation: lint finds, human decides, registry updated, notes not auto-rewritten
 - Updated `lint-vault.md` with three new governance checks (alias drift, tag growth, non-canonical retrieval metadata) and advisory governance section
 - Updated `second-brain-lint/SKILL.md` with governance check descriptions and advisory-only constraints

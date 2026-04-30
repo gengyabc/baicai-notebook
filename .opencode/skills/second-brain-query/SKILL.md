@@ -18,7 +18,7 @@ compatibility: opencode
 Retrieval follows the metadata governance policy from `.opencode/rules/metadata-conventions.md`:
 
 - Time and location are retrieved via dedicated structured fields (`created`, `updated`, `start_date`, `end_date`, `country`, `province`, `city`), not via tags. Tags are a retrieval aid, not the primary carrier for time or location semantics.
-- Tag values are governed by the alias registry at `docs/metadata-alias-registry.md`, which defines canonical values and accepted aliases for human review and lint checks. Alias-aware query-time expansion is a future enhancement; the current retrieval flow matches canonical values as stored in the index.
+- Tag values are governed by the alias registry at `.opencode/alias-registry.md`, which defines canonical values and accepted aliases for human review and lint checks. Alias-aware query-time expansion is a future enhancement; the current retrieval flow matches canonical values as stored in the index.
 - Location values (`country`, `province`, `city`) are governed by the alias registry, which serves as the governance reference for human review and normalization guidance. Alias-aware location matching at query time is a future enhancement; the current retrieval flow matches values as stored in the index.
 - `canonical_topic` is governed by the alias registry only where a retrieval workflow materially depends on it; it is not universally required.
 - Hierarchical tags (`topic/*`, `state/*`, `source/*`, `role/*`) remain valid retrieval aids.
@@ -56,10 +56,21 @@ Follow the five-stage retrieval decision chain from `query-vault.md`:
 ## Constraint Rules
 
 - Tags: exact or hierarchical match (`topic/*` matches `topic/subtopic`)
-- Time: range filters on `created`, `updated`, `start_date`, `end_date`
-- Location: filter on `country`, `province`, `city`; when a note's `country` field is absent, it defaults to China at the metadata/index level. Do not inject `country = China` into the query when the user omits a country.
+- Time: choose the mode defined in `query-vault.md`. Use `start_date` and `end_date` for event-time questions, and use `created` and `updated` only for explicit note-timestamp questions.
+- Location: filter on `country`, `province`, `city`; when a note's `country` field is absent, it defaults to `中国` at the metadata/index level. Do not inject `country = 中国` into the query when the user omits a country.
 - Mixed constraints are intersected; empty constraint set returns empty shortlist
 - Progressive relaxation order is fixed: tags -> time -> location -> unstructured. With a 3-round cap, round 3 is either location broadening or full constraint removal (the last resort before Stage 5).
+
+## Structured Query Contract
+
+- Translate user questions into explicit structured constraints before running SQLite. For example, `2025年在江苏的培训` maps to `tags = topic/training`, a 2025 event-date window, and `province = 江苏省`.
+- Normalize user phrasing into structured constraints first, then execute the Stage 1 shortlist using the single-source-of-truth contract in `query-vault.md`.
+- Enforce each active constraint family inside the SQLite shortlist query. Do not read a broad result set and manually filter it in the model.
+- Combine tag, time, and location families with intersection semantics, not broad `OR` semantics.
+- Do not use note-path hints such as `path LIKE '%2025%'` as a substitute for structured time filtering when the user asked for a time range.
+- For event-like notes, treat `start_date` and `end_date` as mandatory when those fields exist. Do not satisfy event-time questions with `created` or `updated`.
+- Only after the structured shortlist is produced may you read note contents to answer the question.
+- Do not restate or improvise an alternative SQL recipe here. Reuse the Stage 1 execution contract and SQL implementation patterns from `query-vault.md`.
 
 ## Fallback Visibility
 

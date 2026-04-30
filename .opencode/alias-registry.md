@@ -38,6 +38,10 @@ New aliases and suspicious new canonical candidates require human review rather 
 | tag | `role/log` | `log` | Matches `content_role` enum value |
 | tag | `topic/idea` | `idea` | Consolidate idea-topic variants |
 | tag | `topic/training` | `training` | Consolidate training-topic variants |
+| tag | `topic/education` | `edu/child`, `education`, `edu` | Consolidate education-topic variants |
+| tag | `topic/ai-tools` | `agent-native-cli`, `excalidraw-cli`, `ai-tools`, `topic/agent-native-cli`, `topic/excalidraw-cli` | Consolidate AI-tool topic variants |
+| tag | `topic/design` | `design-systems`, `topic/design-systems`, `design` | Consolidate design-topic variants |
+| tag | `topic/cv` | `cv`, `myself`, `#myself` | Consolidate CV/personal-topic variants |
 
 ## Location aliases
 
@@ -47,26 +51,31 @@ Location aliases are kept distinct per governed field (`country`, `province`, `c
 
 | Governed surface | Canonical value | Accepted aliases | Review rationale |
 | --- | --- | --- | --- |
-| country | `China` | `CN`, `cn`, `PRC`, `People's Republic of China` | Standardize country display for primary vault context |
-| country | `United States` | `US`, `us`, `USA`, `United States of America` | Common English short forms |
+| country | `中国` | `China`, `CN`, `cn`, `PRC`, `People's Republic of China` | 中国地名使用中文 |
+| country | `美国` | `United States`, `US`, `us`, `USA`, `United States of America` | Common English short forms |
 
 ### Province aliases
 
 | Governed surface | Canonical value | Accepted aliases | Review rationale |
 | --- | --- | --- | --- |
-| province | `Guangdong` | `guangdong`, `GD`, `gd` | Standardize province display |
-| province | `Beijing` | `beijing`, `BJ`, `bj` | Standardize municipality display |
-| province | `Shanghai` | `shanghai`, `SH`, `sh` | Standardize municipality display |
-| province | `Shandong` | `shandong`, `SD`, `sd` | Standardize province display |
+| province | `广东省` | `Guangdong`, `guangdong`, `GD`, `gd`, `广东` | 中国地名使用中文 |
+| province | `北京市` | `Beijing`, `beijing`, `BJ`, `bj`, `北京` | 中国地名使用中文 |
+| province | `上海市` | `Shanghai`, `shanghai`, `SH`, `sh`, `上海` | 中国地名使用中文 |
+| province | `山东省` | `Shandong`, `shandong`, `SD`, `sd`, `山东` | 中国地名使用中文 |
+| province | `新疆维吾尔自治区` | `Xinjiang`, `新疆`, `新疆生产建设兵团` | 中国地名使用中文 |
+| province | `江苏省` | `Jiangsu`, `jiangsu`, `JS`, `js`, `江苏` | 中国地名使用中文 |
 
 ### City aliases
 
 | Governed surface | Canonical value | Accepted aliases | Review rationale |
 | --- | --- | --- | --- |
-| city | `Shenzhen` | `shenzhen`, `SZ`, `sz` | Standardize city display for primary vault location |
-| city | `Beijing` | `beijing` | Municipality also used as city name |
-| city | `Shanghai` | `shanghai` | Municipality also used as city name |
-| city | `Qingdao` | `qingdao`, `QD`, `qd` | Standardize city display |
+| city | `深圳市` | `Shenzhen`, `shenzhen`, `SZ`, `sz`, `深圳` | 中国地名使用中文 |
+| city | `北京市` | `Beijing`, `beijing`, `北京` | 直辖市 |
+| city | `上海市` | `Shanghai`, `shanghai`, `上海` | 直辖市 |
+| city | `青岛市` | `Qingdao`, `qingdao`, `QD`, `qd`, `青岛` | 中国地名使用中文 |
+| city | `乌鲁木齐市` | `Urumqi`, `乌鲁木齐`, `乌鲁木齐市` | 中国地名使用中文 |
+| city | `昆山市` | `Kunshan`, `昆山` | 中国地名使用中文 |
+| city | `江门市` | `Jiangmen`, `江门`, `广东江门` | 中国地名使用中文 |
 
 ## Canonical topic aliases
 
