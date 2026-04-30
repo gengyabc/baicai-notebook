@@ -43,9 +43,11 @@ When folder names are referenced in documentation and workflows, they should be 
 - On each user message, run vault retrieval by default.
 - The only exception is when debug mode is active for this session.
 - For non-debug sessions, always follow the query workflow before answering, even for short or ambiguous prompts.
+- Treat `.opencode/docs/sqlite-retrieval-contract.md` as the canonical schema and retrieval contract for `.opencode/frontmatter-index.sqlite`.
 - Before any vault retrieval, read the query workflow first; SQLite shortlist is mandatory. Never skip `vault_index_search` against `.opencode/frontmatter-index.sqlite` in favor of grep or global search.
 - Query order is: SQLite shortlist first, then read `workbook/wiki/index.md`, prefer relevant `workbook/wiki/` pages, then pull supporting evidence from `workbook/resources/`, then use `workbook/brainstorm/` only for tentative synthesis, and use `workbook/my-work/` only for current context and active intent.
 - When the answer is not fully grounded, state confidence and separate confirmed facts from working hypotheses.
+- In non-debug sessions, do not use network search without user permission. If local retrieval is insufficient and external search would help, ask first.
 
 ## Canonical references
 

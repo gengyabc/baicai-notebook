@@ -38,6 +38,46 @@ type SearchRow = {
   matchedPropertyKeys: string | null
 }
 
+type StructuredSearchRow = {
+  path: string
+  title: string | null
+  folder: string | null
+  description: string | null
+}
+
+type StructuredConstraintsInput = {
+  tags?: string[]
+  hierarchicalTags?: string[]
+  country?: string[]
+  province?: string[]
+  city?: string[]
+  timeMode?: string
+  start?: string
+  end?: string
+}
+
+type StructuredConstraints = {
+  tags: string[]
+  hierarchicalTags: string[]
+  country: string[]
+  province: string[]
+  city: string[]
+  timeMode: "event" | "note" | null
+  start: string | null
+  end: string | null
+}
+
+type ExtractedConstraints = {
+  constraints: StructuredConstraintsInput | null
+  reasons: string[]
+}
+
+type SearchResult = {
+  mode: "structured" | "text-fallback"
+  rows: SearchRow[]
+  output: string
+}
+
 const sessions = new Map<string, SessionState>()
 const SESSION_TTL_MS = 60 * 60 * 1000
 const MAX_SESSIONS = 128
@@ -49,6 +89,84 @@ type CachedDatabase = {
 
 const searchDatabases = new Map<string, CachedDatabase>()
 let lastSessionCleanupAt = 0
+
+const LOCATION_ALIASES = {
+  country: new Map<string, string>([
+    ["中国", "中国"],
+    ["china", "中国"],
+    ["cn", "中国"],
+    ["prc", "中国"],
+    ["people's republic of china", "中国"],
+    ["美国", "美国"],
+    ["united states", "美国"],
+    ["us", "美国"],
+    ["usa", "美国"],
+    ["united states of america", "美国"],
+  ]),
+  province: new Map<string, string>([
+    ["广东省", "广东省"],
+    ["广东", "广东省"],
+    ["guangdong", "广东省"],
+    ["gd", "广东省"],
+    ["北京市", "北京市"],
+    ["北京", "北京市"],
+    ["beijing", "北京市"],
+    ["bj", "北京市"],
+    ["上海市", "上海市"],
+    ["上海", "上海市"],
+    ["shanghai", "上海市"],
+    ["sh", "上海市"],
+    ["山东省", "山东省"],
+    ["山东", "山东省"],
+    ["shandong", "山东省"],
+    ["sd", "山东省"],
+    ["新疆维吾尔自治区", "新疆维吾尔自治区"],
+    ["新疆", "新疆维吾尔自治区"],
+    ["xinjiang", "新疆维吾尔自治区"],
+    ["新疆生产建设兵团", "新疆维吾尔自治区"],
+    ["江苏省", "江苏省"],
+    ["江苏", "江苏省"],
+    ["jiangsu", "江苏省"],
+    ["js", "江苏省"],
+  ]),
+  city: new Map<string, string>([
+    ["深圳市", "深圳市"],
+    ["深圳", "深圳市"],
+    ["shenzhen", "深圳市"],
+    ["sz", "深圳市"],
+    ["北京市", "北京市"],
+    ["北京", "北京市"],
+    ["beijing", "北京市"],
+    ["上海市", "上海市"],
+    ["上海", "上海市"],
+    ["shanghai", "上海市"],
+    ["青岛市", "青岛市"],
+    ["青岛", "青岛市"],
+    ["qingdao", "青岛市"],
+    ["qd", "青岛市"],
+    ["乌鲁木齐市", "乌鲁木齐市"],
+    ["乌鲁木齐", "乌鲁木齐市"],
+    ["urumqi", "乌鲁木齐市"],
+    ["昆山市", "昆山市"],
+    ["昆山", "昆山市"],
+    ["kunshan", "昆山市"],
+    ["江门市", "江门市"],
+    ["江门", "江门市"],
+    ["jiangmen", "江门市"],
+    ["广东江门", "江门市"],
+  ]),
+} as const
+
+const TAG_KEYWORDS: Array<{ canonical: string; aliases: string[] }> = [
+  { canonical: "topic/training", aliases: ["topic/training", "training", "培训"] },
+  { canonical: "topic/education", aliases: ["topic/education", "education", "edu", "教育"] },
+  { canonical: "topic/idea", aliases: ["topic/idea", "idea", "想法"] },
+  { canonical: "topic/design", aliases: ["topic/design", "design", "设计"] },
+  { canonical: "topic/cv", aliases: ["topic/cv", "cv", "简历", "myself"] },
+]
+
+const NOTE_TIME_HINTS = ["created", "updated", "创建", "更新", "修改", "笔记"]
+const EVENT_TIME_HINTS = ["培训", "training", "会议", "meeting", "talk", "trip", "旅行", "出行"]
 
 process.on("exit", () => {
   for (const cached of searchDatabases.values()) {
@@ -168,6 +286,10 @@ function escapeLikeValue(str: string) {
   return `%${escapeLikePattern(str)}%`
 }
 
+function escapePrefixValue(str: string) {
+  return `${escapeLikePattern(str)}/%`
+}
+
 function folderPriorityExpr(priorities: Record<string, number>) {
   const clauses: string[] = []
   const params: Array<string | number> = []
@@ -190,6 +312,296 @@ function invalidateDatabase(dbPath: string) {
   } catch {}
 
   searchDatabases.delete(dbPath)
+}
+
+function normalizeStructuredConstraints(constraints?: StructuredConstraintsInput) {
+  if (!constraints) return null
+
+  const normalized: StructuredConstraints = {
+    tags: normalizeConstraintValues(constraints.tags),
+    hierarchicalTags: normalizeConstraintValues(constraints.hierarchicalTags),
+    country: normalizeConstraintValues(constraints.country),
+    province: normalizeConstraintValues(constraints.province),
+    city: normalizeConstraintValues(constraints.city),
+    timeMode: constraints.timeMode === "event" || constraints.timeMode === "note"
+      ? constraints.timeMode
+      : null,
+    start: normalizeOptionalString(constraints.start),
+    end: normalizeOptionalString(constraints.end),
+  }
+
+  const hasTimeWindow = Boolean(normalized.start && normalized.end && normalized.timeMode)
+  const hasConstraints =
+    normalized.tags.length > 0 ||
+    normalized.hierarchicalTags.length > 0 ||
+    normalized.country.length > 0 ||
+    normalized.province.length > 0 ||
+    normalized.city.length > 0 ||
+    hasTimeWindow
+
+  if (!hasConstraints) return null
+  return normalized
+}
+
+function normalizeConstraintValues(values?: string[]) {
+  if (!values?.length) return []
+
+  const seen = new Set<string>()
+  const normalized: string[] = []
+  for (const value of values) {
+    const trimmed = value.trim()
+    if (!trimmed || seen.has(trimmed)) continue
+    seen.add(trimmed)
+    normalized.push(trimmed)
+  }
+  return normalized
+}
+
+function normalizeOptionalString(value?: string) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
+function inferStructuredConstraints(query: string): ExtractedConstraints {
+  const lowered = query.trim().toLowerCase()
+  if (!lowered) return { constraints: null, reasons: [] }
+
+  const tags = new Set<string>()
+  const country = new Set<string>()
+  const province = new Set<string>()
+  const city = new Set<string>()
+  const reasons: string[] = []
+
+  for (const entry of TAG_KEYWORDS) {
+    for (const alias of entry.aliases) {
+      if (!matchesAlias(lowered, alias)) continue
+      tags.add(entry.canonical)
+      reasons.push(`tag:${alias}->${entry.canonical}`)
+      break
+    }
+  }
+
+  collectLocationMatches(lowered, LOCATION_ALIASES.country, country, "country", reasons)
+  collectLocationMatches(lowered, LOCATION_ALIASES.province, province, "province", reasons)
+  collectLocationMatches(lowered, LOCATION_ALIASES.city, city, "city", reasons)
+
+  const timeRange = inferTimeRange(query, lowered)
+  if (timeRange.reason) reasons.push(timeRange.reason)
+
+  const constraints: StructuredConstraintsInput = {}
+  if (tags.size > 0) constraints.tags = Array.from(tags)
+  if (country.size > 0) constraints.country = Array.from(country)
+  if (province.size > 0) constraints.province = Array.from(province)
+  if (city.size > 0) constraints.city = Array.from(city)
+  if (timeRange.start && timeRange.end && timeRange.timeMode) {
+    constraints.start = timeRange.start
+    constraints.end = timeRange.end
+    constraints.timeMode = timeRange.timeMode
+  }
+
+  const hasConstraints = Object.keys(constraints).length > 0
+  return {
+    constraints: hasConstraints ? constraints : null,
+    reasons,
+  }
+}
+
+function collectLocationMatches(
+  lowered: string,
+  aliases: Map<string, string>,
+  target: Set<string>,
+  label: string,
+  reasons: string[]
+) {
+  for (const [alias, canonical] of aliases.entries()) {
+    if (!matchesAlias(lowered, alias)) continue
+    if (target.has(canonical)) continue
+    target.add(canonical)
+    reasons.push(`${label}:${alias}->${canonical}`)
+  }
+}
+
+function matchesAlias(loweredQuery: string, alias: string) {
+  const normalizedAlias = alias.trim().toLowerCase()
+  if (!normalizedAlias) return false
+
+  if (/^[a-z0-9\s'-]+$/i.test(normalizedAlias)) {
+    const escaped = normalizedAlias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(loweredQuery)
+  }
+
+  return loweredQuery.includes(normalizedAlias)
+}
+
+function inferTimeRange(query: string, lowered: string) {
+  const yearMatch = query.match(/\b(20\d{2})\b|(?:(20\d{2})年)/)
+  const explicitYear = yearMatch?.[1] || yearMatch?.[2] || null
+  const year = explicitYear ? Number(explicitYear) : null
+  const isNoteTime = NOTE_TIME_HINTS.some((hint) => lowered.includes(hint))
+  const hasEventHint = EVENT_TIME_HINTS.some((hint) => lowered.includes(hint))
+
+  if (!year) {
+    return {
+      timeMode: null,
+      start: null,
+      end: null,
+      reason: null,
+    }
+  }
+
+  const timeMode: "event" | "note" = isNoteTime ? "note" : "event"
+
+  if (lowered.includes("上半年") || lowered.includes("h1")) {
+    return {
+      timeMode,
+      start: isoStart(year, 1, 1),
+      end: isoEnd(year, 6, 30),
+      reason: `${timeMode}:H1 ${year}`,
+    }
+  }
+
+  if (lowered.includes("下半年") || lowered.includes("h2")) {
+    return {
+      timeMode,
+      start: isoStart(year, 7, 1),
+      end: isoEnd(year, 12, 31),
+      reason: `${timeMode}:H2 ${year}`,
+    }
+  }
+
+  if (query.includes("年") || hasEventHint || isNoteTime) {
+    return {
+      timeMode,
+      start: isoStart(year, 1, 1),
+      end: isoEnd(year, 12, 31),
+      reason: `${timeMode}:year ${year}`,
+    }
+  }
+
+  return {
+    timeMode: null,
+    start: null,
+    end: null,
+    reason: null,
+  }
+}
+
+function isoStart(year: number, month: number, day: number) {
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)).toISOString()
+}
+
+function isoEnd(year: number, month: number, day: number) {
+  return new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999)).toISOString()
+}
+
+function buildFolderFilterClauses(folders: string[]) {
+  const clauses = folders.map(() => "(n.path LIKE ? ESCAPE '\\' OR n.path = ?)")
+  const params: string[] = []
+  for (const folder of folders) {
+    params.push(`${escapeLikePattern(folder)}/%`, folder)
+  }
+  return { sql: `(${clauses.join(" OR ")})`, params }
+}
+
+function buildInClause(values: string[]) {
+  return values.map(() => "?").join(", ")
+}
+
+function buildStructuredSearchQuery(
+  folders: string[],
+  limit: number,
+  constraints: StructuredConstraints
+) {
+  const whereClauses: string[] = []
+  const params: Array<string | number> = []
+  const folderFilter = buildFolderFilterClauses(folders)
+  whereClauses.push(folderFilter.sql)
+  params.push(...folderFilter.params)
+
+  if (constraints.tags.length > 0 || constraints.hierarchicalTags.length > 0) {
+    const tagClauses: string[] = []
+    const tagParams: string[] = []
+
+    if (constraints.tags.length > 0) {
+      tagClauses.push(`pt.value_text IN (${buildInClause(constraints.tags)})`)
+      tagParams.push(...constraints.tags)
+    }
+
+    for (const tag of constraints.hierarchicalTags) {
+      tagClauses.push("(pt.value_text = ? OR pt.value_text LIKE ? ESCAPE '\\')")
+      tagParams.push(tag, escapePrefixValue(tag))
+    }
+
+    whereClauses.push(`EXISTS (
+      SELECT 1
+      FROM properties pt
+      WHERE pt.note_id = n.id
+        AND pt.key = 'tags'
+        AND (${tagClauses.join(" OR ")})
+    )`)
+    params.push(...tagParams)
+  }
+
+  for (const [key, values] of [
+    ["country", constraints.country],
+    ["province", constraints.province],
+    ["city", constraints.city],
+  ] as const) {
+    if (values.length === 0) continue
+    whereClauses.push(`EXISTS (
+      SELECT 1
+      FROM properties p_${key}
+      WHERE p_${key}.note_id = n.id
+        AND p_${key}.key = '${key}'
+        AND p_${key}.value_text IN (${buildInClause(values)})
+    )`)
+    params.push(...values)
+  }
+
+  if (constraints.timeMode === "event" && constraints.start && constraints.end) {
+    whereClauses.push(`EXISTS (
+      SELECT 1
+      FROM properties ps
+      WHERE ps.note_id = n.id
+        AND ps.key = 'start_date'
+        AND ps.value_date <= ?
+    )`)
+    whereClauses.push(`EXISTS (
+      SELECT 1
+      FROM properties pe
+      WHERE pe.note_id = n.id
+        AND pe.key = 'end_date'
+        AND pe.value_date >= ?
+    )`)
+    params.push(constraints.end, constraints.start)
+  }
+
+  if (constraints.timeMode === "note" && constraints.start && constraints.end) {
+    whereClauses.push(`EXISTS (
+      SELECT 1
+      FROM properties pn
+      WHERE pn.note_id = n.id
+        AND pn.key IN ('created', 'updated')
+        AND pn.value_date BETWEEN ? AND ?
+    )`)
+    params.push(constraints.start, constraints.end)
+  }
+
+  const sql = `
+    SELECT
+      n.path,
+      n.title,
+      n.folder,
+      d.value_text AS description
+    FROM notes n
+    LEFT JOIN properties d ON d.note_id = n.id AND d.key = 'description'
+    WHERE ${whereClauses.join("\n      AND ")}
+    ORDER BY n.path ASC
+    LIMIT ?
+  `
+
+  params.push(limit)
+  return { sql, params }
 }
 
 function buildSearchQuery(
@@ -350,6 +762,91 @@ function buildSearchQuery(
   return { sql, finalParams }
 }
 
+function formatStructuredConstraints(constraints: StructuredConstraints) {
+  const parts: string[] = []
+  if (constraints.tags.length > 0) parts.push(`tags=${constraints.tags.join(", ")}`)
+  if (constraints.hierarchicalTags.length > 0) {
+    parts.push(`hierarchicalTags=${constraints.hierarchicalTags.join(", ")}`)
+  }
+  if (constraints.country.length > 0) parts.push(`country=${constraints.country.join(", ")}`)
+  if (constraints.province.length > 0) parts.push(`province=${constraints.province.join(", ")}`)
+  if (constraints.city.length > 0) parts.push(`city=${constraints.city.join(", ")}`)
+  if (constraints.timeMode && constraints.start && constraints.end) {
+    parts.push(`time(${constraints.timeMode})=${constraints.start}..${constraints.end}`)
+  }
+  return parts.join("; ")
+}
+
+function formatStructuredResults(
+  query: string,
+  rows: StructuredSearchRow[],
+  constraints: StructuredConstraints,
+  reasons: string[] = []
+) {
+  if (!rows.length) {
+    return [
+      `Structured SQLite shortlist for \`${query}\` found no matches.`,
+      `Applied constraints: ${formatStructuredConstraints(constraints)}`,
+      ...(reasons.length > 0 ? [`Inferred from query: ${reasons.join("; ")}`] : []),
+      "The assistant may broaden retrieval, but should first say the structured SQLite shortlist was insufficient.",
+    ].join("\n")
+  }
+
+  const lines = [
+    `Structured SQLite shortlist for \`${query}\`:`,
+    `Applied constraints: ${formatStructuredConstraints(constraints)}`,
+    ...(reasons.length > 0 ? [`Inferred from query: ${reasons.join("; ")}`] : []),
+    ...rows.map((row, index) => {
+      const title = row.title?.trim() || path.posix.basename(row.path, ".md")
+      const folder = row.folder || "(root)"
+      const description = row.description?.trim() || "(no description)"
+      return `${index + 1}. ${row.path} | ${title} | ${folder} | ${description}`
+    }),
+    "Read these files first. If they are insufficient, say so explicitly before reading beyond the shortlist.",
+  ]
+
+  return lines.join("\n")
+}
+
+function runTextFallbackSearch(
+  dbPath: string,
+  normalizedQuery: string,
+  query: string,
+  effectiveFolders: string[],
+  effectiveLimit: number,
+  effectivePriorities: Record<string, number>
+): SearchResult {
+  const tokens = tokenizeQuery(normalizedQuery)
+  const effectiveTokens = tokens.length ? tokens : [normalizedQuery]
+  const { sql, finalParams } = buildSearchQuery(
+    normalizedQuery,
+    effectiveTokens,
+    effectiveFolders,
+    effectiveLimit,
+    effectivePriorities
+  )
+
+  let db = getDatabase(dbPath)
+
+  try {
+    const rows = db.query(sql).all(...finalParams) as SearchRow[]
+    return {
+      mode: "text-fallback" as const,
+      rows,
+      output: formatResults(query, rows),
+    }
+  } catch {
+    invalidateDatabase(dbPath)
+    db = getDatabase(dbPath)
+    const rows = db.query(sql).all(...finalParams) as SearchRow[]
+    return {
+      mode: "text-fallback" as const,
+      rows,
+      output: formatResults(query, rows),
+    }
+  }
+}
+
 function buildMatchReason(row: SearchRow) {
   if (row.exactTitle) return "exact title match"
   if (row.exactPath) return "exact path match"
@@ -387,45 +884,85 @@ function searchIndex(
   query: string,
   limit?: number,
   folders?: string[],
-  priorities?: Record<string, number>
-) {
+  priorities?: Record<string, number>,
+  constraints?: StructuredConstraintsInput
+): SearchResult {
   const normalizedQuery = query.trim().toLowerCase()
   if (!normalizedQuery) {
     return {
+      mode: "text-fallback" as const,
       rows: [] as SearchRow[],
       output: "No query provided to vault_index_search.",
     }
   }
 
-  const tokens = tokenizeQuery(normalizedQuery)
-  const effectiveTokens = tokens.length ? tokens : [normalizedQuery]
   const effectiveFolders = normalizeFolders(folders)
   const effectiveLimit = clampLimit(limit)
   const effectivePriorities = priorities || getFolderPriorities()
-  const { sql, finalParams } = buildSearchQuery(
+  const extracted = constraints ? { constraints, reasons: [] } : inferStructuredConstraints(query)
+  const normalizedConstraints = normalizeStructuredConstraints(extracted.constraints || undefined)
+
+  if (!normalizedConstraints) {
+    const fallback = runTextFallbackSearch(
+      dbPath,
+      normalizedQuery,
+      query,
+      effectiveFolders,
+      effectiveLimit,
+      effectivePriorities
+    )
+    return {
+      ...fallback,
+      output: [
+        "No structured constraints were provided, so this used the text fallback instead of the structured SQLite shortlist.",
+        ...(extracted.reasons.length > 0 ? [`Constraint extraction found: ${extracted.reasons.join("; ")}`] : []),
+        fallback.output,
+      ].join("\n"),
+    }
+  }
+
+  const { sql, params } = buildStructuredSearchQuery(effectiveFolders, effectiveLimit, normalizedConstraints)
+  let db = getDatabase(dbPath)
+
+  try {
+    const rows = db.query(sql).all(...params) as StructuredSearchRow[]
+    if (rows.length > 0) {
+      return {
+        mode: "structured" as const,
+        rows: rows as unknown as SearchRow[],
+        output: formatStructuredResults(query, rows, normalizedConstraints, extracted.reasons),
+      }
+    }
+  } catch {
+    invalidateDatabase(dbPath)
+    db = getDatabase(dbPath)
+    const rows = db.query(sql).all(...params) as StructuredSearchRow[]
+    if (rows.length > 0) {
+      return {
+        mode: "structured" as const,
+        rows: rows as unknown as SearchRow[],
+        output: formatStructuredResults(query, rows, normalizedConstraints, extracted.reasons),
+      }
+    }
+  }
+
+  const fallback = runTextFallbackSearch(
+    dbPath,
     normalizedQuery,
-    effectiveTokens,
+    query,
     effectiveFolders,
     effectiveLimit,
     effectivePriorities
   )
-
-  let db = getDatabase(dbPath)
-
-  try {
-    const rows = db.query(sql).all(...finalParams) as SearchRow[]
-    return {
-      rows,
-      output: formatResults(query, rows),
-    }
-  } catch (error) {
-    invalidateDatabase(dbPath)
-    db = getDatabase(dbPath)
-    const rows = db.query(sql).all(...finalParams) as SearchRow[]
-    return {
-      rows,
-      output: formatResults(query, rows),
-    }
+  return {
+    ...fallback,
+    output: [
+      `Structured SQLite shortlist was insufficient for \`${query}\`.`,
+      `Applied constraints: ${formatStructuredConstraints(normalizedConstraints)}`,
+      ...(extracted.reasons.length > 0 ? [`Inferred from query: ${extracted.reasons.join("; ")}`] : []),
+      "Retrieval was broadened to the text fallback; answer confidence may be reduced.",
+      fallback.output,
+    ].join("\n"),
   }
 }
 
@@ -434,9 +971,12 @@ function buildSystemInstruction() {
   const vaultRoot = vaultConfig.vaultRoot
   return [
     "Vault retrieval routing is enabled for this session.",
-    "For vault-grounded questions, call `vault_index_search` first before reading vault files.",
+    "For vault-grounded questions, call `vault_index_search` first before reading vault files or writing ad hoc SQLite.",
+    "Treat `.opencode/docs/sqlite-retrieval-contract.md` as the canonical schema and wrapper contract for `.opencode/frontmatter-index.sqlite`.",
     `Read the shortlisted files first and preserve folder priority: ${vaultRoot}/${folders.wiki} -> ${vaultRoot}/${folders.output} -> ${vaultRoot}/${folders.resources} -> ${vaultRoot}/${folders.brainstorm} -> ${vaultRoot}/${folders.myWork}.`,
     "Soft fallback is allowed only when the SQLite shortlist is empty or clearly insufficient. If you broaden retrieval, say that explicitly before reading outside the shortlist.",
+    "In non-debug sessions, do not use web search without user permission.",
+    "Keep file-backed facts, index-only hits, external results, and hypotheses clearly separated.",
     "When answering from the vault, include confidence and provenance.",
   ].join("\n")
 }
@@ -490,6 +1030,16 @@ export const VaultQueryRouter: Plugin = async ({ worktree, client }) => {
           query: tool.schema.string().min(1),
           limit: tool.schema.number().int().min(1).max(MAX_LIMIT).optional(),
           folders: tool.schema.array(tool.schema.string()).optional(),
+          constraints: tool.schema.object({
+            tags: tool.schema.array(tool.schema.string()).optional(),
+            hierarchicalTags: tool.schema.array(tool.schema.string()).optional(),
+            country: tool.schema.array(tool.schema.string()).optional(),
+            province: tool.schema.array(tool.schema.string()).optional(),
+            city: tool.schema.array(tool.schema.string()).optional(),
+            timeMode: tool.schema.string().optional(),
+            start: tool.schema.string().optional(),
+            end: tool.schema.string().optional(),
+          }).optional(),
         },
         async execute(args, context) {
           const state = getSessionState(context.sessionID)
@@ -503,12 +1053,14 @@ export const VaultQueryRouter: Plugin = async ({ worktree, client }) => {
               args.query,
               args.limit,
               args.folders,
-              frontmatterIndexConfig.folderPriorities
+              frontmatterIndexConfig.folderPriorities,
+              args.constraints
             )
             context.metadata({
               title: "Vault index shortlist",
               metadata: {
                 query: args.query,
+                mode: result.mode,
                 resultCount: result.rows.length,
                 paths: result.rows.map((row) => row.path),
               },

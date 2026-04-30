@@ -4,6 +4,17 @@ This is the first-stage alias registry for vault metadata normalization. It defi
 
 Governance policy and structured-field rules are defined in `.opencode/rules/metadata-conventions.md`. This registry is consumed by lint checks and retrieval workflows.
 
+## Retrieval integration
+
+The constraint-extraction stage (Stage 0) defined in `.opencode/workflows/query-vault.md` and `.opencode/docs/sqlite-retrieval-contract.md` consumes this registry as the canonical source for:
+
+- Tag canonical values and accepted aliases used during tag extraction
+- Location canonical values and accepted aliases (`country`, `province`, `city`) used during location extraction
+
+Time-phrase alias tables are defined separately in `.opencode/docs/sqlite-retrieval-contract.md` because they govern retrieval-contract normalization behavior rather than note-authoring governance.
+
+This registry does not duplicate the time-phrase alias tables. Retrieval workflows and the constraint-extraction stage reference both this registry and the time-phrase tables in the retrieval contract as their respective single sources of truth.
+
 ## Review flow
 
 1. Lint finds a non-canonical or suspicious retrieval-relevant value.

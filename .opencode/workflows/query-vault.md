@@ -6,6 +6,17 @@ Answer a user question from the vault with the right confidence level and proven
 
 This workflow is enforced by a retrieval hook plus a SQLite-backed shortlist tool with a structured retrieval decision chain.
 
+## Canonical Contract
+
+Treat `.opencode/docs/sqlite-retrieval-contract.md` as the canonical reference for:
+
+- the SQLite database path
+- the `notes` and `properties` schema
+- retrieval-relevant indexed fields
+- the required first-pass wrapper entrypoint: `vault_index_search`
+
+This workflow remains the source of truth for retrieval behavior, decision order, thresholds, and fallback policy.
+
 ## Governance assumptions
 
 This workflow relies on the metadata governance policy defined in `.opencode/rules/metadata-conventions.md`:
@@ -25,20 +36,65 @@ This workflow relies on the metadata governance policy defined in `.opencode/rul
 
 ## Retrieval Decision Chain
 
-The retrieval decision chain is the core of vault query behavior. It proceeds through five stages in order.
+The retrieval decision chain is the core of vault query behavior. It proceeds through six stages in order, beginning with constraint extraction before any SQLite shortlist execution.
+
+### Stage 0: Constraint Extraction
+
+Before any Stage 1 shortlist execution, the retrieval flow must perform a constraint-extraction pass on the user request. This stage is mandatory and must not be skipped.
+
+**Extraction priority order (frozen):**
+
+1. **time** - evaluate first when the request contains a usable date or time phrase
+2. **location** - evaluate second when the request contains a usable place phrase
+3. **tags** - evaluate third for canonical tag mappings and low-risk topic-to-tag mappings
+4. **extraFields** - evaluate last for the allowlisted set of additional structured fields (`duration`, `num_participant`, `organizer`, `host`, `participants`)
+
+**Extraction rules:**
+
+- Map user phrases into the normalized constraint payload defined in `.opencode/docs/sqlite-retrieval-contract.md`.
+- Record which phrases were matched literally, by alias, or by low-risk inference.
+- Use the time-phrase alias tables in `.opencode/docs/sqlite-retrieval-contract.md` for common time normalization.
+- Use canonical location and tag values from `.opencode/alias-registry.md` for alias-backed mappings.
+- Empty or unusable structured extraction does not authorize an unbounded structured query. If no usable structured clues are found, the live wrapper falls back to text search (`mode: "text-fallback"`) rather than returning an empty structured shortlist. Proceed to progressive relaxation if the text fallback is insufficient.
+- Do not use title-first or body-first search as a substitute for applying usable structured clues through SQLite.
+- Low-risk inference for tags is allowed only for obvious stable topic mappings that already align with retrieval and governance language. Inferred tag mappings must be recorded separately from literal or alias-based mappings in the diagnostic trace.
+- Extra fields may be emitted only when the request clearly names that field or an unambiguous synonym. The first version does not introduce fuzzy person-name normalization.
+- Do not expand the extra-field allowlist beyond `duration`, `num_participant`, `organizer`, `host`, and `participants` in the first version.
+- No constraint family outside the four ordered families may be emitted in the first version.
+
+**Time-mode selection:**
+
+- Choose `timeMode` (`event` or `note`) during extraction, before SQLite query construction.
+- Use `event` mode when the request is about when an activity happened or will happen.
+- Use `note` mode only when the request explicitly asks about note creation or update chronology.
+- Event-time requests must not be satisfied with `created` or `updated`.
+
+**Location normalization:**
+
+- Normalize location phrases only into `country`, `province`, and `city`.
+- Preserve the metadata-level China default when a note omits `country`. Do not invent a query-time `country = 中国` filter when the user did not ask for a country.
+- When both province and city can be extracted, emit both constraints.
+
+**Diagnostics:**
+
+The extraction pass produces caller-side extraction artifacts: a `structuredTrace` array recording each extracted constraint with its family, field, matched user phrase, normalized value, and normalization source (`literal`, `alias`, or `inference`), plus the normalized constraint values and matched phrases to be passed to the wrapper. Note: `structuredTrace` is a planned input field not yet accepted by the live wrapper; the extraction stage should produce it so it is ready when the wrapper is updated. Execution diagnostics (`appliedConstraints`, `candidateCounts`, `fallbackReason`, `inferredConstraints`, `rejectedStructuredHints`) are response-side data produced exclusively by the wrapper after shortlist execution; they are defined in the wrapper response contract and must not be confused with extraction-stage outputs.
 
 ### Stage 1: Structured SQLite Shortlist
 
-1. Build a SQLite query from structured frontmatter constraints:
-   - **Tags**: exact match or hierarchical match (e.g., `topic/*` matches `topic/subtopic`). Tags are stored in the `properties` table with `key = 'tags'`.
-   - **Time fields**: range filters on `created`, `updated`, `start_date`, `end_date`. These are stored as `value_date` in the `properties` table.
-   - **Location fields**: filter on `country`, `province`, `city`. When a note's `country` field is absent in the index, treat it as `中国` for retrieval purposes. Do not inject `country = 中国` into the query when the user does not specify a country; the default is applied at the metadata/index level when matching against notes that lack an explicit `country` value.
-2. Execute query against the `notes` and `properties` tables in `.opencode/frontmatter-index.sqlite`.
-3. Return a shortlist of candidate note paths with their `description` values.
+1. Use `vault_index_search` as the required first-pass wrapper for structured SQLite shortlist generation.
+2. Pass the normalized constraint payload from Stage 0 extraction to `vault_index_search` through the current request shape defined in `.opencode/docs/sqlite-retrieval-contract.md`. Wrap scalar location values as single-element arrays to match the wrapper's array-valued input (e.g., `country: "中国"` becomes `country: ["中国"]`).
+3. Build the shortlist from structured frontmatter constraints as defined in the contract:
+   - **Time**: filter using `timeMode`, `start`, and `end` from the extracted time constraints. Use event-time filtering (`start_date`, `end_date`) for dated activities. Use note-timestamp filtering (`created`, `updated`) only for explicit note-chronology questions. Do not satisfy event-time requests with note timestamps.
+   - **Tags**: exact match or hierarchical match (e.g., `topic/*` matches `topic/subtopic`).
+   - **Location**: filter on `country`, `province`, `city` (array-valued in the current wrapper) from the extracted location constraints, preserving the documented metadata-level China default behavior.
+   - **Extra fields**: filter on allowlisted extra fields (`duration`, `num_participant`, `organizer`, `host`, `participants`) only when extracted in Stage 0. Note: `extraFields` is planned contract work not yet accepted by the live wrapper.
+4. Execute the shortlist against the SQLite index defined in the contract document.
+5. Return a shortlist of candidate note paths with their `description` values. The current wrapper returns a text-formatted shortlist; structured diagnostics are planned (see wrapper response contract in `.opencode/docs/sqlite-retrieval-contract.md`).
 
 **Stage 1 execution contract:**
 
 - Structured constraints must be enforced inside SQLite, not by reading a broad result set and manually filtering afterward.
+- Structured constraints must come from the Stage 0 extraction pass, passed through the current request shape defined in `.opencode/docs/sqlite-retrieval-contract.md`. Do not use ad hoc raw SQL generation.
 - Mixed constraints must be combined as an intersection. Use `JOIN`, `EXISTS`, `GROUP BY ... HAVING`, or an equivalent SQL pattern that guarantees one candidate note satisfies every active constraint.
 - Determine the time-filter mode before building the shortlist query. Use event-time filtering for dated activities such as training, meetings, talks, or trips. Use note-timestamp filtering only when the user is asking about note creation or update time.
 - Do not substitute path heuristics such as `n.path LIKE '%2025%'` for time filtering when a time constraint is present.
@@ -47,8 +103,11 @@ The retrieval decision chain is the core of vault query behavior. It proceeds th
 
 **Constraint rules:**
 
-- Mixed constraints are intersected: a candidate must satisfy all provided tag, time, and location constraints simultaneously.
-- An empty constraint set returns an empty shortlist. Do not issue unbounded queries against the index.
+- Constraint extraction must run before Stage 1 shortlist (Stage 0). All constraints passed to `vault_index_search` must follow the current request shape from `.opencode/docs/sqlite-retrieval-contract.md`. Scalar extraction outputs must be wrapped as single-element arrays for location fields.
+- Mixed constraints are intersected: a candidate must satisfy all provided tag, time, location, and extra-field constraints simultaneously.
+- An empty constraint set causes the live wrapper to fall back to text search (`mode: "text-fallback"`), not to return an empty structured shortlist. Do not issue unbounded queries against the index.
+- Usable structured clues must be applied through SQLite before title-first or body-first search.
+- Do not use freeform title or body keyword search as a substitute for structured tag extraction.
 
 **Tag matching detail:**
 
@@ -57,19 +116,22 @@ The retrieval decision chain is the core of vault query behavior. It proceeds th
 
 **Time matching detail:**
 
-- Event-time queries: use `start_date` and `end_date` when the user is asking when something happened. A note matches a requested time window when its event dates overlap that window. For single-day events, `start_date` and `end_date` may be the same day.
+- Event-time queries: use `start_date` and `end_date` when the user is asking when something happened. A note matches a requested time window when its event interval overlaps that window (i.e., `start_date <= window.end AND end_date >= window.start`). For single-day events, `start_date` and `end_date` may be the same day.
 - Note-timestamp queries: use `created` and `updated` only when the user explicitly asks about note creation time, note update time, or other document-management chronology.
 - Do not satisfy an event-time query with `created` or `updated` merely because those fields also fall inside the requested window.
+- Normalize year, half-year, month, and explicit date-range phrases into inclusive `[start, end]` windows using the time-phrase alias tables in `.opencode/docs/sqlite-retrieval-contract.md`.
 - Use `value_date` from the `properties` table for all time filtering.
 
 **Location matching detail:**
 
 - Use `value_text` column in the `properties` table with `key IN ('country', 'province', 'city')`.
+- Normalize location phrases only into `country`, `province`, and `city` using canonical values from `.opencode/alias-registry.md`.
 - When a note's `country` field is absent in the index, treat it as `中国` for retrieval purposes. Do not inject `country = 中国` into the query when the user omits a country; the default applies at the metadata/index level so that notes without an explicit `country` are still matched.
+- When both `province` and `city` can be extracted from the user request, emit both constraints.
 
 **SQL implementation patterns:**
 
-- `query-vault.md` is the source of truth for structured shortlist SQL behavior. Other skills and prompts should reference this section rather than restating their own SQL rules.
+- `query-vault.md` is the source of truth for structured shortlist behavior. Use `.opencode/docs/sqlite-retrieval-contract.md` for schema and wrapper contract details instead of restating them elsewhere.
 - Preferred pattern: one `EXISTS` block per active constraint family so each family stays independently testable and the whole query remains an intersection.
 - Acceptable alternative: `JOIN` once per active family, with a final `SELECT DISTINCT n.path`.
 - For answer-generation reads, run a shortlist query first, then read only the shortlisted notes.
@@ -211,11 +273,20 @@ If progressive relaxation exhausts its 3 rounds without finding sufficient infor
 
 ```
 User Query
-    |
-    v
+     |
+     v
+[Stage 0: Constraint Extraction]
+     |
+     +-- identify structured phrases and map them to normalized constraints
+     +-- record which phrases were matched literally, by alias, or by low-risk inference
+     |
+     v
 [Stage 1: Structured SQLite Shortlist]
-    |
-    v
+     |
+     +-- receive normalized constraints through the structured wrapper contract
+     +-- execute Stage 1 SQLite shortlist with intersection semantics
+     |
+     v
 [Stage 2: Candidate Count Decision]
     |
     +-- 0 candidates -----> [Stage 3: Progressive Relaxation] --> retry Stage 1
@@ -257,9 +328,13 @@ User Query
 
 ## Invariants
 
-- SQLite remains the first retrieval layer
+- Constraint extraction (Stage 0) must run before any SQLite shortlist execution
+- SQLite remains the first retrieval layer when structured clues are usable
 - Frontmatter remains the source of truth; SQLite is a derived retrieval index
+- Structured constraints are applied as intersected families inside SQLite, not as broad post-filtering after a loose search
 - Progressive relaxation order is fixed: tags -> time -> location -> unstructured. With a 3-round cap, round 3 is either location broadening or full constraint removal (the last resort before Stage 5).
 - Fallback behavior is inspectable and logged
 - Location defaults to `中国` at the metadata/index level when a note's `country` field is absent; not injected at query time
 - Empty constraint set produces no unbounded query
+- Constraint family priority is fixed: time/date -> location -> tags/topic -> allowlisted extra fields
+- Time mode is chosen at extraction time, before query construction

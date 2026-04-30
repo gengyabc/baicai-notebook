@@ -598,9 +598,12 @@ class IndexStore {
       CREATE INDEX IF NOT EXISTS idx_notes_path ON notes(path);
       CREATE INDEX IF NOT EXISTS idx_properties_note_key ON properties(note_id, key);
       CREATE INDEX IF NOT EXISTS idx_properties_key_type_text ON properties(key, value_type, value_text);
+      CREATE INDEX IF NOT EXISTS idx_properties_key_text_note ON properties(key, value_text, note_id);
       CREATE INDEX IF NOT EXISTS idx_properties_key_type_num ON properties(key, value_type, value_num);
       CREATE INDEX IF NOT EXISTS idx_properties_key_type_bool ON properties(key, value_type, value_bool);
       CREATE INDEX IF NOT EXISTS idx_properties_key_type_date ON properties(key, value_type, value_date);
+      DROP INDEX IF EXISTS idx_properties_key_date_note;
+      CREATE INDEX idx_properties_key_date_note ON properties(key, note_id, value_date);
       CREATE INDEX IF NOT EXISTS idx_properties_array_group ON properties(note_id, array_group, key);
     `)
   }

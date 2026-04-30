@@ -18,7 +18,6 @@
       "security find*": "deny"
     },
     "edit": {
-      ".opencode/plugins/**": "deny",
       ".opencode/plugin-allowlist.json": "deny"
     },
     "read": {
