@@ -106,6 +106,7 @@ Before running any SQLite shortlist, perform constraint extraction:
 - Allow low-risk inference only for obvious stable topic mappings that already align with retrieval and governance language.
 - Record inferred tag mappings with `source: "inference"` in the `structuredTrace`, separate from `literal` or `alias` sources.
 - Do not use freeform title or body keywords as substitute structured tags.
+- Ambiguous semantic phrases that do not map to a single governed canonical tag must remain unresolved and be reported as unmapped rather than being guessed. The bounded semantic mapping policy is defined in `.opencode/docs/sqlite-retrieval-contract.md` under "Semantic mapping policy".
 
 ### Extra-field extraction
 

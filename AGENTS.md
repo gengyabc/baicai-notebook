@@ -72,3 +72,4 @@ When working with Python dependencies, prefer `uv` commands over `pip`. When wor
 - No sycophantic openers or closing fluff.
 - No emojis or em-dashes.
 - Do not guess APIs, versions, flags, commit SHAs, or package names. Verify by reading code or docs before asserting.
+- Always follow @.opencode/rules/baicai-vibe/token-efficient-workflow.md unless user asks otherwise.

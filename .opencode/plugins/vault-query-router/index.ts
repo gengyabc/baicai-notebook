@@ -5,6 +5,16 @@ import { DatabaseSync } from "node:sqlite"
 import type { Plugin } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
 import { getDefaultFoldersWithRoot, getFolderPriorities, getVaultConfig } from "../../scripts/vault-paths.mjs"
+import {
+  LOCATION_ALIASES,
+  TAG_KEYWORDS,
+  matchesAlias,
+  inferTimeRangeFromQuery,
+  inferStructuredConstraints as inferStructuredConstraintsLogic,
+  formatDiagnosticOutput,
+  type StructuredConstraintsInput,
+  type ExtractedConstraints,
+} from "./extraction-logic"
 
 const require = createRequire(import.meta.url)
 const frontmatterIndexConfig = require("../../frontmatter-index/config.json") as {
@@ -45,17 +55,6 @@ type StructuredSearchRow = {
   description: string | null
 }
 
-type StructuredConstraintsInput = {
-  tags?: string[]
-  hierarchicalTags?: string[]
-  country?: string[]
-  province?: string[]
-  city?: string[]
-  timeMode?: string
-  start?: string
-  end?: string
-}
-
 type StructuredConstraints = {
   tags: string[]
   hierarchicalTags: string[]
@@ -65,11 +64,6 @@ type StructuredConstraints = {
   timeMode: "event" | "note" | null
   start: string | null
   end: string | null
-}
-
-type ExtractedConstraints = {
-  constraints: StructuredConstraintsInput | null
-  reasons: string[]
 }
 
 type SearchResult = {
@@ -89,84 +83,6 @@ type CachedDatabase = {
 
 const searchDatabases = new Map<string, CachedDatabase>()
 let lastSessionCleanupAt = 0
-
-const LOCATION_ALIASES = {
-  country: new Map<string, string>([
-    ["中国", "中国"],
-    ["china", "中国"],
-    ["cn", "中国"],
-    ["prc", "中国"],
-    ["people's republic of china", "中国"],
-    ["美国", "美国"],
-    ["united states", "美国"],
-    ["us", "美国"],
-    ["usa", "美国"],
-    ["united states of america", "美国"],
-  ]),
-  province: new Map<string, string>([
-    ["广东省", "广东省"],
-    ["广东", "广东省"],
-    ["guangdong", "广东省"],
-    ["gd", "广东省"],
-    ["北京市", "北京市"],
-    ["北京", "北京市"],
-    ["beijing", "北京市"],
-    ["bj", "北京市"],
-    ["上海市", "上海市"],
-    ["上海", "上海市"],
-    ["shanghai", "上海市"],
-    ["sh", "上海市"],
-    ["山东省", "山东省"],
-    ["山东", "山东省"],
-    ["shandong", "山东省"],
-    ["sd", "山东省"],
-    ["新疆维吾尔自治区", "新疆维吾尔自治区"],
-    ["新疆", "新疆维吾尔自治区"],
-    ["xinjiang", "新疆维吾尔自治区"],
-    ["新疆生产建设兵团", "新疆维吾尔自治区"],
-    ["江苏省", "江苏省"],
-    ["江苏", "江苏省"],
-    ["jiangsu", "江苏省"],
-    ["js", "江苏省"],
-  ]),
-  city: new Map<string, string>([
-    ["深圳市", "深圳市"],
-    ["深圳", "深圳市"],
-    ["shenzhen", "深圳市"],
-    ["sz", "深圳市"],
-    ["北京市", "北京市"],
-    ["北京", "北京市"],
-    ["beijing", "北京市"],
-    ["上海市", "上海市"],
-    ["上海", "上海市"],
-    ["shanghai", "上海市"],
-    ["青岛市", "青岛市"],
-    ["青岛", "青岛市"],
-    ["qingdao", "青岛市"],
-    ["qd", "青岛市"],
-    ["乌鲁木齐市", "乌鲁木齐市"],
-    ["乌鲁木齐", "乌鲁木齐市"],
-    ["urumqi", "乌鲁木齐市"],
-    ["昆山市", "昆山市"],
-    ["昆山", "昆山市"],
-    ["kunshan", "昆山市"],
-    ["江门市", "江门市"],
-    ["江门", "江门市"],
-    ["jiangmen", "江门市"],
-    ["广东江门", "江门市"],
-  ]),
-} as const
-
-const TAG_KEYWORDS: Array<{ canonical: string; aliases: string[] }> = [
-  { canonical: "topic/training", aliases: ["topic/training", "training", "培训"] },
-  { canonical: "topic/education", aliases: ["topic/education", "education", "edu", "教育"] },
-  { canonical: "topic/idea", aliases: ["topic/idea", "idea", "想法"] },
-  { canonical: "topic/design", aliases: ["topic/design", "design", "设计"] },
-  { canonical: "topic/cv", aliases: ["topic/cv", "cv", "简历", "myself"] },
-]
-
-const NOTE_TIME_HINTS = ["created", "updated", "创建", "更新", "修改", "笔记"]
-const EVENT_TIME_HINTS = ["培训", "training", "会议", "meeting", "talk", "trip", "旅行", "出行"]
 
 process.on("exit", () => {
   for (const cached of searchDatabases.values()) {
@@ -363,135 +279,7 @@ function normalizeOptionalString(value?: string) {
 }
 
 function inferStructuredConstraints(query: string): ExtractedConstraints {
-  const lowered = query.trim().toLowerCase()
-  if (!lowered) return { constraints: null, reasons: [] }
-
-  const tags = new Set<string>()
-  const country = new Set<string>()
-  const province = new Set<string>()
-  const city = new Set<string>()
-  const reasons: string[] = []
-
-  for (const entry of TAG_KEYWORDS) {
-    for (const alias of entry.aliases) {
-      if (!matchesAlias(lowered, alias)) continue
-      tags.add(entry.canonical)
-      reasons.push(`tag:${alias}->${entry.canonical}`)
-      break
-    }
-  }
-
-  collectLocationMatches(lowered, LOCATION_ALIASES.country, country, "country", reasons)
-  collectLocationMatches(lowered, LOCATION_ALIASES.province, province, "province", reasons)
-  collectLocationMatches(lowered, LOCATION_ALIASES.city, city, "city", reasons)
-
-  const timeRange = inferTimeRange(query, lowered)
-  if (timeRange.reason) reasons.push(timeRange.reason)
-
-  const constraints: StructuredConstraintsInput = {}
-  if (tags.size > 0) constraints.tags = Array.from(tags)
-  if (country.size > 0) constraints.country = Array.from(country)
-  if (province.size > 0) constraints.province = Array.from(province)
-  if (city.size > 0) constraints.city = Array.from(city)
-  if (timeRange.start && timeRange.end && timeRange.timeMode) {
-    constraints.start = timeRange.start
-    constraints.end = timeRange.end
-    constraints.timeMode = timeRange.timeMode
-  }
-
-  const hasConstraints = Object.keys(constraints).length > 0
-  return {
-    constraints: hasConstraints ? constraints : null,
-    reasons,
-  }
-}
-
-function collectLocationMatches(
-  lowered: string,
-  aliases: Map<string, string>,
-  target: Set<string>,
-  label: string,
-  reasons: string[]
-) {
-  for (const [alias, canonical] of aliases.entries()) {
-    if (!matchesAlias(lowered, alias)) continue
-    if (target.has(canonical)) continue
-    target.add(canonical)
-    reasons.push(`${label}:${alias}->${canonical}`)
-  }
-}
-
-function matchesAlias(loweredQuery: string, alias: string) {
-  const normalizedAlias = alias.trim().toLowerCase()
-  if (!normalizedAlias) return false
-
-  if (/^[a-z0-9\s'-]+$/i.test(normalizedAlias)) {
-    const escaped = normalizedAlias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-    return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(loweredQuery)
-  }
-
-  return loweredQuery.includes(normalizedAlias)
-}
-
-function inferTimeRange(query: string, lowered: string) {
-  const yearMatch = query.match(/\b(20\d{2})\b|(?:(20\d{2})年)/)
-  const explicitYear = yearMatch?.[1] || yearMatch?.[2] || null
-  const year = explicitYear ? Number(explicitYear) : null
-  const isNoteTime = NOTE_TIME_HINTS.some((hint) => lowered.includes(hint))
-  const hasEventHint = EVENT_TIME_HINTS.some((hint) => lowered.includes(hint))
-
-  if (!year) {
-    return {
-      timeMode: null,
-      start: null,
-      end: null,
-      reason: null,
-    }
-  }
-
-  const timeMode: "event" | "note" = isNoteTime ? "note" : "event"
-
-  if (lowered.includes("上半年") || lowered.includes("h1")) {
-    return {
-      timeMode,
-      start: isoStart(year, 1, 1),
-      end: isoEnd(year, 6, 30),
-      reason: `${timeMode}:H1 ${year}`,
-    }
-  }
-
-  if (lowered.includes("下半年") || lowered.includes("h2")) {
-    return {
-      timeMode,
-      start: isoStart(year, 7, 1),
-      end: isoEnd(year, 12, 31),
-      reason: `${timeMode}:H2 ${year}`,
-    }
-  }
-
-  if (query.includes("年") || hasEventHint || isNoteTime) {
-    return {
-      timeMode,
-      start: isoStart(year, 1, 1),
-      end: isoEnd(year, 12, 31),
-      reason: `${timeMode}:year ${year}`,
-    }
-  }
-
-  return {
-    timeMode: null,
-    start: null,
-    end: null,
-    reason: null,
-  }
-}
-
-function isoStart(year: number, month: number, day: number) {
-  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)).toISOString()
-}
-
-function isoEnd(year: number, month: number, day: number) {
-  return new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999)).toISOString()
+  return inferStructuredConstraintsLogic(query)
 }
 
 function buildFolderFilterClauses(folders: string[]) {
@@ -781,13 +569,16 @@ function formatStructuredResults(
   query: string,
   rows: StructuredSearchRow[],
   constraints: StructuredConstraints,
-  reasons: string[] = []
+  reasons: string[] = [],
+  unresolvedHints: string[] = []
 ) {
+  const diagnosticLines = formatDiagnosticOutput(query, reasons, unresolvedHints, true)
+
   if (!rows.length) {
     return [
       `Structured SQLite shortlist for \`${query}\` found no matches.`,
       `Applied constraints: ${formatStructuredConstraints(constraints)}`,
-      ...(reasons.length > 0 ? [`Inferred from query: ${reasons.join("; ")}`] : []),
+      diagnosticLines,
       "The assistant may broaden retrieval, but should first say the structured SQLite shortlist was insufficient.",
     ].join("\n")
   }
@@ -795,7 +586,7 @@ function formatStructuredResults(
   const lines = [
     `Structured SQLite shortlist for \`${query}\`:`,
     `Applied constraints: ${formatStructuredConstraints(constraints)}`,
-    ...(reasons.length > 0 ? [`Inferred from query: ${reasons.join("; ")}`] : []),
+    diagnosticLines,
     ...rows.map((row, index) => {
       const title = row.title?.trim() || path.posix.basename(row.path, ".md")
       const folder = row.folder || "(root)"
@@ -899,7 +690,9 @@ function searchIndex(
   const effectiveFolders = normalizeFolders(folders)
   const effectiveLimit = clampLimit(limit)
   const effectivePriorities = priorities || getFolderPriorities()
-  const extracted = constraints ? { constraints, reasons: [] } : inferStructuredConstraints(query)
+  const extracted = constraints
+    ? { constraints, reasons: [] as string[], unresolvedHints: [] as string[] }
+    : inferStructuredConstraints(query)
   const normalizedConstraints = normalizeStructuredConstraints(extracted.constraints || undefined)
 
   if (!normalizedConstraints) {
@@ -911,11 +704,12 @@ function searchIndex(
       effectiveLimit,
       effectivePriorities
     )
+    const diagnosticOutput = formatDiagnosticOutput(query, extracted.reasons, extracted.unresolvedHints, false)
     return {
       ...fallback,
       output: [
-        "No structured constraints were provided, so this used the text fallback instead of the structured SQLite shortlist.",
-        ...(extracted.reasons.length > 0 ? [`Constraint extraction found: ${extracted.reasons.join("; ")}`] : []),
+        "No structured constraints were provided or extracted, so this used the text fallback instead of the structured SQLite shortlist.",
+        diagnosticOutput,
         fallback.output,
       ].join("\n"),
     }
@@ -930,7 +724,7 @@ function searchIndex(
       return {
         mode: "structured" as const,
         rows: rows as unknown as SearchRow[],
-        output: formatStructuredResults(query, rows, normalizedConstraints, extracted.reasons),
+        output: formatStructuredResults(query, rows, normalizedConstraints, extracted.reasons, extracted.unresolvedHints),
       }
     }
   } catch {
@@ -941,7 +735,7 @@ function searchIndex(
       return {
         mode: "structured" as const,
         rows: rows as unknown as SearchRow[],
-        output: formatStructuredResults(query, rows, normalizedConstraints, extracted.reasons),
+        output: formatStructuredResults(query, rows, normalizedConstraints, extracted.reasons, extracted.unresolvedHints),
       }
     }
   }
@@ -954,12 +748,13 @@ function searchIndex(
     effectiveLimit,
     effectivePriorities
   )
+  const diagnosticOutput = formatDiagnosticOutput(query, extracted.reasons, extracted.unresolvedHints, true)
   return {
     ...fallback,
     output: [
       `Structured SQLite shortlist was insufficient for \`${query}\`.`,
       `Applied constraints: ${formatStructuredConstraints(normalizedConstraints)}`,
-      ...(extracted.reasons.length > 0 ? [`Inferred from query: ${extracted.reasons.join("; ")}`] : []),
+      diagnosticOutput,
       "Retrieval was broadened to the text fallback; answer confidence may be reduced.",
       fallback.output,
     ].join("\n"),

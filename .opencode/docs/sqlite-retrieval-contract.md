@@ -172,6 +172,22 @@ The first version does not introduce fuzzy person-name normalization for `organi
 - Canonical location values and canonical tag values come from `.opencode/alias-registry.md` when an alias-backed mapping is needed.
 - `query-vault.md` and `second-brain-query/SKILL.md` consume these sources; they do not become competing alias tables.
 
+### Semantic mapping policy (frozen at step 05)
+
+The first-version semantic mapping layer follows a strict bounded policy that is deterministic enough for code and tests:
+
+1. Run explicit literal and alias-backed extraction first for time, location, and tags.
+2. Run a second bounded semantic phrase pass only for phrases that map to one already-governed canonical tag with low ambiguity.
+3. If a phrase could plausibly map to multiple tags, multiple fields, or a not-yet-governed concept, leave it unresolved and report it as unmapped rather than guessing.
+4. A single matched phrase may produce at most one canonical topic/tag output in the first version.
+5. Time and location phrase expansion must remain deterministic table lookup or fixed-pattern normalization, not fuzzy similarity search.
+
+**First-version scope:**
+
+- First-version semantic topic expansion may resolve only to already-supported canonical `tags` values (e.g., `topic/training`, `topic/education`, `topic/idea`, `topic/design`, `topic/cv`, `topic/ai-tools`). It does not introduce `canonical_topic` or other new structured constraint families.
+- Bare or overloaded phrases such as generic `Agent`, `LLM`, `RAG`, or `大模型相关` must not be forced into a canonical tag unless an explicit one-to-one mapping table in the live router surface adds an entry for them. If they remain outside the frozen first-version table, the system must surface them as unresolved semantic hints instead of silently broadening or pretending they were normalized.
+- Ambiguous semantic phrases must remain unresolved and be explicitly reported in the retrieval output rather than being guessed or silently dropped.
+
 ## Current Request Shape
 
 The live `vault_index_search` tool (`.opencode/plugins/vault-query-router/index.ts`) currently accepts:
