@@ -21,6 +21,13 @@ No other file may define a competing schema, wrapper shape, or retrieval-relevan
 
 This workflow remains the source of truth for retrieval behavior, decision order, thresholds, and fallback policy.
 
+## Tool Surface Assumption
+
+- `vault_index_search` is a chat tool exposed by the vault-query-router plugin, not a shell command and not a PATH binary.
+- Do not test availability with shell probes such as `which vault_index_search`.
+- For normal vault retrieval, do not inspect plugin source or query SQLite directly just to decide whether `vault_index_search` exists.
+- If the tool is not present in the live tool surface or returns an unavailable/failure message, treat that as wrapper unavailability and follow the failure policy below. Do not replace Stage 1 with ad hoc raw SQL.
+
 ## Governance assumptions
 
 This workflow relies on the metadata governance policy defined in `.opencode/rules/metadata-conventions.md`:
@@ -99,6 +106,7 @@ The extraction pass produces caller-side extraction artifacts: a `structuredTrac
 
 - Structured constraints must be enforced inside SQLite, not by reading a broad result set and manually filtering afterward.
 - Structured constraints must come from the Stage 0 extraction pass, passed through the current request shape defined in `.opencode/docs/sqlite-retrieval-contract.md`. Do not use ad hoc raw SQL generation.
+- `vault_index_search` is the Stage 1 interface. Do not substitute shell checks, plugin-source inspection, or direct SQLite reads for the Stage 1 call when answering a normal vault question.
 - Mixed constraints must be combined as an intersection. Use `JOIN`, `EXISTS`, `GROUP BY ... HAVING`, or an equivalent SQL pattern that guarantees one candidate note satisfies every active constraint.
 - Determine the time-filter mode before building the shortlist query. Use event-time filtering for dated activities such as training, meetings, talks, or trips. Use note-timestamp filtering only when the user is asking about note creation or update time.
 - Do not substitute path heuristics such as `n.path LIKE '%2025%'` for time filtering when a time constraint is present.
@@ -229,6 +237,13 @@ If progressive relaxation exhausts its 3 rounds without finding sufficient infor
 1. Use `grep` or FTS (when available) as a broader text-based pass.
 2. This is a later fallback, not the primary retrieval path.
 3. When this fallback is used, mark the answer confidence as lower and explicitly state: "Retrieval was relaxed to an unstructured text pass; answer confidence may be reduced."
+
+## Wrapper Failure Policy
+
+- If `vault_index_search` is unavailable or fails, state that the structured SQLite shortlist was unavailable.
+- Do not replace the missing wrapper with ad hoc raw SQL for a normal user retrieval task.
+- Only after stating wrapper unavailability may you broaden to later fallback behavior, and the answer confidence must be lowered.
+- Manual SQL remains reserved for retrieval-layer debugging, implementation, or verification work rather than normal user-facing retrieval.
 
 ### Network Search Permission
 

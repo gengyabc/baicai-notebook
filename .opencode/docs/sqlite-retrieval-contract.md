@@ -28,6 +28,8 @@ The Markdown vault files are the authoritative source of truth. `.opencode/front
 ## Canonical First-Pass Entrypoint
 
 - `vault_index_search` is the **only** supported first-pass retrieval entrypoint in non-debug sessions.
+- `vault_index_search` is a chat tool exposed by the vault-query-router plugin. It is not a shell command and not a PATH binary.
+- Do not test for wrapper availability with shell probes such as `which vault_index_search`.
 - Ad hoc SQL is **not** a default retrieval path. Manual SQL is allowed only for retrieval-layer implementation, debugging, or verification of the retrieval layer itself.
 - All retrieval consumers (`query-vault.md`, `second-brain-query/SKILL.md`, `retrieval-safety.md`) must reference this entrypoint and must not define competing entrypoints or bypass paths.
 
@@ -284,6 +286,7 @@ The response diagnostics contract is planned. The current wrapper returns a text
 - Does not accept `extraFields` or `structuredTrace` as input
 - Does not return structured diagnostics fields; returns a text-formatted shortlist
 - Infers a limited deterministic subset of constraints from the query text when explicit constraints are not provided, following the extraction priority order and family rules defined above
+- If the wrapper is unavailable or fails, callers must report that the structured SQLite shortlist was unavailable before any broader fallback. They must not silently replace the Stage 1 wrapper call with ad hoc SQL in a normal user-facing retrieval flow.
 
 ## Supported Time Modes
 

@@ -23,10 +23,11 @@ If debug mode is active for this session, this rule may be relaxed for network s
 ## Raw-SQL Prohibition
 
 1. `vault_index_search` is the only supported first-pass retrieval entrypoint in non-debug sessions.
-2. Ad hoc SQL is **not** a default retrieval path. Manual SQL is allowed **only** for retrieval-layer implementation, debugging, or verification of the retrieval layer itself. These are distinct from normal retrieval: they exist to build, test, and verify the wrapper, not to answer user queries directly.
-3. When the wrapper cannot express a required diagnostic or verification step, manual SQL must still follow the `query-vault.md` contract.
-4. Do not use improvised SQL patterns to bypass the structured constraint contract.
-5. Do not substitute `LIKE '%term%'` text matching for canonical structured filters.
+2. `vault_index_search` is a chat tool exposed by the plugin tool surface, not a shell command or PATH binary. Do not test for it with commands such as `which vault_index_search`.
+3. Ad hoc SQL is **not** a default retrieval path. Manual SQL is allowed **only** for retrieval-layer implementation, debugging, or verification of the retrieval layer itself. These are distinct from normal retrieval: they exist to build, test, and verify the wrapper, not to answer user queries directly.
+4. When the wrapper cannot express a required diagnostic or verification step, manual SQL must still follow the `query-vault.md` contract.
+5. Do not use improvised SQL patterns to bypass the structured constraint contract.
+6. Do not substitute `LIKE '%term%'` text matching for canonical structured filters.
 
 ## Database Awareness
 
@@ -43,6 +44,7 @@ If debug mode is active for this session, this rule may be relaxed for network s
 3. Read shortlisted files before reading outside the shortlist.
 4. Use manual SQL only when the wrapper cannot express the required diagnostic or verification step.
 5. Manual SQL must still follow the `query-vault.md` contract.
+6. If the wrapper is unavailable, report wrapper unavailability explicitly before any broader fallback. Do not silently replace Stage 1 with raw SQL.
 
 ## Structured Query Discipline
 
@@ -86,10 +88,11 @@ These categories are defined in `.opencode/docs/sqlite-retrieval-contract.md` as
 ## Failure Handling
 
 1. If the retrieval wrapper fails, say that the structured SQLite shortlist was unavailable before broadening retrieval.
-2. If structured extraction only partially matches the user request, explain which parts were applied and which parts were not.
-3. If fallback was used, say so explicitly and lower confidence accordingly. Fallback broadening beyond the structured shortlist must be stated explicitly with lower confidence.
-4. If the user request appears to mix local-vault lookup with real-world current information, separate those goals and clarify before searching externally in non-debug sessions.
-5. Stale or inconsistent index hits (missing or unreadable shortlisted files) must be reported as index issues, not as retrieval successes.
+2. Wrapper failure does not authorize shell probing, plugin-source inspection, or ad hoc SQL as a replacement for Stage 1 in a normal user retrieval task.
+3. If structured extraction only partially matches the user request, explain which parts were applied and which parts were not.
+4. If fallback was used, say so explicitly and lower confidence accordingly. Fallback broadening beyond the structured shortlist must be stated explicitly with lower confidence.
+5. If the user request appears to mix local-vault lookup with real-world current information, separate those goals and clarify before searching externally in non-debug sessions.
+6. Stale or inconsistent index hits (missing or unreadable shortlisted files) must be reported as index issues, not as retrieval successes.
 
 ## Anti-Patterns
 

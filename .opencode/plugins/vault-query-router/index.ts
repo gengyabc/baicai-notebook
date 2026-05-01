@@ -1,7 +1,7 @@
 import path from "node:path"
 import fs from "node:fs"
 import { createRequire } from "node:module"
-import { DatabaseSync } from "node:sqlite"
+import { Database } from "bun:sqlite"
 import type { Plugin } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
 import {
@@ -18,10 +18,10 @@ import {
   formatDiagnosticOutput,
   type StructuredConstraintsInput,
   type ExtractedConstraints,
-} from "./extraction-logic"
+} from "./extraction-logic.ts"
 
 const require = createRequire(import.meta.url)
-const frontmatterIndexConfig = require("../../frontmatter-index/config.json") as {
+const frontmatterIndexConfig = require("../frontmatter-index/config.json") as {
   dbPath: string
   folderPriorities?: Record<string, number>
 }
@@ -88,7 +88,7 @@ const sessions = new Map<string, SessionState>()
 const SESSION_TTL_MS = 60 * 60 * 1000
 const MAX_SESSIONS = 128
 type CachedDatabase = {
-  db: DatabaseSync
+  db: Database
   mtimeMs: number
   size: number
 }
@@ -119,7 +119,7 @@ function getDatabase(dbPath: string) {
     } catch {}
   }
 
-  const db = new DatabaseSync(dbPath)
+  const db = new Database(dbPath)
   searchDatabases.set(dbPath, {
     db,
     mtimeMs: stat.mtimeMs,
