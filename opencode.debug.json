@@ -18,8 +18,9 @@
       "security find*": "deny"
     },
     "edit": {
-      ".opencode/plugins/**": "deny",
-      ".opencode/plugin-allowlist.json": "deny"
+      ".opencode/plugin-allowlist.json": "deny",
+      "opencode.json": "deny",
+      "opencode.debug.json": "deny"
     },
     "read": {
       "**/secrets/**": "deny"

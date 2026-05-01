@@ -4,6 +4,10 @@ import { createRequire } from "node:module"
 import { DatabaseSync } from "node:sqlite"
 import type { Plugin } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
+import {
+  createOpencodeClient as createOpencodeV2Client,
+  type PermissionRuleset,
+} from "@opencode-ai/sdk/v2/client"
 import { getDefaultFoldersWithRoot, getFolderPriorities, getVaultConfig } from "../../scripts/vault-paths.mjs"
 import {
   LOCATION_ALIASES,
@@ -27,10 +31,18 @@ const DEFAULT_LIMIT = 8
 const MAX_LIMIT = 12
 const DEFAULT_FOLDERS = getDefaultFoldersWithRoot()
 const SESSION_CLEANUP_INTERVAL_MS = 60 * 1000
+const DEBUG_PERMISSION_PROFILE_PATH = "opencode.debug.json"
+const DEBUG_PLUGIN_EDIT_PATTERN = ".opencode/plugins/**"
+const DEBUG_PROTECTED_EDIT_PATTERNS = [
+  ".opencode/plugin-allowlist.json",
+  "opencode.json",
+  "opencode.debug.json",
+]
 
 type SessionState = {
   debug: boolean
   pendingDebugCommand: boolean
+  debugPermissionOverrideApplied: boolean
   lastAccess?: number
 }
 
@@ -153,10 +165,52 @@ function getSessionState(sessionID: string) {
   const state: SessionState = {
     debug: false,
     pendingDebugCommand: false,
+    debugPermissionOverrideApplied: false,
     lastAccess: Date.now(),
   }
   sessions.set(sessionID, state)
   return state
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function buildDebugSessionPermissionRules(worktree: string): PermissionRuleset | null {
+  const profilePath = path.resolve(worktree, DEBUG_PERMISSION_PROFILE_PATH)
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(profilePath, "utf8")) as unknown
+    if (!isRecord(raw) || !isRecord(raw.permission) || !isRecord(raw.permission.edit)) {
+      return null
+    }
+
+    const edit = raw.permission.edit
+    if (edit[DEBUG_PLUGIN_EDIT_PATTERN] === "deny") {
+      return null
+    }
+
+    for (const pattern of DEBUG_PROTECTED_EDIT_PATTERNS) {
+      if (edit[pattern] !== "deny") {
+        return null
+      }
+    }
+
+    return [
+      {
+        permission: "edit",
+        pattern: DEBUG_PLUGIN_EDIT_PATTERN,
+        action: "allow",
+      },
+      ...DEBUG_PROTECTED_EDIT_PATTERNS.map((pattern) => ({
+        permission: "edit",
+        pattern,
+        action: "deny" as const,
+      })),
+    ]
+  } catch {
+    return null
+  }
 }
 
 function tokenizeQuery(query: string) {
@@ -776,8 +830,85 @@ function buildSystemInstruction() {
   ].join("\n")
 }
 
-export const VaultQueryRouter: Plugin = async ({ worktree, client }) => {
+export const VaultQueryRouter: Plugin = async ({ worktree, client, serverUrl }) => {
   const dbPath = path.resolve(worktree, frontmatterIndexConfig.dbPath)
+  const sessionClient = createOpencodeV2Client({
+    baseUrl: serverUrl.toString(),
+    directory: worktree,
+    throwOnError: true,
+  })
+
+  async function applyDebugPermissionOverride(sessionID: string) {
+    const permission = buildDebugSessionPermissionRules(worktree)
+    if (!permission) {
+      await client.app.log({
+        body: {
+          service: "vault-query-router",
+          level: "warn",
+          message: "debug permission override skipped; profile validation failed",
+          extra: {
+            sessionID,
+            profilePath: DEBUG_PERMISSION_PROFILE_PATH,
+          },
+        },
+      })
+      await client.tui.showToast({
+        body: {
+          variant: "warning",
+          message: "Debug mode active, but plugin-edit override was not applied. Using normal permissions.",
+          duration: 5000,
+        },
+      })
+      return false
+    }
+
+    try {
+      await sessionClient.session.update({
+        sessionID,
+        permission,
+      })
+
+      await client.app.log({
+        body: {
+          service: "vault-query-router",
+          level: "info",
+          message: "debug permission override applied to session",
+          extra: {
+            sessionID,
+            permission,
+          },
+        },
+      })
+      await client.tui.showToast({
+        body: {
+          variant: "info",
+          message: "Debug plugin-edit override active for this session.",
+          duration: 3500,
+        },
+      })
+      return true
+    } catch (error) {
+      await client.app.log({
+        body: {
+          service: "vault-query-router",
+          level: "warn",
+          message: "debug permission override skipped; session patch failed",
+          extra: {
+            sessionID,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        },
+      })
+      await client.tui.showToast({
+        body: {
+          variant: "warning",
+          message: "Debug mode active, but plugin-edit override could not be applied. Using normal permissions.",
+          duration: 5000,
+        },
+      })
+      return false
+    }
+  }
 
   return {
     event: async ({ event }) => {
@@ -789,6 +920,9 @@ export const VaultQueryRouter: Plugin = async ({ worktree, client }) => {
         if (event.properties.name === "debug") {
           state.debug = true
           state.pendingDebugCommand = false
+          if (!state.debugPermissionOverrideApplied) {
+            state.debugPermissionOverrideApplied = await applyDebugPermissionOverride(sessionID)
+          }
           return
         }
 

@@ -110,14 +110,21 @@ flowchart TD
     A[debug] --> B[Enable sandbox mode]
     B --> C{Session active?}
     C -->|yes| D[Suspend auto-write rules]
-    C -->|no| E[Read-only mode]
-    D --> F[Output: sandbox enabled]
-    E --> F
+    C -->|no| E[Read-only]
+    D --> F[Disable: query-on-interaction]
+    F --> G[Disable: low-confidence-brainstorm]
+    G --> H[Disable: post-ingest-solidify]
+    H --> I[Disable: post-brainstorm-solidify]
+    I --> J[Activate plugin-edit override]
+    J --> K[Output: sandbox enabled with plugin-edit permission]
+    E --> L[Output: sandbox enabled]
 ```
 
 **Routing Standards:**
 - Debug mode is session-scoped
 - Disables: query-on-interaction, low-confidence-brainstorm, post-*-solidify rules
+- When `state.debug === true`, `vault-query-router` validates `opencode.debug.json` and patches the active session to allow `.opencode/plugins/**` edits
+- Plugin-edit override is explicit, session-scoped, and separate from other debug exceptions
 
 ### Solidify Command
 
@@ -398,6 +405,35 @@ flowchart TD
     D --> H
     H --> I[Output: sandbox mode]
 ```
+
+### Debug Permission Exception
+
+```mermaid
+flowchart TD
+    A[Permission check] --> B{state.debug === true?}
+    B -->|yes| C[Validate opencode.debug.json]
+    B -->|no| D[Load opencode.json]
+    B -->|missing/ambiguous| D
+    C --> E[Patch current session permissions]
+    E --> F[Allow .opencode/plugins/** edit]
+    F --> G[Deny .opencode/plugin-allowlist.json edit]
+    G --> H[Deny opencode.json edit]
+    H --> I[Deny opencode.debug.json edit]
+    I --> J[Output: debug session override]
+    D --> K[Deny .opencode/plugins/** edit]
+    K --> L[Output: normal permission profile]
+```
+
+**Debug Permission Routing Standards:**
+
+- Normal sessions use `opencode.json` and deny edits to `.opencode/plugins/**`
+- Debug sessions (where `state.debug === true`) validate `opencode.debug.json` and patch the current session to allow edits only under `.opencode/plugins/**`
+- If trusted session debug state is missing, unreadable, ambiguous, or the session patch fails, permission evaluation fails closed to `opencode.json`
+- The plugin-edit override is session-scoped and ends when the session ends
+- `.opencode/plugin-allowlist.json`, `opencode.json`, and `opencode.debug.json` remain denied for edit even in debug mode
+- The plugin-edit override is separate from and independent of other debug-mode exceptions (network search, vault write suspension)
+- Source of truth for session debug state: `.opencode/plugins/vault-query-router/index.ts` (tracked via `state.debug`)
+- First-version audit scope: visible `[debug: ...]` session labeling plus tracked permission-profile artifacts; persistent audit logging is deferred
 
 ---
 
