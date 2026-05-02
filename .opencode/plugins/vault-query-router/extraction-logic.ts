@@ -362,21 +362,6 @@ export type ExtractedConstraints = {
   unresolvedHints: string[]
 }
 
-function formatConstraintSummary(constraints: StructuredConstraintsInput | null): string {
-  if (!constraints) return "(none)"
-
-  const parts: string[] = []
-  if (constraints.timeMode && constraints.start && constraints.end) {
-    parts.push(`time(${constraints.timeMode})=${constraints.start}..${constraints.end}`)
-  }
-  if (constraints.tags?.length) parts.push(`tags=${constraints.tags.join(", ")}`)
-  if (constraints.hierarchicalTags?.length) parts.push(`hierarchicalTags=${constraints.hierarchicalTags.join(", ")}`)
-  if (constraints.country?.length) parts.push(`country=${constraints.country.join(", ")}`)
-  if (constraints.province?.length) parts.push(`province=${constraints.province.join(", ")}`)
-  if (constraints.city?.length) parts.push(`city=${constraints.city.join(", ")}`)
-  return parts.length ? parts.join("; ") : "(none)"
-}
-
 // --- Unresolved semantic hint detection ---
 // These are common retrieval phrases that are NOT in the governed tag set.
 // They should be reported as unresolved rather than silently mapped.
@@ -537,70 +522,4 @@ export function inferStructuredConstraints(query: string): ExtractedConstraints 
     reasons,
     unresolvedHints,
   }
-}
-
-// --- Text-mode diagnostic formatting ---
-
-/**
- * Format extraction diagnostics for inclusion in text-mode router output.
- * This is the first-version reporting mechanism: text output only,
- * not structured response fields.
- */
-export function formatDiagnosticOutput(
-  query: string,
-  reasons: string[],
-  unresolvedHints: string[],
-  hasStructuredConstraints: boolean
-): string {
-  const lines: string[] = []
-
-  if (!hasStructuredConstraints && reasons.length === 0) {
-    lines.push("No structured constraints were extracted from the query.")
-  } else if (reasons.length > 0) {
-    lines.push("Mapped phrases:")
-    for (const reason of reasons) {
-      lines.push(`  - ${reason}`)
-    }
-  }
-
-  if (unresolvedHints.length > 0) {
-    lines.push("Unresolved semantic hints (not mapped to any governed canonical tag):")
-    for (const hint of unresolvedHints) {
-      lines.push(`  - ${hint}`)
-    }
-  }
-
-  return lines.join("\n")
-}
-
-export function formatStructuredQueryTrace(
-  query: string,
-  constraints: StructuredConstraintsInput | null,
-  reasons: string[],
-  unresolvedHints: string[],
-  passPlan: string
-): string {
-  const lines = [
-    `Structured query summary for \`${query}\`:`,
-    `  tool call: vault_index_search`,
-    `  normalized constraints: ${formatConstraintSummary(constraints)}`,
-    `  governance artifacts: canonical-tags.json, tag-aliases.json, tag-expansions.json, location-aliases.json`,
-    `  SQLite process: Stage 0 normalization -> ${passPlan} -> text fallback if still insufficient`,
-  ]
-
-  if (reasons.length > 0) {
-    lines.push("  mapped phrases:")
-    for (const reason of reasons) {
-      lines.push(`    - ${reason}`)
-    }
-  }
-
-  if (unresolvedHints.length > 0) {
-    lines.push("  unresolved hints:")
-    for (const hint of unresolvedHints) {
-      lines.push(`    - ${hint}`)
-    }
-  }
-
-  return lines.join("\n")
 }

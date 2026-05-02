@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "Route vault queries through SQLite index for ranked shortlist retrieval",
   "hooks": {
-    "experimental.chat.system.transform": "index.ts",
-    "command.execute.before": "index.ts",
-    "command.executed": "index.ts",
-    "session.idle": "index.ts",
-    "session.deleted": "index.ts"
+    "experimental.chat.system.transform": "index.ts"
   }
 }

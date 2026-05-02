@@ -27,28 +27,6 @@ export type LocationAliasesDoc = {
   city: Record<string, string>
 }
 
-export type TraceEntry = {
-  family: "time" | "location" | "tags" | "extraFields"
-  field: string
-  matchedPhrase: string
-  normalizedValue: string
-  source: "literal" | "alias" | "inference"
-}
-
-export type PassDiagnostics = {
-  passType: "primary-structured-pass" | "expansion-structured-pass"
-  constraints: Record<string, unknown>
-  candidateCount: number
-  expansionTriggerReason?: string
-  structuredTrace: TraceEntry[]
-}
-
-export type GovernedRetrievalDiagnostics = {
-  passes: PassDiagnostics[]
-  unresolvedHints: string[]
-  rejectedStructuredHints: string[]
-}
-
 const GOVERNED_ARTIFACTS_DIR = path.resolve(import.meta.dir, "../../..", ".opencode")
 
 function readJsonFile<T>(filename: string): T {
@@ -116,10 +94,6 @@ export function resolveTagAlias(alias: string): { canonical: string; source: "li
   }
 
   return null
-}
-
-export function resolveTagWithTrace(alias: string): { canonical: string; source: "literal" | "alias" | "inference" } | null {
-  return resolveTagAlias(alias)
 }
 
 export function resolveLocationAlias(
