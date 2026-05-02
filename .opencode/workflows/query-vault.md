@@ -33,9 +33,9 @@ This workflow remains the source of truth for retrieval behavior, decision order
 This workflow relies on the metadata governance policy defined in `.opencode/rules/metadata-conventions.md`:
 
 - **Structured fields are the primary retrieval carriers**: time semantics are in `created`, `updated`, `start_date`, and `end_date`; location semantics are in `country`, `province`, and `city`. Tags are a retrieval aid, not the primary carrier for time or location.
-- **Tags follow the alias registry**: canonical tag values and accepted aliases are defined in `.opencode/alias-registry.md`. The alias registry is the governance reference for human review and lint checks. Alias-aware query-time expansion (matching notes by alias as well as canonical value) is a future enhancement; the current Stage 1 retrieval flow reads canonical values directly from the index.
-- **Location values follow the alias registry**: `country`, `province`, and `city` values may have aliases defined in the registry. Alias-aware location matching at query time is a future enhancement; the current Stage 1 retrieval flow matches location values as stored in the index. The alias registry serves as the governance reference for human review and normalization guidance.
-- **`canonical_topic` is optional and governed only where retrieval depends on it**: not all note families require `canonical_topic`; it is governed by the alias registry only when a workflow materially depends on it.
+- **Tags follow governed JSON artifacts**: canonical tag values come only from `.opencode/canonical-tags.json`; alias-to-canonical mappings come only from `.opencode/tag-aliases.json`; expansion relationships come only from `.opencode/tag-expansions.json`. `.opencode/alias-registry.md` remains a human-reviewed bootstrap source and migration reference, not the runtime governance source. Alias-aware query-time expansion (matching notes by alias as well as canonical value) is a future enhancement; the current Stage 1 retrieval flow reads canonical values directly from the index.
+- **Location values follow governed JSON artifacts**: `country`, `province`, and `city` alias-to-canonical mappings come only from `.opencode/location-aliases.json`. `.opencode/alias-registry.md` remains a human-reviewed bootstrap source and migration reference, not the runtime governance source. Alias-aware location matching at query time is a future enhancement; the current Stage 1 retrieval flow matches location values as stored in the index.
+- **`canonical_topic` is optional and governed only where retrieval depends on it**: not all note families require `canonical_topic`; it is governed by `.opencode/canonical-tags.json` only when a workflow materially depends on it.
 - **Hierarchical tags remain valid**: `topic/*`, `state/*`, `source/*`, and `role/*` forms are supported by the SQLite retrieval layer.
 - **China default is metadata-level**: when a note's `country` field is absent, retrieval treats it as `中国` (canonical for China) at the metadata/index layer, not at query time.
 
@@ -49,9 +49,71 @@ This workflow relies on the metadata governance policy defined in `.opencode/rul
 
 The retrieval decision chain is the core of vault query behavior. It proceeds through six stages in order, beginning with constraint extraction before any SQLite shortlist execution.
 
-### Stage 0: Constraint Extraction
+### Stage 0: Constraint Extraction (MANDATORY)
 
-Before any Stage 1 shortlist execution, the retrieval flow must perform a constraint-extraction pass on the user request. This stage is mandatory and must not be skipped.
+**THIS STAGE IS MANDATORY. It must complete before any `vault_index_search` call. Skipping this stage violates the retrieval contract.**
+
+#### Pre-execution checklist (MUST complete before tool call)
+
+Before calling `vault_index_search`, the assistant MUST complete these steps in order:
+
+1. **Read governance artifacts** (parallel read allowed):
+   - `.opencode/canonical-tags.json` - unique legal source for canonical tag values
+   - `.opencode/tag-aliases.json` - alias-to-canonical tag mappings
+   - `.opencode/location-aliases.json` - alias-to-canonical location mappings
+   - `.opencode/tag-expansions.json` - approved tag expansion relationships (if exists)
+
+2. **Extract structured constraints from user query**:
+   - Parse user text for time, location, and topic phrases
+   - Follow frozen extraction priority: time → location → tags → extraFields
+
+3. **Normalize extracted values using governance artifacts**:
+   - Map tag aliases to canonical tags via `tag-aliases.json`
+   - Map location aliases to canonical values via `location-aliases.json`
+   - Normalize time phrases using Time-Phrase Alias Tables in `sqlite-retrieval-contract.md`
+
+4. **Output structured query summary in commentary**:
+   - State the normalized constraints explicitly before the tool call
+   - Use the template format below
+
+5. **Call `vault_index_search` with normalized payload**:
+   - Pass only the normalized constraint values
+   - Do NOT pass raw user text expecting wrapper-side inference
+
+#### Structured query summary template (REQUIRED before tool call)
+
+The assistant MUST output this summary in commentary before calling `vault_index_search`:
+
+```
+结构化查询：[user query summary]
+  时间：timeMode=[event|note], start=[ISO date], end=[ISO date]
+  地点：country=[value], province=[value], city=[value]
+  标签：tags=[canonical values from canonical-tags.json]
+  来源：[literal|alias|inference] for each constraint
+```
+
+Example for "2025有哪些培训":
+
+```
+结构化查询：2025 年相关的培训信息
+  时间：timeMode=event, start=2025-01-01, end=2025-12-31 (literal from "2025年")
+  标签：tags=["topic/training"] (alias: "培训" → "topic/training" via tag-aliases.json)
+  来源：time=literal, tags=alias
+```
+
+#### Governed normalization requirement
+
+When usable structured clues exist, the caller MUST perform governed normalization before calling `vault_index_search`. Governed normalization means:
+
+- **Tag outputs**: resolve ONLY to canonical values from `.opencode/canonical-tags.json`
+- **Tag input normalization**: use `.opencode/tag-aliases.json` for alias resolution
+- **Location outputs**: resolve ONLY to canonical values from `.opencode/location-aliases.json`
+- **Tag expansion**: use ONLY `.opencode/tag-expansions.json` for broadened passes
+- **DO NOT delegate** first-pass tag or location inference back to router-local keyword tables when governed caller-side normalization succeeded
+
+The assistant must move from raw user text to the structured query representation first, then pass only the normalized payload to Stage 1. Raw user text is NOT a sufficient Stage 1 input when structured clues exist.
+
+When the tool returns, preserve the visible intermediate retrieval trace in the response before any paraphrase: the `vault_index_search` call, the normalized constraints, and the SQLite process summary.
 
 **Extraction priority order (frozen):**
 
@@ -65,7 +127,7 @@ Before any Stage 1 shortlist execution, the retrieval flow must perform a constr
 - Map user phrases into the normalized constraint payload defined in `.opencode/docs/sqlite-retrieval-contract.md`.
 - Record which phrases were matched literally, by alias, or by low-risk inference.
 - Use the time-phrase alias tables in `.opencode/docs/sqlite-retrieval-contract.md` for common time normalization.
-- Use canonical location and tag values from `.opencode/alias-registry.md` for alias-backed mappings.
+- Use canonical tag values from `.opencode/canonical-tags.json` (with `.opencode/tag-aliases.json` for alias resolution) and canonical location values from `.opencode/location-aliases.json` for alias-backed mappings.
 - Empty or unusable structured extraction does not authorize an unbounded structured query. If no usable structured clues are found, the live wrapper falls back to text search (`mode: "text-fallback"`) rather than returning an empty structured shortlist. Proceed to progressive relaxation if the text fallback is insufficient.
 - Do not use title-first or body-first search as a substitute for applying usable structured clues through SQLite.
 - Low-risk inference for tags is allowed only for obvious stable topic mappings that already align with retrieval and governance language. Inferred tag mappings must be recorded separately from literal or alias-based mappings in the diagnostic trace. Ambiguous semantic phrases that do not map to a single governed canonical tag must remain unresolved and be reported as unmapped rather than being guessed. The bounded semantic mapping policy is defined in `.opencode/docs/sqlite-retrieval-contract.md` under "Semantic mapping policy".
@@ -139,7 +201,7 @@ The extraction pass produces caller-side extraction artifacts: a `structuredTrac
 **Location matching detail:**
 
 - Location filtering uses the schema and column conventions defined in `.opencode/docs/sqlite-retrieval-contract.md` (see Retrieval-Relevant Fields and Constraint Families).
-- Normalize location phrases only into `country`, `province`, and `city` using canonical values from `.opencode/alias-registry.md`.
+- Normalize location phrases only into `country`, `province`, and `city` using canonical values from `.opencode/location-aliases.json`.
 - When a note's `country` field is absent in the index, treat it as `中国` for retrieval purposes. Do not inject `country = 中国` into the query when the user omits a country; the default applies at the metadata/index level so that notes without an explicit `country` are still matched.
 - When both `province` and `city` can be extracted from the user request, emit both constraints.
 
@@ -257,34 +319,90 @@ After all local retrieval stages are exhausted, network search may be considered
 
 ```
 User Query
-     |
-     v
-[Stage 0: Constraint Extraction]
-     |
-     +-- identify structured phrases and map them to normalized constraints
-     +-- record which phrases were matched literally, by alias, or by low-risk inference
-     |
-     v
+      |
+      v
+[Stage 0: Constraint Extraction - MANDATORY]
+      |
+      +-- 1. READ governance artifacts (canonical-tags.json, tag-aliases.json, location-aliases.json)
+      +-- 2. EXTRACT time, location, tags from user text (priority: time → location → tags)
+      +-- 3. NORMALIZE using governance artifacts (aliases → canonical values)
+      +-- 4. OUTPUT structured query summary in commentary (REQUIRED)
+      +-- 5. CALL vault_index_search with normalized payload only
+      |
+      v
 [Stage 1: Structured SQLite Shortlist]
+      |
+      +-- receive normalized constraints through the structured wrapper contract
+      +-- execute Stage 1 SQLite shortlist with intersection semantics
+      |
+      v
+[Stage 2: Candidate Count Decision]
      |
-     +-- receive normalized constraints through the structured wrapper contract
-     +-- execute Stage 1 SQLite shortlist with intersection semantics
+     +-- 0 candidates -----> [Stage 3: Progressive Relaxation] --> retry Stage 1
+     |
+     +-- 1-19 candidates --> [Stage 4: Full Note Read]
+     |
+     +-- 20-100 candidates -> [Stage 2.5: Description Reranking] --> [Stage 4: Full Note Read]
+     |                                                   |
+     |                                                   +-- insufficient --> [Stage 3]
+     |
+     +-- 101+ candidates --> [Stricter Stage 1 or Stage 3: Progressive Relaxation]
      |
      v
-[Stage 2: Candidate Count Decision]
-    |
-    +-- 0 candidates -----> [Stage 3: Progressive Relaxation] --> retry Stage 1
-    |
-    +-- 1-19 candidates --> [Stage 4: Full Note Read]
-    |
-    +-- 20-100 candidates -> [Stage 2.5: Description Reranking] --> [Stage 4: Full Note Read]
-    |                                                   |
-    |                                                   +-- insufficient --> [Stage 3]
-    |
-    +-- 101+ candidates --> [Stricter Stage 1 or Stage 3: Progressive Relaxation]
-    |
-    v
 [Stage 5: Broader Text Retrieval] (after 3 relaxation rounds exhausted)
+```
+
+## Execution Example
+
+**User query**: "2025有哪些培训"
+
+**Correct execution sequence**:
+
+1. **Read governance artifacts**:
+   - canonical-tags.json: confirms "topic/training" is a valid canonical tag
+   - tag-aliases.json: maps "培训" → "topic/training"
+   - location-aliases.json: loaded (not needed for this query)
+   
+2. **Extract and normalize**:
+   - Time: "2025" → `timeMode: "event", start: "2025-01-01", end: "2025-12-31"` (literal)
+   - Tags: "培训" → `tags: ["topic/training"]` (alias mapping)
+   
+3. **Output structured query summary**:
+   ```
+   结构化查询：2025 年相关的培训信息
+     时间：timeMode=event, start=2025-01-01, end=2025-12-31 (literal)
+     标签：tags=["topic/training"] (alias: 培训 → topic/training)
+   ```
+
+4. **Call vault_index_search**:
+   ```javascript
+   vault_index_search(
+     query: "2025 培训",
+     constraints: {
+       timeMode: "event",
+       start: "2025-01-01",
+       end: "2025-12-31",
+       tags: ["topic/training"]
+     }
+   )
+   ```
+
+5. **Read shortlisted files**:
+   - SQLite returns paths like `my-work/myself/对外培训/2025/*.md`
+   - Read these files to confirm details
+
+6. **Answer with provenance**:
+   - List each training event with file-backed details
+   - State confidence: high (file-backed facts)
+
+**Anti-pattern (DO NOT do this)**:
+
+```javascript
+// WRONG: passing raw query without normalization
+vault_index_search(query: "2025有哪些培训")
+
+// WRONG: skipping governance artifact reads
+vault_index_search(query: "2025 培训", constraints: {tags: ["培训"]})  // "培训" is alias, not canonical
 ```
 
 ## Frozen Thresholds Summary

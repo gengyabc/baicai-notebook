@@ -114,6 +114,10 @@ Required behavior:
 
 Before calling `vault_index_search`, the caller must perform a constraint-extraction pass on the user request. This stage produces a normalized constraint payload that the wrapper consumes. The extraction stage is mandatory: it must run before Stage 1 shortlist execution, and its output must be passed through the structured wrapper contract rather than allowing ad hoc raw SQL generation.
 
+The caller must first synthesize an explicit normalized structured query from the user request. Raw user text alone is not a sufficient Stage 1 input when structured clues exist.
+
+The normalized structured query must be surfaced before Stage 1 execution so the retrieval path is auditable: first state the normalized constraints, then call `vault_index_search` with only that payload.
+
 ### Extraction priority order (frozen)
 
 1. **time** - evaluate first when the request contains a usable date or time phrase
@@ -154,7 +158,7 @@ When both `province` and `city` can be extracted, emit both constraints.
 - `tags`: array of canonical tag values (e.g., `topic/training`)
 - `hierarchicalTags`: array of hierarchical tag prefixes (e.g., `topic/` to match `topic/subtopic`)
 
-Prefer explicit canonical tag mappings from `.opencode/alias-registry.md` first. Allow low-risk inference only for obvious stable topic mappings that already align with retrieval and governance language. Do not use freeform title or body keywords as substitute structured tags.
+Prefer explicit canonical tag mappings from `.opencode/canonical-tags.json` (with `.opencode/tag-aliases.json` for alias resolution) first. Allow low-risk inference only for obvious stable topic mappings that already align with retrieval and governance language. Do not use freeform title or body keywords as substitute structured tags.
 
 #### extraFields
 
@@ -171,8 +175,13 @@ The first version does not introduce fuzzy person-name normalization for `organi
 ### Normalization source rules (frozen)
 
 - Common time-phrase alias tables are defined in this document (see Time-Phrase Alias Tables below) because they are retrieval-contract behavior, not note-authoring governance.
-- Canonical location values and canonical tag values come from `.opencode/alias-registry.md` when an alias-backed mapping is needed.
-- `query-vault.md` and `second-brain-query/SKILL.md` consume these sources; they do not become competing alias tables.
+- **Canonical tag values** come only from `.opencode/canonical-tags.json`, which is the unique legal runtime source for final canonical tag outputs. No non-canonical tag string may be sent to the wrapper as a structured tag constraint.
+- **Tag alias-to-canonical mappings** come only from `.opencode/tag-aliases.json`. Aliases are valid only as input forms, never as final structured outputs.
+- **Tag expansion relationships** come only from `.opencode/tag-expansions.json`. Only explicitly listed expansion relationships may be used in broadened structured retrieval passes. Every expansion target named in this artifact must already exist in `.opencode/canonical-tags.json`.
+- **Location alias-to-canonical mappings** come only from `.opencode/location-aliases.json`. Location aliases are valid only as input forms, never as final structured outputs.
+- `.opencode/alias-registry.md` remains a human-reviewed bootstrap source and migration reference, but it is no longer the legal runtime source for final canonical tag outputs once these machine-readable artifacts exist.
+- `query-vault.md` and `second-brain-query/SKILL.md` consume the JSON governance artifacts; they do not become competing alias tables.
+- Canonical tag additions require explicit human approval by default. Alias and expansion additions must be reviewable before merging. The propose-approve-reject workflow for governed artifact changes is defined in this contract and must be followed for all additions to the four JSON governance artifacts.
 
 ### Semantic mapping policy (frozen at step 05)
 
@@ -277,6 +286,47 @@ Diagnostics are model-facing contract data first. User-facing transparency may r
 
 The response diagnostics contract is planned. The current wrapper returns a text-formatted shortlist and does not yet expose structured diagnostics fields. Implementation of the response contract is deferred to the wrapper implementation step.
 
+## Multi-pass retrieval policy (frozen at step 07)
+
+The retrieval orchestration protocol follows a bounded two-pass strategy:
+
+1. **Primary structured pass**: uses only the caller's primary canonical constraints with no automatic neighboring-tag expansion.
+2. **Expansion structured pass**: runs only after a primary structured pass that returns fewer than 3 candidates. Uses only explicitly approved neighboring canonical tags from `.opencode/tag-expansions.json`. Does not invent new canonical tags.
+3. Primary structured results of 3 or more candidates do not trigger first-version automatic semantic expansion.
+4. After the expansion pass, if still insufficient, the existing fallback chain (progressive relaxation, broader text retrieval) continues unchanged.
+
+The caller owns normalization, governed artifact lookup, and the decision to attempt the bounded expansion pass. The wrapper owns SQL generation, execution, shortlist ranking inputs, and reporting candidate counts for each structured pass.
+
+## Pass-level diagnostics (frozen at step 07)
+
+Diagnostics must distinguish at least these pass states: `primary-structured-pass`, `expansion-structured-pass`, and the later existing fallback chain.
+
+For each structured pass, diagnostics must report:
+- Which canonical constraints were used
+- Whether each mapping was `literal`, `alias`, or `inference`
+- Why expansion was triggered (for expansion passes)
+- How many candidates each pass returned
+
+The `structuredTrace` field in the planned request shape supports per-constraint trace entries with `source: "literal" | "alias" | "inference"`.
+
+## Machine-readable wrapper response diagnostics (step 07)
+
+First-version machine-readable diagnostics fields are added alongside existing text output for backward compatibility.
+
+**Planned diagnostics fields - Phase 1** (not yet supported by the live wrapper; the current wrapper returns text-formatted output):
+- `appliedConstraints`: constraint field names that were applied
+- `inferredConstraints`: subset with source = "inference"
+- `rejectedStructuredHints`: structured hints the model considered but did not apply
+- `candidateCounts`: candidates after each pass (structured, fallback)
+- `fallbackReason`: stable reason label if retrieval broadened
+
+**Planned diagnostics fields - Phase 2** (not yet supported by the live wrapper):
+- `passType`: `"primary-structured-pass"` | `"expansion-structured-pass"` per pass
+- `expansionTriggerReason`: reason for broadening when an expansion pass ran
+- `structuredTrace`: per-constraint trace with `literal`/`alias`/`inference` source
+
+The current wrapper does not yet return structured diagnostics fields; it returns a text-formatted shortlist. Structured diagnostics will be added alongside the text output when the wrapper response contract is fully implemented.
+
 ## Current Wrapper Behavior
 
 `vault_index_search` currently:
@@ -340,7 +390,7 @@ All windows are inclusive on both endpoints, except that `before` and `after` ar
 - Prefer canonical tag values such as `topic/training`
 - Prefer canonical location values such as `深圳市` or `江苏省`
 - Alias expansion is limited and should happen through the wrapper's deterministic extraction logic, not by improvised SQL patterns
-- Tag canonical values and location canonical values are governed by `.opencode/alias-registry.md`
+- Tag canonical values are governed by `.opencode/canonical-tags.json`; location canonical values are governed by `.opencode/location-aliases.json`; alias and expansion mappings are governed by `.opencode/tag-aliases.json` and `.opencode/tag-expansions.json` respectively
 - Time-phrase normalization is governed by the Time-Phrase Alias Tables in this document
 
 ## Required Indexes

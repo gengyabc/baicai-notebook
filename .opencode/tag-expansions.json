@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "description": "Approved neighboring-tag expansion relationships. Every tag referenced must exist in canonical-tags.json. Expansion targets are used only in broadened structured retrieval passes after the primary pass returns fewer than 3 candidates.",
+  "expansions": {
+    "topic/training": ["topic/education"],
+    "topic/education": ["topic/training"]
+  }
+}

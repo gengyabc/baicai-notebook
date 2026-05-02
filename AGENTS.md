@@ -44,7 +44,17 @@ When folder names are referenced in documentation and workflows, they should be 
 - The only exception is when debug mode is active for this session.
 - For non-debug sessions, always follow the query workflow before answering, even for short or ambiguous prompts.
 - Treat `.opencode/docs/sqlite-retrieval-contract.md` as the canonical schema and retrieval contract for `.opencode/frontmatter-index.sqlite`.
-- Before any vault retrieval, read the query workflow first; SQLite shortlist is mandatory. Never skip `vault_index_search` against `.opencode/frontmatter-index.sqlite` in favor of grep or global search.
+
+**MANDATORY PRE-READS before any vault query**:
+1. Read `.opencode/workflows/query-vault.md` to understand the retrieval decision chain
+2. Read governance artifacts before calling `vault_index_search`:
+   - `.opencode/canonical-tags.json` - legal source for canonical tag values
+   - `.opencode/tag-aliases.json` - maps aliases like "培训" to canonical "topic/training"
+   - `.opencode/location-aliases.json` - maps location aliases to canonical values
+3. Perform Stage 0 constraint extraction and normalization BEFORE the tool call
+4. Output structured query summary in commentary before calling `vault_index_search`
+5. Pass only normalized constraint values to `vault_index_search`, NOT raw user text
+
 - Query order is: SQLite shortlist first, then read `workbook/wiki/index.md`, prefer relevant `workbook/wiki/` pages, then pull supporting evidence from `workbook/resources/`, then use `workbook/brainstorm/` only for tentative synthesis, and use `workbook/my-work/` only for current context and active intent.
 - When the answer is not fully grounded, state confidence and separate confirmed facts from working hypotheses.
 - In non-debug sessions, do not use network search without user permission. If local retrieval is insufficient and external search would help, ask first.

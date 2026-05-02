@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "bun:test"
 import fs from "node:fs"
+import path from "node:path"
 
 // Dynamic date helpers for time-phrase tests (Q05-003 fix)
 const now = new Date()
@@ -25,10 +26,10 @@ function monthEnd(year: number, month: number) {
 
 // Batch 1: Documentation alignment tests
 describe("Batch 1: Semantic mapping ownership and first-version boundaries", () => {
-  const contractPath = ".opencode/docs/sqlite-retrieval-contract.md"
-  const workflowPath = ".opencode/workflows/query-vault.md"
-  const skillPath = ".opencode/skills/second-brain-query/SKILL.md"
-  const aliasRegistryPath = ".opencode/alias-registry.md"
+  const contractPath = path.resolve(import.meta.dir, "../../docs/sqlite-retrieval-contract.md")
+  const workflowPath = path.resolve(import.meta.dir, "../../workflows/query-vault.md")
+  const skillPath = path.resolve(import.meta.dir, "../../skills/second-brain-query/SKILL.md")
+  const aliasRegistryPath = path.resolve(import.meta.dir, "../../alias-registry.md")
 
   let contract: string
   let workflow: string
@@ -42,10 +43,11 @@ describe("Batch 1: Semantic mapping ownership and first-version boundaries", () 
     aliasRegistry = fs.readFileSync(aliasRegistryPath, "utf-8")
   })
 
-  it("contract separates canonical-value ownership (alias-registry) from retrieval-time semantic mapping behavior", () => {
-    expect(contract).toContain("alias-registry.md")
-    // Contract must state that tag/location canonical values are governed by alias-registry
-    expect(contract).toMatch(/tag canonical values and location canonical values are governed by/i)
+  it("contract separates canonical-value ownership (JSON governance artifacts) from retrieval-time semantic mapping behavior", () => {
+    expect(contract).toContain("canonical-tags.json")
+    expect(contract).toContain("location-aliases.json")
+    expect(contract).toMatch(/tag canonical values.*governed by.*canonical-tags\.json|canonical-tags\.json.*tag canonical/i)
+    expect(contract).toMatch(/location canonical values.*governed by.*location-aliases\.json|location-aliases\.json.*location canonical/i)
     expect(contract).toMatch(/semantic.{0,30}mapping/i)
   })
 
@@ -90,6 +92,7 @@ import {
   LOCATION_ALIASES,
   TAG_KEYWORDS,
   formatDiagnosticOutput,
+  formatStructuredQueryTrace,
 } from "./extraction-logic"
 
 describe("Batch 2: Expand deterministic time and location phrase normalization", () => {
@@ -366,12 +369,13 @@ describe("Batch 3: Bounded topic phrase expansion on governed canonical tags", (
     })
   })
 
-  describe("alias-registry and extraction logic alignment", () => {
-    it("all canonical tags in TAG_KEYWORDS exist in alias-registry", () => {
-      const aliasRegistryPath = ".opencode/alias-registry.md"
-      const aliasRegistry = fs.readFileSync(aliasRegistryPath, "utf-8")
+  describe("canonical-tags.json and extraction logic alignment", () => {
+    it("all canonical tags in TAG_KEYWORDS exist in canonical-tags.json", () => {
+      const canonicalTagsPath = path.resolve(import.meta.dir, "../../canonical-tags.json")
+      const canonicalTags = JSON.parse(fs.readFileSync(canonicalTagsPath, "utf-8"))
+      const canonicalSet = new Set(canonicalTags.tags)
       for (const entry of TAG_KEYWORDS) {
-        expect(aliasRegistry).toContain(entry.canonical)
+        expect(canonicalSet.has(entry.canonical)).toBe(true)
       }
     })
   })
@@ -480,11 +484,25 @@ describe("Batch 4: Mapped and unmapped phrase diagnostics in current router outp
       const outputInsufficient = formatDiagnosticOutput("深圳的培训", ["city:深圳->深圳市"], [], true)
       expect(outputInsufficient).toContain("Mapped phrases:")
     })
+
+    it("formatStructuredQueryTrace surfaces governance artifacts and SQLite process", () => {
+      const output = formatStructuredQueryTrace(
+        "2025有哪些ai相关培训",
+        { tags: ["topic/training"], timeMode: "event", start: "2025-01-01T00:00:00.000Z", end: "2025-12-31T23:59:59.999Z" },
+        ["tag:培训->topic/training"],
+        [],
+        "primary structured pass"
+      )
+      expect(output).toContain("tag-aliases.json")
+      expect(output).toContain("SQLite process:")
+      expect(output).toContain("primary structured pass")
+      expect(output).toContain("topic/training")
+    })
   })
 
   describe("docs do not overclaim diagnostics", () => {
     it("contract doc states diagnostics are text-mode only, not structured response fields", () => {
-      const contractPath = ".opencode/docs/sqlite-retrieval-contract.md"
+      const contractPath = path.resolve(import.meta.dir, "../../docs/sqlite-retrieval-contract.md")
       const contract = fs.readFileSync(contractPath, "utf-8")
       // The contract must acknowledge that current diagnostics are text, not structured
       expect(contract).toMatch(/text-formatted|text-formatted shortlist/i)

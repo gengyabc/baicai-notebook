@@ -10,15 +10,17 @@ import {
 } from "@opencode-ai/sdk/v2/client"
 import { getDefaultFoldersWithRoot, getFolderPriorities, getVaultConfig } from "../../scripts/vault-paths.mjs"
 import {
-  LOCATION_ALIASES,
-  TAG_KEYWORDS,
   matchesAlias,
   inferTimeRangeFromQuery,
   inferStructuredConstraints as inferStructuredConstraintsLogic,
   formatDiagnosticOutput,
+  formatStructuredQueryTrace,
   type StructuredConstraintsInput,
   type ExtractedConstraints,
 } from "./extraction-logic.ts"
+import {
+  buildExpandedConstraints,
+} from "./governed-artifacts"
 
 const require = createRequire(import.meta.url)
 const frontmatterIndexConfig = require("../frontmatter-index/config.json") as {
@@ -80,7 +82,7 @@ type StructuredConstraints = {
 
 type SearchResult = {
   mode: "structured" | "text-fallback"
-  rows: SearchRow[]
+  rows: (SearchRow | StructuredSearchRow)[]
   output: string
 }
 
@@ -336,15 +338,6 @@ function inferStructuredConstraints(query: string): ExtractedConstraints {
   return inferStructuredConstraintsLogic(query)
 }
 
-function buildFolderFilterClauses(folders: string[]) {
-  const clauses = folders.map(() => "(n.path LIKE ? ESCAPE '\\' OR n.path = ?)")
-  const params: string[] = []
-  for (const folder of folders) {
-    params.push(`${escapeLikePattern(folder)}/%`, folder)
-  }
-  return { sql: `(${clauses.join(" OR ")})`, params }
-}
-
 function buildInClause(values: string[]) {
   return values.map(() => "?").join(", ")
 }
@@ -352,13 +345,11 @@ function buildInClause(values: string[]) {
 function buildStructuredSearchQuery(
   folders: string[],
   limit: number,
-  constraints: StructuredConstraints
+  constraints: StructuredConstraints,
+  priorities: Record<string, number>
 ) {
   const whereClauses: string[] = []
   const params: Array<string | number> = []
-  const folderFilter = buildFolderFilterClauses(folders)
-  whereClauses.push(folderFilter.sql)
-  params.push(...folderFilter.params)
 
   if (constraints.tags.length > 0 || constraints.hierarchicalTags.length > 0) {
     const tagClauses: string[] = []
@@ -429,21 +420,25 @@ function buildStructuredSearchQuery(
     params.push(constraints.start, constraints.end)
   }
 
+  const priorityExpr = folderPriorityExpr(priorities)
+  const whereSql = whereClauses.length > 0
+    ? whereClauses.join("\n      AND ")
+    : "1=1"
   const sql = `
     SELECT
       n.path,
       n.title,
       n.folder,
-      d.value_text AS description
+      d.value_text AS description,
+      ${priorityExpr.sql} AS folder_score
     FROM notes n
     LEFT JOIN properties d ON d.note_id = n.id AND d.key = 'description'
-    WHERE ${whereClauses.join("\n      AND ")}
-    ORDER BY n.path ASC
+    WHERE ${whereSql}
+    ORDER BY folder_score DESC, n.path ASC
     LIMIT ?
   `
 
-  params.push(limit)
-  return { sql, params }
+  return { sql, params: [...priorityExpr.params, ...params, limit] }
 }
 
 function buildSearchQuery(
@@ -453,13 +448,7 @@ function buildSearchQuery(
   limit: number,
   priorities: Record<string, number>
 ) {
-  const folderParams: Array<string | number> = []
   const queryLike = `%${queryText}%`
-
-  const folderClauses = folders.map(() => "(n.path LIKE ? ESCAPE '\\' OR n.path = ?)")
-  for (const folder of folders) {
-    folderParams.push(`${escapeLikePattern(folder)}/%`, folder)
-  }
 
   const tokenClauses: string[] = []
   const tokenClauseParams: Array<string | number> = []
@@ -569,8 +558,7 @@ function buildSearchQuery(
         ph.exact_property_key, ph.property_match, ph.property_score, ph.matched_property_keys
       FROM notes n
       LEFT JOIN property_hits ph ON ph.note_id = n.id
-      WHERE (${folderClauses.join(" OR ")})
-        AND (${[...baseMatchClauses, ...tokenClauses].join(" OR ")})
+      WHERE (${[...baseMatchClauses, ...tokenClauses].join(" OR ")})
     )
     SELECT
       n.path,
@@ -593,7 +581,6 @@ function buildSearchQuery(
     queryText,
     ...propertyScoreParams,
     ...propertyFilterParams,
-    ...folderParams,
     ...baseMatchParams,
     ...tokenClauseParams,
     ...scoreParams,
@@ -626,10 +613,18 @@ function formatStructuredResults(
   reasons: string[] = [],
   unresolvedHints: string[] = []
 ) {
+  const queryTrace = formatStructuredQueryTrace(
+    query,
+    constraints,
+    reasons,
+    unresolvedHints,
+    "primary structured pass"
+  )
   const diagnosticLines = formatDiagnosticOutput(query, reasons, unresolvedHints, true)
 
   if (!rows.length) {
     return [
+      queryTrace,
       `Structured SQLite shortlist for \`${query}\` found no matches.`,
       `Applied constraints: ${formatStructuredConstraints(constraints)}`,
       diagnosticLines,
@@ -638,6 +633,7 @@ function formatStructuredResults(
   }
 
   const lines = [
+    queryTrace,
     `Structured SQLite shortlist for \`${query}\`:`,
     `Applied constraints: ${formatStructuredConstraints(constraints)}`,
     diagnosticLines,
@@ -724,7 +720,7 @@ function formatResults(query: string, rows: SearchRow[]) {
   return lines.join("\n")
 }
 
-function searchIndex(
+export function searchIndex(
   dbPath: string,
   query: string,
   limit?: number,
@@ -748,7 +744,6 @@ function searchIndex(
     ? { constraints, reasons: [] as string[], unresolvedHints: [] as string[] }
     : inferStructuredConstraints(query)
   const normalizedConstraints = normalizeStructuredConstraints(extracted.constraints || undefined)
-
   if (!normalizedConstraints) {
     const fallback = runTextFallbackSearch(
       dbPath,
@@ -762,6 +757,7 @@ function searchIndex(
     return {
       ...fallback,
       output: [
+        formatStructuredQueryTrace(query, null, extracted.reasons, extracted.unresolvedHints, "text fallback"),
         "No structured constraints were provided or extracted, so this used the text fallback instead of the structured SQLite shortlist.",
         diagnosticOutput,
         fallback.output,
@@ -769,28 +765,58 @@ function searchIndex(
     }
   }
 
-  const { sql, params } = buildStructuredSearchQuery(effectiveFolders, effectiveLimit, normalizedConstraints)
+  const { sql, params } = buildStructuredSearchQuery(effectiveFolders, effectiveLimit, normalizedConstraints, effectivePriorities)
   let db = getDatabase(dbPath)
 
+  let primaryRows: StructuredSearchRow[] = []
   try {
-    const rows = db.query(sql).all(...params) as StructuredSearchRow[]
-    if (rows.length > 0) {
-      return {
-        mode: "structured" as const,
-        rows: rows as unknown as SearchRow[],
-        output: formatStructuredResults(query, rows, normalizedConstraints, extracted.reasons, extracted.unresolvedHints),
-      }
-    }
+    primaryRows = db.query(sql).all(...params) as StructuredSearchRow[]
   } catch {
     invalidateDatabase(dbPath)
     db = getDatabase(dbPath)
-    const rows = db.query(sql).all(...params) as StructuredSearchRow[]
-    if (rows.length > 0) {
+    primaryRows = db.query(sql).all(...params) as StructuredSearchRow[]
+  }
+
+  if (primaryRows.length >= 3) {
+    return {
+      mode: "structured" as const,
+      rows: primaryRows,
+      output: formatStructuredResults(query, primaryRows, normalizedConstraints, extracted.reasons, extracted.unresolvedHints),
+    }
+  }
+
+  const expansionResult = buildExpandedConstraints(normalizedConstraints.tags, primaryRows.length)
+  let expansionRows: StructuredSearchRow[] = []
+
+  if (expansionResult.expansionTriggerReason) {
+    const expandedConstraints: StructuredConstraints = {
+      ...normalizedConstraints,
+      tags: expansionResult.expandedTags,
+    }
+    const { sql: expSql, params: expParams } = buildStructuredSearchQuery(effectiveFolders, effectiveLimit, expandedConstraints, effectivePriorities)
+
+    try {
+      expansionRows = db.query(expSql).all(...expParams) as StructuredSearchRow[]
+    } catch {
+      invalidateDatabase(dbPath)
+      db = getDatabase(dbPath)
+      expansionRows = db.query(expSql).all(...expParams) as StructuredSearchRow[]
+    }
+
+    if (expansionRows.length > 0) {
       return {
         mode: "structured" as const,
-        rows: rows as unknown as SearchRow[],
-        output: formatStructuredResults(query, rows, normalizedConstraints, extracted.reasons, extracted.unresolvedHints),
+        rows: expansionRows,
+        output: formatStructuredResults(query, expansionRows, expandedConstraints, extracted.reasons, extracted.unresolvedHints),
       }
+    }
+  }
+
+  if (primaryRows.length > 0) {
+    return {
+      mode: "structured" as const,
+      rows: primaryRows,
+      output: formatStructuredResults(query, primaryRows, normalizedConstraints, extracted.reasons, extracted.unresolvedHints),
     }
   }
 
@@ -806,6 +832,13 @@ function searchIndex(
   return {
     ...fallback,
     output: [
+      formatStructuredQueryTrace(
+        query,
+        normalizedConstraints,
+        extracted.reasons,
+        extracted.unresolvedHints,
+        "primary structured pass and bounded expansion pass if needed"
+      ),
       `Structured SQLite shortlist was insufficient for \`${query}\`.`,
       `Applied constraints: ${formatStructuredConstraints(normalizedConstraints)}`,
       diagnosticOutput,
@@ -821,6 +854,8 @@ function buildSystemInstruction() {
   return [
     "Vault retrieval routing is enabled for this session.",
     "For vault-grounded questions, call `vault_index_search` first before reading vault files or writing ad hoc SQLite.",
+    "Before the tool call, normalize the request into an explicit structured query summary, state that summary in commentary, and pass only the normalized constraints to the wrapper.",
+    "Do not collapse or omit the structured query summary or SQLite process trace when answering; preserve the visible intermediate retrieval trace before any paraphrase.",
     "Treat `.opencode/docs/sqlite-retrieval-contract.md` as the canonical schema and wrapper contract for `.opencode/frontmatter-index.sqlite`.",
     `Read the shortlisted files first and preserve folder priority: ${vaultRoot}/${folders.wiki} -> ${vaultRoot}/${folders.output} -> ${vaultRoot}/${folders.resources} -> ${vaultRoot}/${folders.brainstorm} -> ${vaultRoot}/${folders.myWork}.`,
     "Soft fallback is allowed only when the SQLite shortlist is empty or clearly insufficient. If you broaden retrieval, say that explicitly before reading outside the shortlist.",
@@ -971,11 +1006,6 @@ export const VaultQueryRouter: Plugin = async ({ worktree, client, serverUrl }) 
           }).optional(),
         },
         async execute(args, context) {
-          const state = getSessionState(context.sessionID)
-          if (state.debug || state.pendingDebugCommand) {
-            return "Debug mode is active for this session, so vault_index_search auto-routing is disabled."
-          }
-
           try {
             const result = searchIndex(
               dbPath,

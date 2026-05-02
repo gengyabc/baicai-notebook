@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "description": "Unique legal runtime source of canonical tag values. No non-canonical tag string may be sent to the wrapper as a structured tag constraint.",
+  "tags": [
+    "state/active",
+    "state/inbox",
+    "state/archived",
+    "state/reviewed",
+    "state/draft",
+    "source/web",
+    "source/paper",
+    "source/generated",
+    "source/local",
+    "source/chat",
+    "source/manual",
+    "role/raw",
+    "role/summary",
+    "role/synthesis",
+    "role/topic",
+    "role/entity",
+    "role/draft",
+    "role/index",
+    "role/log",
+    "topic/idea",
+    "topic/training",
+    "topic/education",
+    "topic/ai-tools",
+    "topic/design",
+    "topic/cv"
+  ]
+}

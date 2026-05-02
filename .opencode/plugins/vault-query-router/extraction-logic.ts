@@ -5,87 +5,63 @@
  * used by the router plugin. It is the single source of truth for time-range
  * inference, location alias matching, and tag keyword matching so that the
  * test suite and the live router consume the same logic.
+ *
+ * Governed normalization: tag and location resolution consume the JSON
+ * governance artifacts (canonical-tags.json, tag-aliases.json,
+ * location-aliases.json, tag-expansions.json) via the governed-artifacts
+ * module. The router-local keyword tables are strictly derived consumers
+ * of the governed artifacts, not independent sources of truth.
  */
 
-// --- Location aliases (frozen, governed by alias-registry.md) ---
+import {
+  loadCanonicalTags,
+  loadTagAliases,
+  loadLocationAliases,
+  invalidateGovernedArtifactCache,
+} from "./governed-artifacts"
 
-export const LOCATION_ALIASES = {
-  country: new Map<string, string>([
-    ["中国", "中国"],
-    ["china", "中国"],
-    ["cn", "中国"],
-    ["prc", "中国"],
-    ["people's republic of china", "中国"],
-    ["美国", "美国"],
-    ["united states", "美国"],
-    ["us", "美国"],
-    ["usa", "美国"],
-    ["united states of america", "美国"],
-  ]),
-  province: new Map<string, string>([
-    ["广东省", "广东省"],
-    ["广东", "广东省"],
-    ["guangdong", "广东省"],
-    ["gd", "广东省"],
-    ["北京市", "北京市"],
-    ["北京", "北京市"],
-    ["beijing", "北京市"],
-    ["bj", "北京市"],
-    ["上海市", "上海市"],
-    ["上海", "上海市"],
-    ["shanghai", "上海市"],
-    ["sh", "上海市"],
-    ["山东省", "山东省"],
-    ["山东", "山东省"],
-    ["shandong", "山东省"],
-    ["sd", "山东省"],
-    ["新疆维吾尔自治区", "新疆维吾尔自治区"],
-    ["新疆", "新疆维吾尔自治区"],
-    ["xinjiang", "新疆维吾尔自治区"],
-    ["新疆生产建设兵团", "新疆维吾尔自治区"],
-    ["江苏省", "江苏省"],
-    ["江苏", "江苏省"],
-    ["jiangsu", "江苏省"],
-    ["js", "江苏省"],
-  ]),
-  city: new Map<string, string>([
-    ["深圳市", "深圳市"],
-    ["深圳", "深圳市"],
-    ["shenzhen", "深圳市"],
-    ["sz", "深圳市"],
-    ["北京市", "北京市"],
-    ["北京", "北京市"],
-    ["beijing", "北京市"],
-    ["上海市", "上海市"],
-    ["上海", "上海市"],
-    ["shanghai", "上海市"],
-    ["青岛市", "青岛市"],
-    ["青岛", "青岛市"],
-    ["qingdao", "青岛市"],
-    ["qd", "青岛市"],
-    ["乌鲁木齐市", "乌鲁木齐市"],
-    ["乌鲁木齐", "乌鲁木齐市"],
-    ["urumqi", "乌鲁木齐市"],
-    ["昆山市", "昆山市"],
-    ["昆山", "昆山市"],
-    ["kunshan", "昆山市"],
-    ["江门市", "江门市"],
-    ["江门", "江门市"],
-    ["jiangmen", "江门市"],
-    ["广东江门", "江门市"],
-  ]),
-} as const
+function buildTagKeywordsFromArtifacts(): Array<{ canonical: string; aliases: string[]; source: "literal" | "alias" | "inference" }> {
+  const canonicalTags = loadCanonicalTags()
+  const tagAliases = loadTagAliases()
+  const tagToAliases = new Map<string, string[]>()
+  for (const tag of canonicalTags.tags) {
+    tagToAliases.set(tag, [tag])
+  }
+  for (const [alias, canonical] of Object.entries(tagAliases.mappings)) {
+    const existing = tagToAliases.get(canonical)
+    if (existing && !existing.includes(alias)) {
+      existing.push(alias)
+    }
+  }
+  return Array.from(tagToAliases.entries()).map(([canonical, aliases]) => ({
+    canonical,
+    aliases,
+    source: "literal" as const,
+  }))
+}
 
-// --- Tag keywords (frozen, governed by alias-registry.md) ---
+function buildLocationAliasesFromArtifacts() {
+  const locationAliases = loadLocationAliases()
+  return {
+    country: new Map<string, string>(Object.entries(locationAliases.country)),
+    province: new Map<string, string>(Object.entries(locationAliases.province)),
+    city: new Map<string, string>(Object.entries(locationAliases.city)),
+  }
+}
 
-export const TAG_KEYWORDS: Array<{ canonical: string; aliases: string[]; source: "literal" | "alias" | "inference" }> = [
-  { canonical: "topic/training", aliases: ["topic/training", "training", "培训"], source: "literal" },
-  { canonical: "topic/education", aliases: ["topic/education", "education", "edu", "教育", "edu/child"], source: "literal" },
-  { canonical: "topic/idea", aliases: ["topic/idea", "idea", "想法"], source: "literal" },
-  { canonical: "topic/design", aliases: ["topic/design", "design", "设计", "design-systems", "topic/design-systems"], source: "literal" },
-  { canonical: "topic/cv", aliases: ["topic/cv", "cv", "简历", "myself"], source: "literal" },
-  { canonical: "topic/ai-tools", aliases: ["topic/ai-tools", "ai-tools", "agent-native-cli", "excalidraw-cli", "topic/agent-native-cli", "topic/excalidraw-cli"], source: "literal" },
-]
+export let TAG_KEYWORDS: Array<{ canonical: string; aliases: string[]; source: "literal" | "alias" | "inference" }> = buildTagKeywordsFromArtifacts()
+
+export let LOCATION_ALIASES: {
+  country: Map<string, string>
+  province: Map<string, string>
+  city: Map<string, string>
+} = buildLocationAliasesFromArtifacts()
+
+export function refreshGovernedDerivedTables() {
+  invalidateGovernedArtifactCache()
+  TAG_KEYWORDS = buildTagKeywordsFromArtifacts()
+  LOCATION_ALIASES = buildLocationAliasesFromArtifacts()
+}
 
 // --- Time hints ---
 
@@ -386,6 +362,21 @@ export type ExtractedConstraints = {
   unresolvedHints: string[]
 }
 
+function formatConstraintSummary(constraints: StructuredConstraintsInput | null): string {
+  if (!constraints) return "(none)"
+
+  const parts: string[] = []
+  if (constraints.timeMode && constraints.start && constraints.end) {
+    parts.push(`time(${constraints.timeMode})=${constraints.start}..${constraints.end}`)
+  }
+  if (constraints.tags?.length) parts.push(`tags=${constraints.tags.join(", ")}`)
+  if (constraints.hierarchicalTags?.length) parts.push(`hierarchicalTags=${constraints.hierarchicalTags.join(", ")}`)
+  if (constraints.country?.length) parts.push(`country=${constraints.country.join(", ")}`)
+  if (constraints.province?.length) parts.push(`province=${constraints.province.join(", ")}`)
+  if (constraints.city?.length) parts.push(`city=${constraints.city.join(", ")}`)
+  return parts.length ? parts.join("; ") : "(none)"
+}
+
 // --- Unresolved semantic hint detection ---
 // These are common retrieval phrases that are NOT in the governed tag set.
 // They should be reported as unresolved rather than silently mapped.
@@ -576,6 +567,38 @@ export function formatDiagnosticOutput(
     lines.push("Unresolved semantic hints (not mapped to any governed canonical tag):")
     for (const hint of unresolvedHints) {
       lines.push(`  - ${hint}`)
+    }
+  }
+
+  return lines.join("\n")
+}
+
+export function formatStructuredQueryTrace(
+  query: string,
+  constraints: StructuredConstraintsInput | null,
+  reasons: string[],
+  unresolvedHints: string[],
+  passPlan: string
+): string {
+  const lines = [
+    `Structured query summary for \`${query}\`:`,
+    `  tool call: vault_index_search`,
+    `  normalized constraints: ${formatConstraintSummary(constraints)}`,
+    `  governance artifacts: canonical-tags.json, tag-aliases.json, tag-expansions.json, location-aliases.json`,
+    `  SQLite process: Stage 0 normalization -> ${passPlan} -> text fallback if still insufficient`,
+  ]
+
+  if (reasons.length > 0) {
+    lines.push("  mapped phrases:")
+    for (const reason of reasons) {
+      lines.push(`    - ${reason}`)
+    }
+  }
+
+  if (unresolvedHints.length > 0) {
+    lines.push("  unresolved hints:")
+    for (const hint of unresolvedHints) {
+      lines.push(`    - ${hint}`)
     }
   }
 

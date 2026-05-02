@@ -3,16 +3,48 @@ name: second-brain-query
 description: Answer vault questions using folder-aware confidence and provenance
 compatibility: opencode
 ---
+## Before Using This Skill (MANDATORY PRE-READS)
+
+Before executing any vault query with this skill, the assistant MUST read these governance artifacts:
+
+1. `.opencode/canonical-tags.json` - unique legal source for canonical tag values
+2. `.opencode/tag-aliases.json` - alias-to-canonical tag mappings (e.g., "培训" → "topic/training")
+3. `.opencode/location-aliases.json` - alias-to-canonical location mappings
+4. `.opencode/tag-expansions.json` - approved tag expansion relationships (if exists)
+
+**These reads are MANDATORY. Skipping them violates the retrieval contract.**
+
 ## What I do
 
 - Answer vault questions by following the structured retrieval decision chain defined in `query-vault.md`
-- Perform constraint extraction (Stage 0) before any SQLite shortlist, mapping user phrases to the normalized constraint payload
-- Start with `vault_index_search` against `.opencode/frontmatter-index.sqlite` as the first retrieval layer, passing structured constraints through the wrapper contract
+- **Perform constraint extraction (Stage 0) before any SQLite shortlist** - this is mandatory, not optional
+- Map user phrases to the normalized constraint payload using governance artifacts
+- Output structured query summary in commentary BEFORE calling `vault_index_search`
+- Start with `vault_index_search` against `.opencode/frontmatter-index.sqlite` as the first retrieval layer, passing normalized constraints through the wrapper contract
 - Apply frontmatter-structured filtering (tags, time, location, allowlisted extra fields) before description-based reranking or unstructured fallback
 - Read `workbook/wiki/index.md` first and answer from `workbook/wiki/` when possible
 - Pull supporting evidence from `workbook/resources/`
 - Use `workbook/brainstorm/` only for tentative synthesis
 - Call out uncertainty, conflict, and support level clearly
+
+## Structured Query Summary (REQUIRED before tool call)
+
+Before calling `vault_index_search`, the assistant MUST output this summary:
+
+```
+结构化查询：[summary of user query intent]
+  时间：timeMode=[event|note], start=[ISO date], end=[ISO date] (source: literal|alias|inference)
+  地点：country=[value], province=[value], city=[value] (source: literal|alias|inference)
+  标签：tags=[canonical values from canonical-tags.json] (source: literal|alias|inference)
+```
+
+Example:
+
+```
+结构化查询：2025 年相关的培训信息
+  时间：timeMode=event, start=2025-01-01, end=2025-12-31 (literal from "2025年")
+  标签：tags=["topic/training"] (alias: "培训" → "topic/training" via tag-aliases.json)
+```
 
 ## Canonical Contract Consumption
 
@@ -35,14 +67,22 @@ This skill follows the provenance separation defined in `.opencode/docs/sqlite-r
 
 ## Governance alignment
 
-Retrieval follows the metadata governance policy from `.opencode/rules/metadata-conventions.md`:
+Retrieval follows the metadata governance policy from `.opencode/rules/metadata-conventions.md` and the governed normalization protocol from `.opencode/docs/sqlite-retrieval-contract.md`:
 
 - Time and location are retrieved via dedicated structured fields (`created`, `updated`, `start_date`, `end_date`, `country`, `province`, `city`), not via tags. Tags are a retrieval aid, not the primary carrier for time or location semantics.
-- Tag values are governed by the alias registry at `.opencode/alias-registry.md`, which defines canonical values and accepted aliases for human review and lint checks. Alias-aware query-time expansion is a future enhancement; the current retrieval flow matches canonical values as stored in the index.
-- Location values (`country`, `province`, `city`) are governed by the alias registry, which serves as the governance reference for human review and normalization guidance. Alias-aware location matching at query time is a future enhancement; the current retrieval flow matches values as stored in the index.
-- `canonical_topic` is governed by the alias registry only where a retrieval workflow materially depends on it; it is not universally required.
+- **Governed canonical tag values**: The model must emit only retrieval-contract-supported fields and only governed canonical tag values. Canonical tag values come only from `.opencode/canonical-tags.json`, which is the unique legal runtime source for final canonical tag outputs. Tag alias-to-canonical mappings come only from `.opencode/tag-aliases.json`. Aliases are valid only as input forms, never as final structured outputs.
+- **Governed location values**: Location alias-to-canonical mappings come only from `.opencode/location-aliases.json`. Location aliases are valid only as input forms, never as final structured outputs.
+- **Governed tag expansion**: Tag expansion relationships come only from `.opencode/tag-expansions.json`. Only explicitly listed expansion relationships may be used in broadened structured retrieval passes.
+- `canonical_topic` is governed only where a retrieval workflow materially depends on it; it is not universally required.
 - Hierarchical tags (`topic/*`, `state/*`, `source/*`, `role/*`) remain valid retrieval aids.
 - The China default for missing `country` values is applied at the metadata/index level, not at query time.
+- `.opencode/alias-registry.md` remains a human-reviewed bootstrap source, but runtime retrieval consumes the JSON governance artifacts rather than parsing the Markdown registry.
+
+Before calling `vault_index_search`, first normalize the user question into an explicit structured query summary. Do not jump from raw text directly to the wrapper when usable structured clues exist.
+
+The normalized structured query summary must be stated in commentary before the tool call. Use it to show the chosen time, location, and tag constraints, then call `vault_index_search` with only that normalized payload.
+
+When `vault_index_search` returns, keep its structured query summary and SQLite process trace visible in the answer before any higher-level synthesis.
 
 ## When to use me
 
@@ -96,13 +136,13 @@ Before running any SQLite shortlist, perform constraint extraction:
 ### Location extraction
 
 - Normalize location phrases only into `country`, `province`, and `city`.
-- Use canonical values from `.opencode/alias-registry.md` for alias-backed mappings.
+- Use canonical values from `.opencode/location-aliases.json` for alias-backed mappings.
 - When both `province` and `city` can be extracted, emit both constraints.
 - Do not inject `country = 中国` into the query when the user omitted a country. The metadata-level default applies at the index layer.
 
 ### Tag and topic extraction
 
-- Prefer explicit canonical tag mappings from `.opencode/alias-registry.md` first.
+- Prefer explicit canonical tag mappings from `.opencode/canonical-tags.json` (with `.opencode/tag-aliases.json` for alias resolution) first.
 - Allow low-risk inference only for obvious stable topic mappings that already align with retrieval and governance language.
 - Record inferred tag mappings with `source: "inference"` in the `structuredTrace`, separate from `literal` or `alias` sources.
 - Do not use freeform title or body keywords as substitute structured tags.
