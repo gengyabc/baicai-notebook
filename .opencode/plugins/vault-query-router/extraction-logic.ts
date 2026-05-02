@@ -65,7 +65,15 @@ export function refreshGovernedDerivedTables() {
 
 // --- Time hints ---
 
-const NOTE_TIME_HINTS = ["created", "updated", "创建", "更新", "修改", "笔记"]
+// Hints that distinguish created vs updated chronology intent.
+// When a query explicitly refers to creation time, only created windows
+// should be emitted; when it refers to update time, only updated windows.
+// Ambiguous note-time hints (like "笔记") default to created-only per
+// the minimal retrieval contract.
+const CREATED_TIME_HINTS = ["created", "创建"]
+const UPDATED_TIME_HINTS = ["updated", "更新", "修改"]
+const AMBIGUOUS_NOTE_TIME_HINTS = ["笔记"]
+const ALL_NOTE_TIME_HINTS = [...CREATED_TIME_HINTS, ...UPDATED_TIME_HINTS, ...AMBIGUOUS_NOTE_TIME_HINTS]
 const EVENT_TIME_HINTS = ["培训", "training", "会议", "meeting", "talk", "trip", "旅行", "出行"]
 
 // --- Month name mapping ---
@@ -142,7 +150,7 @@ export type TimeRangeResult = {
  * `.opencode/docs/sqlite-retrieval-contract.md`.
  */
 export function inferTimeRangeFromQuery(query: string, lowered: string): TimeRangeResult {
-  const isNoteTime = NOTE_TIME_HINTS.some((hint) => lowered.includes(hint))
+  const isNoteTime = ALL_NOTE_TIME_HINTS.some((hint) => lowered.includes(hint))
   const hasEventHint = EVENT_TIME_HINTS.some((hint) => lowered.includes(hint))
   const timeMode: "event" | "note" = isNoteTime ? "note" : "event"
 
@@ -348,12 +356,10 @@ export function inferTimeRangeFromQuery(query: string, lowered: string): TimeRan
 export type StructuredConstraintsInput = {
   tags?: string[]
   hierarchicalTags?: string[]
-  country?: string[]
-  province?: string[]
-  city?: string[]
-  timeMode?: string
-  start?: string
-  end?: string
+  createdStart?: string
+  createdEnd?: string
+  updatedStart?: string
+  updatedEnd?: string
 }
 
 export type ExtractedConstraints = {
@@ -467,15 +473,19 @@ function collectLocationMatches(
 /**
  * Full constraint extraction from a query string.
  * This is the live implementation of Stage 0 extraction.
+ *
+ * The minimal retrieval contract only exposes `tags`, `hierarchicalTags`,
+ * `createdStart`/`createdEnd`, and `updatedStart`/`updatedEnd` as structured
+ * constraint inputs. Location and event-time constraints are no longer part of
+ * the broad structured retrieval contract; they are preserved in
+ * frontmatter_json for downstream LLM-side filtering after shortlist
+ * generation.
  */
 export function inferStructuredConstraints(query: string): ExtractedConstraints {
   const lowered = query.trim().toLowerCase()
   if (!lowered) return { constraints: null, reasons: [], unresolvedHints: [] }
 
   const tags = new Set<string>()
-  const country = new Set<string>()
-  const province = new Set<string>()
-  const city = new Set<string>()
   const reasons: string[] = []
 
   // Tag extraction using governed aliases; track matched ranges for
@@ -493,12 +503,11 @@ export function inferStructuredConstraints(query: string): ExtractedConstraints 
     }
   }
 
-  // Location extraction using governed aliases
-  collectLocationMatches(lowered, LOCATION_ALIASES.country, country, "country", reasons)
-  collectLocationMatches(lowered, LOCATION_ALIASES.province, province, "province", reasons)
-  collectLocationMatches(lowered, LOCATION_ALIASES.city, city, "city", reasons)
-
-  // Time range extraction
+  // Time range extraction - only produce note-chronology constraints
+  // (created/updated windows) for the minimal retrieval contract.
+  // Event-time queries (training, meetings, etc.) do not map to
+  // created/updated and will rely on tags + text-fallback +
+  // frontmatter_json filtering.
   const timeRange = inferTimeRangeFromQuery(query, lowered)
   if (timeRange.reason) reasons.push(timeRange.reason)
 
@@ -507,13 +516,41 @@ export function inferStructuredConstraints(query: string): ExtractedConstraints 
 
   const constraints: StructuredConstraintsInput = {}
   if (tags.size > 0) constraints.tags = Array.from(tags)
-  if (country.size > 0) constraints.country = Array.from(country)
-  if (province.size > 0) constraints.province = Array.from(province)
-  if (city.size > 0) constraints.city = Array.from(city)
-  if (timeRange.start && timeRange.end && timeRange.timeMode) {
-    constraints.start = timeRange.start
-    constraints.end = timeRange.end
-    constraints.timeMode = timeRange.timeMode
+
+  // Only emit note-chronology windows (timeMode === "note") as structured
+  // constraints for the minimal retrieval contract. Event-time queries
+  // are not mapped to created/updated because those fields represent note
+  // metadata chronology, not activity timing.
+  //
+  // Chronology intent resolution:
+  //   - If the query explicitly refers to creation time (创建/created),
+  //     emit only createdStart/createdEnd.
+  //   - If the query explicitly refers to update time (更新/修改/updated),
+  //     emit only updatedStart/updatedEnd.
+  //   - If the query refers to notes ambiguously (笔记) without specifying
+  //     created or updated, default to created-only per the minimal
+  //     retrieval contract.
+  //   - If the query mentions both created and updated hints, emit both
+  //     windows (intersection semantics at the SQL level).
+  if (timeRange.start && timeRange.end && timeRange.timeMode === "note") {
+    const wantsCreated = CREATED_TIME_HINTS.some((hint) => lowered.includes(hint))
+    const wantsUpdated = UPDATED_TIME_HINTS.some((hint) => lowered.includes(hint))
+
+    if (wantsCreated && wantsUpdated) {
+      // Explicit both: emit both windows
+      constraints.createdStart = timeRange.start
+      constraints.createdEnd = timeRange.end
+      constraints.updatedStart = timeRange.start
+      constraints.updatedEnd = timeRange.end
+    } else if (wantsUpdated) {
+      // Explicit update intent: emit only updated window
+      constraints.updatedStart = timeRange.start
+      constraints.updatedEnd = timeRange.end
+    } else {
+      // Created intent or ambiguous (default): emit only created window
+      constraints.createdStart = timeRange.start
+      constraints.createdEnd = timeRange.end
+    }
   }
 
   const hasConstraints = Object.keys(constraints).length > 0

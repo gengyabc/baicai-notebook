@@ -18,6 +18,7 @@ const frontmatterIndexConfig = require("../frontmatter-index/config.json") as {
 }
 
 const vaultConfig = getVaultConfig()
+const vaultRoot = vaultConfig.vaultRoot
 const DEFAULT_LIMIT = 8
 const MAX_LIMIT = 12
 
@@ -33,17 +34,16 @@ type StructuredSearchRow = {
   title: string | null
   folder: string | null
   description: string | null
+  frontmatter_json: string | null
 }
 
 type StructuredConstraints = {
   tags: string[]
   hierarchicalTags: string[]
-  country: string[]
-  province: string[]
-  city: string[]
-  timeMode: "event" | "note" | null
-  start: string | null
-  end: string | null
+  createdStart: string | null
+  createdEnd: string | null
+  updatedStart: string | null
+  updatedEnd: string | null
 }
 
 type SearchResult = {
@@ -146,22 +146,19 @@ function normalizeStructuredConstraints(constraints?: StructuredConstraintsInput
   const normalized: StructuredConstraints = {
     tags: normalizeConstraintValues(constraints.tags),
     hierarchicalTags: normalizeConstraintValues(constraints.hierarchicalTags),
-    country: normalizeConstraintValues(constraints.country),
-    province: normalizeConstraintValues(constraints.province),
-    city: normalizeConstraintValues(constraints.city),
-    timeMode: constraints.timeMode === "event" || constraints.timeMode === "note" ? constraints.timeMode : null,
-    start: constraints.start?.trim() || null,
-    end: constraints.end?.trim() || null,
+    createdStart: constraints.createdStart?.trim() || null,
+    createdEnd: constraints.createdEnd?.trim() || null,
+    updatedStart: constraints.updatedStart?.trim() || null,
+    updatedEnd: constraints.updatedEnd?.trim() || null,
   }
 
-  const hasTimeWindow = Boolean(normalized.start && normalized.end && normalized.timeMode)
+  const hasCreatedWindow = Boolean(normalized.createdStart && normalized.createdEnd)
+  const hasUpdatedWindow = Boolean(normalized.updatedStart && normalized.updatedEnd)
   const hasConstraints =
     normalized.tags.length > 0 ||
     normalized.hierarchicalTags.length > 0 ||
-    normalized.country.length > 0 ||
-    normalized.province.length > 0 ||
-    normalized.city.length > 0 ||
-    hasTimeWindow
+    hasCreatedWindow ||
+    hasUpdatedWindow
 
   if (!hasConstraints) return null
   return normalized
@@ -211,35 +208,21 @@ function buildStructuredSearchQuery(limit: number, constraints: StructuredConstr
     params.push(...tagParams)
   }
 
-  for (const [key, values] of [
-    ["country", constraints.country],
-    ["province", constraints.province],
-    ["city", constraints.city],
-  ] as const) {
-    if (values.length === 0) continue
-    whereClauses.push(`EXISTS (
-      SELECT 1 FROM properties p_${key}
-      WHERE p_${key}.note_id = n.id AND p_${key}.key = '${key}' AND p_${key}.value_text IN (${buildInClause(values)})
-    )`)
-    params.push(...values)
+  if (constraints.createdStart && constraints.createdEnd) {
+    whereClauses.push("EXISTS (SELECT 1 FROM properties pc WHERE pc.note_id = n.id AND pc.key = 'created' AND pc.value_date BETWEEN ? AND ?)")
+    params.push(constraints.createdStart, constraints.createdEnd)
   }
 
-  if (constraints.timeMode === "event" && constraints.start && constraints.end) {
-    whereClauses.push("EXISTS (SELECT 1 FROM properties ps WHERE ps.note_id = n.id AND ps.key = 'start_date' AND ps.value_date <= ?)")
-    whereClauses.push("EXISTS (SELECT 1 FROM properties pe WHERE pe.note_id = n.id AND pe.key = 'end_date' AND pe.value_date >= ?)")
-    params.push(constraints.end, constraints.start)
-  }
-
-  if (constraints.timeMode === "note" && constraints.start && constraints.end) {
-    whereClauses.push("EXISTS (SELECT 1 FROM properties pn WHERE pn.note_id = n.id AND pn.key IN ('created', 'updated') AND pn.value_date BETWEEN ? AND ?)")
-    params.push(constraints.start, constraints.end)
+  if (constraints.updatedStart && constraints.updatedEnd) {
+    whereClauses.push("EXISTS (SELECT 1 FROM properties pu WHERE pu.note_id = n.id AND pu.key = 'updated' AND pu.value_date BETWEEN ? AND ?)")
+    params.push(constraints.updatedStart, constraints.updatedEnd)
   }
 
   const priorityExpr = folderPriorityExpr(priorities)
   const whereSql = whereClauses.length > 0 ? whereClauses.join("\n      AND ") : "1=1"
 
   const sql = `
-    SELECT n.path, n.title, n.folder, d.value_text AS description, ${priorityExpr.sql} AS folder_score
+    SELECT n.path, n.title, n.folder, d.value_text AS description, n.frontmatter_json, ${priorityExpr.sql} AS folder_score
     FROM notes n
     LEFT JOIN properties d ON d.note_id = n.id AND d.key = 'description'
     WHERE ${whereSql}
@@ -312,26 +295,28 @@ function formatConstraints(constraints: StructuredConstraints) {
   const parts: string[] = []
   if (constraints.tags.length > 0) parts.push(`tags=${constraints.tags.join(",")}`)
   if (constraints.hierarchicalTags.length > 0) parts.push(`hTags=${constraints.hierarchicalTags.join(",")}`)
-  if (constraints.country.length > 0) parts.push(`country=${constraints.country.join(",")}`)
-  if (constraints.province.length > 0) parts.push(`province=${constraints.province.join(",")}`)
-  if (constraints.city.length > 0) parts.push(`city=${constraints.city.join(",")}`)
-  if (constraints.timeMode && constraints.start && constraints.end) {
-    parts.push(`time(${constraints.timeMode})=${constraints.start}..${constraints.end}`)
+  if (constraints.createdStart && constraints.createdEnd) {
+    parts.push(`created=${constraints.createdStart}..${constraints.createdEnd}`)
+  }
+  if (constraints.updatedStart && constraints.updatedEnd) {
+    parts.push(`updated=${constraints.updatedStart}..${constraints.updatedEnd}`)
   }
   return parts.join(" ")
 }
 
 function formatStructuredResults(query: string, rows: StructuredSearchRow[], constraints: StructuredConstraints) {
   if (!rows.length) {
-    return [`No structured matches for \`${query}\`. Constraints: ${formatConstraints(constraints)}`, "Read these files first. If they are insufficient, say so before broadening retrieval."].join("\n")
+    return [`[structured] No structured matches for \`${query}\`. Constraints: ${formatConstraints(constraints)}. Candidates: 0.`, "Read these files first. If they are insufficient, say so before broadening retrieval."].join("\n")
   }
 
   const lines = [
-    `Structured shortlist for \`${query}\` [${formatConstraints(constraints)}]:`,
+    `[structured] Shortlist for \`${query}\` [${formatConstraints(constraints)}]. Candidates: ${rows.length}.`,
     ...rows.map((row, index) => {
       const title = row.title?.trim() || path.posix.basename(row.path, ".md")
       const description = row.description?.trim()
-      return `${index + 1}. ${row.path} | ${title}${description ? ` | ${description}` : ""}`
+      const frontmatter = row.frontmatter_json?.trim()
+      const fullPath = `${vaultRoot}/${row.path}`
+      return `${index + 1}. ${fullPath} | ${title}${description ? ` | ${description}` : ""}${frontmatter ? ` | frontmatter: ${frontmatter}` : ""}`
     }),
     "Read these files first. If they are insufficient, say so before broadening retrieval.",
   ]
@@ -340,14 +325,15 @@ function formatStructuredResults(query: string, rows: StructuredSearchRow[], con
 
 function formatResults(query: string, rows: SearchRow[]) {
   if (!rows.length) {
-    return `No matches for \`${query}\`. State the shortlist was insufficient before broadening.`
+    return `[text-fallback] No matches for \`${query}\`. State the shortlist was insufficient before broadening.`
   }
 
   const lines = [
-    `Shortlist for \`${query}\`:`,
+    `[text-fallback] Shortlist for \`${query}\`:`,
     ...rows.map((row, index) => {
       const title = row.title?.trim() || path.posix.basename(row.path, ".md")
-      return `${index + 1}. ${row.path} | ${title} | score ${row.score}`
+      const fullPath = `${vaultRoot}/${row.path}`
+      return `${index + 1}. ${fullPath} | ${title} | score ${row.score}`
     }),
     "Read these files first. If they are insufficient, say so before broadening retrieval.",
   ]
@@ -386,7 +372,7 @@ export function searchIndex(
 ): SearchResult {
   const normalizedQuery = query.trim().toLowerCase()
   if (!normalizedQuery) {
-    return { mode: "text-fallback", rows: [] as SearchRow[], output: "No query provided." }
+    return { mode: "text-fallback", rows: [] as SearchRow[], output: "[unavailable] No query provided." }
   }
 
   const effectiveLimit = clampLimit(limit)
@@ -398,7 +384,7 @@ export function searchIndex(
 
   if (!normalizedConstraints) {
     const fallback = runTextFallbackSearch(dbPath, normalizedQuery, query, effectiveLimit, effectivePriorities)
-    return { ...fallback, output: `No structured constraints extracted.\n${fallback.output}` }
+    return { ...fallback, output: `[text-fallback] No structured constraints extracted.\n${fallback.output}` }
   }
 
   const { sql, params } = buildStructuredSearchQuery(effectiveLimit, normalizedConstraints, effectivePriorities)
@@ -413,10 +399,17 @@ export function searchIndex(
     primaryRows = db.query(sql).all(...params) as StructuredSearchRow[]
   }
 
-  if (primaryRows.length >= 3) {
+  // Shortlist acceptance is context-budget-aware rather than a fixed global
+  // candidate-count threshold (see sqlite-retrieval-contract.md § Shortlist
+  // policy). The first version uses a "any structured result is sufficient"
+  // approach: if the structured pass returned at least 1 candidate, accept it
+  // without expansion or fallback.
+  if (primaryRows.length > 0) {
     return { mode: "structured", rows: primaryRows, output: formatStructuredResults(query, primaryRows, normalizedConstraints) }
   }
 
+  // Tag expansion: when the primary pass returns 0 candidates, try expanding
+  // tag constraints to neighboring tags before falling back to text search.
   const expansionResult = buildExpandedConstraints(normalizedConstraints.tags, primaryRows.length)
   if (expansionResult.expansionTriggerReason) {
     const expandedConstraints: StructuredConstraints = { ...normalizedConstraints, tags: expansionResult.expandedTags }
@@ -436,20 +429,15 @@ export function searchIndex(
     }
   }
 
-  if (primaryRows.length > 0) {
-    return { mode: "structured", rows: primaryRows, output: formatStructuredResults(query, primaryRows, normalizedConstraints) }
-  }
-
   const fallback = runTextFallbackSearch(dbPath, normalizedQuery, query, effectiveLimit, effectivePriorities)
   return {
     ...fallback,
-    output: `Structured shortlist insufficient for \`${query}\`. Constraints: ${formatConstraints(normalizedConstraints)}\n${fallback.output}`,
+    output: `[text-fallback] Structured shortlist insufficient for \`${query}\`. Constraints: ${formatConstraints(normalizedConstraints)}\n${fallback.output}`,
   }
 }
 
 function buildSystemInstruction() {
   const folders = vaultConfig.folders
-  const vaultRoot = vaultConfig.vaultRoot
   return [
     "Vault retrieval routing is enabled. Call `vault_index_search` first for vault-grounded questions.",
     "Read shortlisted files before citing them. Index hits are not confirmed facts until the source file is read.",
@@ -477,12 +465,10 @@ export const VaultQueryRouter: Plugin = async ({ worktree }) => {
           constraints: tool.schema.object({
             tags: tool.schema.array(tool.schema.string()).optional(),
             hierarchicalTags: tool.schema.array(tool.schema.string()).optional(),
-            country: tool.schema.array(tool.schema.string()).optional(),
-            province: tool.schema.array(tool.schema.string()).optional(),
-            city: tool.schema.array(tool.schema.string()).optional(),
-            timeMode: tool.schema.string().optional(),
-            start: tool.schema.string().optional(),
-            end: tool.schema.string().optional(),
+            createdStart: tool.schema.string().optional(),
+            createdEnd: tool.schema.string().optional(),
+            updatedStart: tool.schema.string().optional(),
+            updatedEnd: tool.schema.string().optional(),
           }).optional(),
         },
         async execute(args) {
@@ -496,7 +482,7 @@ export const VaultQueryRouter: Plugin = async ({ worktree }) => {
             )
             return result.output
           } catch (err) {
-            return `Vault index search failed: ${err instanceof Error ? err.message : String(err)}. The SQLite shortlist was unavailable.`
+            return `[unavailable] Vault index search failed: ${err instanceof Error ? err.message : String(err)}. The SQLite shortlist was unavailable.`
           }
         },
       }),
