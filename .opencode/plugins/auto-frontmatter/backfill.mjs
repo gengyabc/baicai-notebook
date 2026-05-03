@@ -112,6 +112,7 @@ function buildFrontmatter(existing, body, filePath) {
   const status = existing.status || defaultStatus(filePath)
   const description = existing.description || deriveDescription(body)
   const descriptionDone = existing.llm_description_done === true || isDescriptionWhitelisted(filePath, sourceRef)
+  const tagsDone = existing.llm_tags === true || isTagsWhitelisted(filePath)
   const canonicalTopic = !existing.canonical_topic || /[^a-z0-9-]/.test(existing.canonical_topic) ? imageKey : existing.canonical_topic
   const now = today()
   const sourceHash = computeHash(body)
@@ -127,6 +128,7 @@ function buildFrontmatter(existing, body, filePath) {
   next.imageNameKey = imageKey
   next.description = description
   next.llm_description_done = descriptionDone
+  next.llm_tags = tagsDone
   next.status = status
   next.trust_level = existing.trust_level || defaultTrustLevel(filePath)
   next.verification = existing.verification || defaultVerification(filePath)
@@ -396,6 +398,11 @@ function isDescriptionWhitelisted(filePath, sourceRef) {
   if (sourceRef && sourceRef.includes("github.com")) return true
   
   return false
+}
+
+function isTagsWhitelisted(filePath) {
+  const basename = path.basename(filePath)
+  return basename === "index.md" || basename === "log.md"
 }
 
 function isTargetPath(filePath) {

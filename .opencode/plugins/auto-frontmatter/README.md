@@ -71,6 +71,21 @@ llm_description_done: true | false
 
 **白名单**（自动设为 `true`）：
 - `index.md` 和 `log.md`
+- GitHub 来源文件
+
+### 标签标记
+
+```yaml
+llm_tags: true | false
+```
+
+- `true`：主题标签已完成（白名单或 LLM 增强）
+- `false`：需要通过 `/enhance-tags` 进行 LLM 标签生成
+
+**白名单**（自动设为 `true`）：
+- `index.md` 和 `log.md`
+
+（比 `llm_description_done` 更严格，不含 GitHub 自动白名单）
 
 ## 核心原则
 
@@ -117,12 +132,24 @@ bun run --cwd .opencode frontmatter:index:reconcile # 清理过期条目
 在 OpenCode 会话中：
 ```
 /enhance-description
+/enhance-tags
 ```
 
-此命令处理托管文件夹中所有 `llm_description_done: false` 的文件：
+`/enhance-description` 处理托管文件夹中所有 `llm_description_done: false` 的文件：
 1. 使用 LLM 增强 description
 2. 更新 frontmatter
 3. 设置 `llm_description_done: true`、`ingest_status: processed`
+
+参见 `.opencode/workflows/enhance-description-resources.md`
+
+`/enhance-tags` 处理 `llm_description_done: true` 且 `llm_tags: false` 的文件：
+1. 从 canonical-tags.json 的 topic/* 子集生成标签
+2. 融合到 tags 数组（保留系统标签）
+3. 设置 `llm_tags: true`
+
+参见 `.opencode/workflows/enhance-tags-resources.md`
+
+处理顺序：先 `/enhance-description`，后 `/enhance-tags`。
 
 ## 配置
 
@@ -156,6 +183,10 @@ bun run --cwd .opencode frontmatter:scan-pending  # 列出需要增强的文件
 
 自动标记为 `llm_description_done: true` 的文件：
 - `index.md` 和 `log.md`（结构化文件）
+- GitHub 来源文件
+
+自动标记为 `llm_tags: true` 的文件：
+- `index.md` 和 `log.md`（结构化文件）
 
 ## 防循环策略
 
@@ -178,8 +209,10 @@ bun run --cwd .opencode frontmatter:scan-pending  # 列出需要增强的文件
 
 | 文件 | 用途 |
 |------|------|
-| `.opencode/commands/enhance-description.md` | OpenCode LLM 增强命令 |
-| `.opencode/workflows/enhance-description-resources.md` | 工作流定义 |
+| `.opencode/commands/enhance-description.md` | OpenCode LLM 描述增强命令 |
+| `.opencode/commands/enhance-tags.md` | OpenCode LLM 标签生成命令 |
+| `.opencode/workflows/enhance-description-resources.md` | 描述增强工作流定义 |
+| `.opencode/workflows/enhance-tags-resources.md` | 标签生成工作流定义 |
 
 ## 部署
 
@@ -191,13 +224,14 @@ bun run --cwd .opencode watch
 在 OpenCode 会话中：
 ```
 /enhance-description  # 按需增强描述
+/enhance-tags        # 按需生成标签
 ```
 
 ## 演进
 
-v1：「补 frontmatter」→ v2：「构建可计算的内容入口层」→ v2.1：「描述增强与白名单」
+v1：「补 frontmatter」→ v2：「构建可计算的内容入口层」→ v2.1：「描述增强与白名单」→ v2.2：「标签生成与治理」
 
-从元数据补全 → 数据标准化 → 基于白名单的描述处理
+从元数据补全 → 数据标准化 → 基于白名单的描述处理 → governed tag 系统集成
 
 ## 边界范围
 
