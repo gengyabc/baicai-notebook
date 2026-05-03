@@ -22,7 +22,7 @@ LLM 摄取管道，用于标准化已纳入管理的 markdown 内容，标记处
         ├─ llm_description_done: true (白名单) 或 false (待增强)
         │
         ▼
-   [可选：OpenCode 中执行 /process-pending]
+   [可选：OpenCode 中执行 /enhance-description]
         │
         ├─ 查找文件：llm_description_done: false
         ├─ LLM 增强 description
@@ -67,7 +67,7 @@ llm_description_done: true | false
 ```
 
 - `true`：描述已完成（白名单或 LLM 增强）
-- `false`：需要通过 `/process-pending` 进行 LLM 增强
+- `false`：需要通过 `/enhance-description` 进行 LLM 增强
 
 **白名单**（自动设为 `true`）：
 - `index.md` 和 `log.md`
@@ -78,7 +78,7 @@ llm_description_done: true | false
 2. **幂等写入**：仅在内容实际变更时写入
 3. **backfill 独立于 watcher**：可独立运行（扫描模式）
 4. **原子写入**：临时文件 → 重命名，确保并发安全
-5. **LLM 通过 OpenCode**：使用 `/process-pending` 命令进行描述增强
+5. **LLM 通过 OpenCode**：使用 `/enhance-description` 命令进行描述增强
 
 ## 命令
 
@@ -116,7 +116,7 @@ bun run --cwd .opencode frontmatter:index:reconcile # 清理过期条目
 
 在 OpenCode 会话中：
 ```
-/process-pending
+/enhance-description
 ```
 
 此命令处理托管文件夹中所有 `llm_description_done: false` 的文件：
@@ -149,7 +149,7 @@ bun run --cwd .opencode frontmatter:scan-pending  # 列出需要增强的文件
 
 然后在 OpenCode 中：
 ```
-/process-pending
+/enhance-description
 ```
 
 ## 白名单
@@ -178,8 +178,8 @@ bun run --cwd .opencode frontmatter:scan-pending  # 列出需要增强的文件
 
 | 文件 | 用途 |
 |------|------|
-| `.opencode/commands/process-pending.md` | OpenCode LLM 增强命令 |
-| `.opencode/workflows/process-pending-resources.md` | 工作流定义 |
+| `.opencode/commands/enhance-description.md` | OpenCode LLM 增强命令 |
+| `.opencode/workflows/enhance-description-resources.md` | 工作流定义 |
 
 ## 部署
 
@@ -190,7 +190,7 @@ bun run --cwd .opencode watch
 
 在 OpenCode 会话中：
 ```
-/process-pending  # 按需增强描述
+/enhance-description  # 按需增强描述
 ```
 
 ## 演进

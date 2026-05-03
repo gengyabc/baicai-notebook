@@ -4,7 +4,7 @@ System-wide routing documentation for OpenCode commands, workflows, skills, and 
 
 ## Source Files Inventory
 
-### Commands (12)
+### Commands (11)
 
 | File | Purpose |
 |------|---------|
@@ -12,9 +12,8 @@ System-wide routing documentation for OpenCode commands, workflows, skills, and 
 | `.opencode/commands/discover-requirements.md` | Discover project requirements |
 | `.opencode/commands/ingest.md` | Route note/source to appropriate workflow |
 | `.opencode/commands/lint-vault.md` | Run vault linting |
-| `.opencode/commands/process-pending.md` | Process pending items |
+| `.opencode/commands/enhance-description.md` | Enhance resource descriptions |
 | `.opencode/commands/solidify.md` | Promote brainstorm to wiki |
-| `.opencode/commands/write_plan.md` | Write execution plan |
 | `.opencode/commands/generate-template.md` | Generate Jinja template from Word document |
 | `.opencode/commands/export-csv.md` | Export placeholder descriptions as CSV |
 | `.opencode/commands/fill-docx.md` | Import edited CSV and fill DOCX template |
@@ -29,7 +28,7 @@ System-wide routing documentation for OpenCode commands, workflows, skills, and 
 | `.opencode/workflows/ingest-my-work.md` | Ingest from my-work/ |
 | `.opencode/workflows/ingest-resources.md` | Ingest external resources |
 | `.opencode/workflows/lint-vault.md` | Lint vault for issues |
-| `.opencode/workflows/process-pending-resources.md` | Process pending resources |
+| `.opencode/workflows/enhance-description-resources.md` | Enhance resource descriptions |
 | `.opencode/workflows/query-vault.md` | Query vault knowledge |
 | `.opencode/workflows/solidify-to-wiki.md` | Promote to wiki |
 | `.opencode/workflows/generate-template.md` | Parse DOCX and generate Jinja template |

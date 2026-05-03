@@ -9,7 +9,7 @@
 - [知识查询](.opencode/workflows/query-vault.md)：从 wiki/resources 检索有据可依的知识
 - [知识提升](.opencode/workflows/solidify-to-wiki.md)：通过 `/solidify` 将稳定知识提升至 `workbook/wiki/`
 - [知识库审计](.opencode/workflows/lint-vault.md)：`/lint-vault` 检查元数据、索引和卫生问题
-- [待处理笔记](docs/tutorial.md)：`/process-pending` 批量处理待 LLM 描述的笔记
+- [描述增强](docs/tutorial.md)：`/enhance-description` 批量增强资源笔记描述
 - [沙箱调试](docs/tutorial.md)：`/debug` 启动只读会话用于调试
 - [文档模板](docs/tutorial.md)：从 Word 模板生成 Jinja 模板、导出/导入 CSV 填充
 - [自动监听](#运行服务)：实时监听文件变化并更新 frontmatter
@@ -104,7 +104,7 @@ node .opencode/scripts/migrate-vault-path.mjs <oldRoot> <newRoot>
 - `/ingest <路径或URL>`: 摄取本地笔记、文件、URL 或会话产物
 - `/solidify <主题或笔记>`: 将有据可依的知识提升至 `workbook/wiki/`
 - `/lint-vault`: 审计元数据、索引和知识库卫生
-- `/process-pending`: 处理待 LLM 描述的笔记
+- `/enhance-description`: 增强 LLM 管理笔记的描述
 - `/debug`: 启动只读沙箱会话用于知识库行为调试
 - `/generate-template [docx-file]`: 从 Word 空表生成 Jinja 模板（提供路径或使用 `.temp/*/input/` 中最新的 docx）
 - `/export-csv`: 导出占位符描述为 CSV 供人工编辑

@@ -51,7 +51,7 @@ async function runWatchMode() {
   console.log(`[watch] Starting file watcher`)
   console.log(`[watch] Watching: ${resolvedWatchDirs.join(", ")}`)
   console.log(`[watch] Vault root: ${VAULT_ROOT}`)
-  console.log(`[watch] Use /process-pending in OpenCode for LLM title/description generation`)
+  console.log(`[watch] Use /enhance-description in OpenCode for LLM title/description generation`)
   
   cleanupInterval = setInterval(cleanupProcessedMap, config.antiLoopWindowMs || 10000)
   

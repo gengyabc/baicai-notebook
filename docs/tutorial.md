@@ -211,7 +211,7 @@ bun run --cwd .opencode frontmatter:scan
 如果有待处理的笔记：
 
 ```
-/process-pending
+/enhance-description
 ```
 
 这会处理等待 LLM 描述的笔记。
@@ -341,7 +341,7 @@ bun run --cwd .opencode frontmatter:scan
 | `/ingest <路径或URL>` | 摄取本地笔记、文件、URL 或会话产物 |
 | `/solidify <主题或笔记>` | 将有据可依的知识提升至 `workbook/wiki/` |
 | `/lint-vault` | 审计元数据、索引和知识库卫生 |
-| `/process-pending` | 处理待 LLM 描述的笔记 |
+| `/enhance-description` | 增强资源笔记描述 |
 | `/debug` | 启动只读沙箱会话用于调试 |
 | `/generate-template [docx-file]` | 从 Word 空表生成 Jinja 模板 |
 | `/export-csv [edit]` | 导出占位符描述为 CSV |

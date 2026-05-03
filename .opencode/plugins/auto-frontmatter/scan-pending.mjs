@@ -32,7 +32,7 @@ export async function main() {
     console.log("---")
   }
   
-  console.log(`\nRun /process-pending in OpenCode to enhance descriptions with LLM.`)
+  console.log(`\nRun /enhance-description in OpenCode to enhance descriptions with LLM.`)
 }
 
 async function scanPendingFiles(root, pendingFiles) {
