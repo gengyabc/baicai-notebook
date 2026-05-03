@@ -442,7 +442,8 @@ function buildSystemInstruction() {
     "Vault retrieval routing is enabled. Call `vault_index_search` first for vault-grounded questions.",
     "Read shortlisted files before citing them. Index hits are not confirmed facts until the source file is read.",
     `If you broaden beyond the shortlist, say so explicitly. Folder priority: ${vaultRoot}/${folders.wiki} -> ${vaultRoot}/${folders.output} -> ${vaultRoot}/${folders.resources} -> ${vaultRoot}/${folders.brainstorm} -> ${vaultRoot}/${folders.myWork}.`,
-    "In non-debug sessions, ask before using web search.",
+    "Debug mode: vault_index_search works normally. Network search (websearch/webfetch) allowed without user permission.",
+    "Non-debug mode: vault_index_search works normally. Ask user before using web search.",
   ].join("\n")
 }
 
