@@ -103,7 +103,9 @@ Location aliases are kept distinct per governed field (`country`, `province`, `c
 When lint or review identifies a non-canonical value that should be governed:
 
 1. Check whether the value maps to an existing canonical entry in this registry.
-2. If it does, note the alias and consider updating the note's frontmatter during a future review pass.
-3. If it does not, propose a new entry with the governed surface, canonical value, initial accepted aliases, and a review rationale.
-4. A human must approve the new entry before it is added to the registry.
-5. Do not auto-rewrite note frontmatter to match the registry; governance is advisory at this stage.
+2. If it does, note the alias and follow `tag-expansion.md` for alias approval workflow.
+3. If it does not, follow the tag expansion workflow in `tag-expansion.md`:
+   - Check alias first — if concept matches existing canonical, add to `tag-aliases.json`
+   - If truly distinct, add to `canonical-tags.json` and optionally `tag-expansions.json`
+   - For fixed namespaces (state/*, source/*, role/*), reject proposal and use closest canonical
+4. Do not auto-rewrite note frontmatter to match the registry; governance is advisory at this stage.

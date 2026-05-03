@@ -224,7 +224,8 @@ First-stage tag governance is advisory and alias-based:
 
 - The alias registry at `.opencode/alias-registry.md` defines canonical tag values and accepted aliases.
 - Lint reports non-canonical tags and uncontrolled tag growth as advisory findings, not hard-blocking errors.
-- New tags and suspicious canonical candidates require human review before being added to the registry.
+- New canonical tags require human approval via the interactive proposal workflow defined in `.opencode/rules/tag-expansion.md`.
+- New aliases and expansion relationships also require human approval via the same workflow.
 - Stronger whitelist-style admission control may be introduced later when scale and drift justify it.
 
 ## Tag rules

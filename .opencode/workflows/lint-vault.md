@@ -30,7 +30,13 @@ Skip files that are:
 11. Check for alias drift: flag tags, location values (`country`, `province`, `city`), and `canonical_topic` values that do not match canonical entries in `.opencode/alias-registry.md`. Report as advisory findings, not hard-blocking errors.
 12. Check for uncontrolled tag growth: flag notes with unusually large tag lists or tags that appear only once in the vault, suggesting drift rather than intentional categorization.
 13. Check for non-canonical retrieval metadata: flag notes where time or location semantics have been duplicated into tags rather than expressed through dedicated structured fields (`created`, `updated`, `start_date`, `end_date`, `country`, `province`, `city`).
-14. Report findings in order of severity and suggest the smallest corrective next steps.
+14. Check tag cap threshold: if `canonical-tags.json` tag count exceeds `tagCapThreshold` in `.opencode/vault-config.json`, flag as advisory warning.
+15. Suggest tag consolidation opportunities:
+    - Tags used by fewer than 3 notes (candidates for removal or alias consolidation)
+    - Semantically overlapping tags (alias candidates for `tag-aliases.json`)
+    - Unused expansion relationships in `tag-expansions.json`
+16. Suggest alias additions: identify non-canonical tags that match existing canonical semantics.
+17. Report findings in order of severity and suggest the smallest corrective next steps.
 
 ## Governance checks
 

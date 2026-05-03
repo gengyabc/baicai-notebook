@@ -13,6 +13,9 @@ compatibility: opencode
 - check for alias drift against the alias registry at `.opencode/alias-registry.md`
 - check for uncontrolled tag growth and non-canonical retrieval metadata
 - flag tags, location values, and `canonical_topic` values that do not match canonical entries
+- check tag cap threshold and suggest consolidation when exceeded
+- suggest alias additions for semantically matching tags
+- identify unused expansion relationships
 
 ## Exclusions
 
@@ -32,6 +35,9 @@ Advisory governance checks are based on the metadata policy in `.opencode/rules/
 - Alias drift: flag non-canonical tag, location, and `canonical_topic` values as advisory findings.
 - Tag growth: flag unusually large tag lists or singleton tags that suggest drift.
 - Non-canonical retrieval metadata: flag time or location semantics duplicated into tags instead of structured fields.
+- Tag cap: flag when `canonical-tags.json` exceeds threshold configured in `vault-config.json`.
+- Alias consolidation: suggest adding aliases to `tag-aliases.json` when tags match existing canonical semantics.
+- Expansion cleanup: flag unused entries in `tag-expansions.json`.
 
 All governance findings are advisory during first-stage governance. They suggest normalization and alignment but do not block note authoring or auto-rewrite frontmatter. Hard-blocking admission control is deferred until scale and drift justify it.
 

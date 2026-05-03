@@ -1,5 +1,6 @@
 {
   "vaultRoot": "workbook",
+  "tagCapThreshold": 100,
   "folders": {
     "myWork": "my-work",
     "resources": "resources",

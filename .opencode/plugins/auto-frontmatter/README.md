@@ -144,10 +144,15 @@ bun run --cwd .opencode frontmatter:index:reconcile # 清理过期条目
 
 `/enhance-tags` 处理 `llm_description_done: true` 且 `llm_tags: false` 的文件：
 1. 从 canonical-tags.json 的 topic/* 子集生成标签
-2. 融合到 tags 数组（保留系统标签）
-3. 设置 `llm_tags: true`
+2. 若现有标签无法覆盖：
+   - 检查是否为已有标签的别名 → 收集到 tag-aliases.json 待审批
+   - 检查是否为新概念 → 收集到 canonical-tags.json 待审批
+   - 检查是否有检索关联 → 收集到 tag-expansions.json 待审批
+3. 批量提交用户审批（别名/新标签/关联）
+4. 融合到 tags 数组（保留系统标签）
+5. 设置 `llm_tags: true`
 
-参见 `.opencode/workflows/enhance-tags-resources.md`
+参见 `.opencode/workflows/enhance-tags-resources.md` 和 `.opencode/rules/tag-expansion.md`
 
 处理顺序：先 `/enhance-description`，后 `/enhance-tags`。
 
