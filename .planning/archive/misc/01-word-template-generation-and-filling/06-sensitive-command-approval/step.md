@@ -132,7 +132,7 @@ Define a reusable approval layer for sensitive command execution so OpenCode can
 
 ## Files
 
-- `.opencode/commands/env.md` - current motivating command surface that should consume the shared approval contract instead of owning the policy alone
+- `.opencode/commands/env-helper.md` - current motivating command surface that should consume the shared approval contract instead of owning the policy alone
 - `.opencode/skills/env-registry/SKILL.md` - current sensitive-data skill surface that needs the same approval boundary and denied-path guidance
 - `.opencode/workflows/fill-docx.md` - current document-fill workflow whose normal LLM path must stay distinct from any future local-only sensitive fallback
 - `src/template_gen/generate_fill_data.py` - existing local document-fill boundary that future discovery may choose to integrate with, without exposing values to the model
@@ -142,7 +142,7 @@ Define a reusable approval layer for sensitive command execution so OpenCode can
 
 - `main()` in `.opencode/scripts/env-registry.py` - remains a consumer of approval policy, not the place to define the reusable policy contract
 - `generate_fill_data()` in `src/template_gen/generate_fill_data.py` - remains an existing local artifact-generation boundary that must not receive model-exposed secrets
-- `## Steps` in `.opencode/commands/env.md`
+- `## Steps` in `.opencode/commands/env-helper.md`
 - `## DO THIS FIRST` in `.opencode/skills/env-registry/SKILL.md`
 - `## Steps` in `.opencode/workflows/fill-docx.md`
 

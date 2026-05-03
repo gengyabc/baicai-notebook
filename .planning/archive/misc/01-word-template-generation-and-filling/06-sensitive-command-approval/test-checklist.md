@@ -13,8 +13,8 @@ lower-level only
 - Coverage can be enforced with lower-level document contract tests
 
 ## Lower-Level Coverage
-- `.opencode/commands/env.md` consumes shared approval policy and requires explicit consent
-- `.opencode/commands/env.md` provides a local fallback path when approval is denied
+- `.opencode/commands/env-helper.md` consumes shared approval policy and requires explicit consent
+- `.opencode/commands/env-helper.md` provides a local fallback path when approval is denied
 - `.opencode/skills/env-registry/SKILL.md` keeps skill as explanation layer, not permission enforcement owner
 - `.opencode/workflows/fill-docx.md` separates normal LLM path from local-only sensitive fill path
 - `.opencode/workflows/fill-docx.md` states that sensitive values are never exposed to model context

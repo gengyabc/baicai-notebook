@@ -9,7 +9,7 @@ def _read_text(relative_path: str) -> str:
 
 
 def test_env_command_uses_shared_policy_and_denied_fallback() -> None:
-    text = _read_text(".opencode/commands/env.md")
+    text = _read_text(".opencode/commands/env-helper.md")
     assert "shared sensitive-command approval policy" in text
     assert "explicit user consent" in text
     assert "local-only fallback" in text

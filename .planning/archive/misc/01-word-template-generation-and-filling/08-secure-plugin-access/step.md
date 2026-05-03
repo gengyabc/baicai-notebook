@@ -277,7 +277,7 @@ Introduce a first-party OpenCode plugin as the only model-reachable secret-consu
 - `.opencode/plugin-allowlist.json` - versioned allowlist for service and operation capability mapping
 - `.opencode/scripts/env-registry.mjs` - raw `get` removal or deprecation and shared keychain helper extraction if needed
 - `.opencode/skills/env-registry/SKILL.md` - remove model guidance that retrieves raw secrets directly
-- `.opencode/commands/env.md` - refresh command guidance if it still points callers at raw `get`
+- `.opencode/commands/env-helper.md` - refresh command guidance if it still points callers at raw `get`
 - `opencode.json` - OpenCode permission rules for bash, edit, and read hardening
 - `tests/test_secure_plugin_access.py` - framework contract, sanitization, allowlist, and hardening coverage
 - `tests/fixtures/run_secure_action.mjs` - Bun harness that imports `runSecureAction()` for pytest-driven plugin behavior tests
