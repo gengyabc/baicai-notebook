@@ -15,7 +15,7 @@ Turn messy idea material in `workbook/brainstorm/todo` and `workbook/brainstorm/
 2. Separate observations, hypotheses, tensions, and open questions.
 3. Rewrite or split notes for clarity while preserving speculative status.
 4. Move notes between `todo/` and `active/` as their state becomes clearer.
-5. Normalize metadata to the brainstorm schema, including `derived_from`, `confidence`, `status`, and `imageNameKey`.
+5. Normalize metadata to the brainstorm schema, including `confidence`, `status`, and `imageNameKey`.
 6. Create links to supporting resources and adjacent brainstorm themes.
 7. Mark promotion candidates, but do not promote automatically or write `workbook/wiki/` as part of this workflow.
 

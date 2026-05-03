@@ -8,6 +8,13 @@ Audit the knowledge vault for metadata drift, missing provenance, indexing gaps,
 
 - full vault or user-selected folder scope
 
+## Exclusions
+
+Skip files that are:
+- Excalidraw drawings (files with `excalidraw-plugin` frontmatter key or `.excalidraw` extension)
+- Obsidian plugin files under `.obsidian/plugins/`
+- Templates under `workbook/Templates/`
+
 ## Steps
 
 1. Check frontmatter coverage and schema fit for `workbook/resources/`, `workbook/brainstorm/`, `workbook/wiki/`, and `workbook/output/` notes.

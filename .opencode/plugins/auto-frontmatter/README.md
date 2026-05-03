@@ -71,7 +71,6 @@ llm_description_done: true | false
 
 **白名单**（自动设为 `true`）：
 - `index.md` 和 `log.md`
-- `source_ref` 中包含 `github.com` 的文件
 
 ## 核心原则
 
@@ -157,7 +156,6 @@ bun run --cwd .opencode frontmatter:scan-pending  # 列出需要增强的文件
 
 自动标记为 `llm_description_done: true` 的文件：
 - `index.md` 和 `log.md`（结构化文件）
-- `source_ref` 包含 `github.com` 的文件（源仓库）
 
 ## 防循环策略
 

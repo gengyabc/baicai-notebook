@@ -5,7 +5,7 @@ compatibility: opencode
 ---
 ## What I do
 
-- check metadata consistency
+- check metadata consistency (excluding Excalidraw drawings and Obsidian plugin files)
 - identify orphan notes, missing index entries, and duplicate concepts
 - spot wiki notes with weak sourcing
 - spot brainstorm notes that are candidates for promotion
@@ -13,6 +13,13 @@ compatibility: opencode
 - check for alias drift against the alias registry at `.opencode/alias-registry.md`
 - check for uncontrolled tag growth and non-canonical retrieval metadata
 - flag tags, location values, and `canonical_topic` values that do not match canonical entries
+
+## Exclusions
+
+Skip:
+- Excalidraw drawings (`excalidraw-plugin` frontmatter or `.excalidraw` extension)
+- Obsidian plugin files under `.obsidian/plugins/`
+- Template files under `workbook/Templates/`
 
 ## When to use me
 

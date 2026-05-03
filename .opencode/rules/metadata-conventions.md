@@ -51,11 +51,7 @@ Not required for human-managed notes:
 - `verification`
 - `llm_stage`
 - `canonical_topic`
-- `source_ref`
 - `source`
-- `derived_from`
-- `entity_refs`
-- `topic_refs`
 - `llm_description_done`
 - `ingest_status`
 - `normalized_at`
@@ -102,20 +98,8 @@ llm_description_done:
 Required when provenance is external or operationally important:
 
 ```yaml
-source_ref:
 source:
 ```
-
-Useful but optional linking fields:
-
-```yaml
-canonical_topic:
-derived_from: []
-entity_refs: []
-topic_refs: []
-```
-
-These linking fields should only be required when a workflow or query pattern actually depends on them.
 
 ## Brainstorm policy
 
@@ -129,13 +113,13 @@ These linking fields should only be required when a workflow or query pattern ac
 
 | Note family | Profile | Required | Optional | Avoid by default |
 | --- | --- | --- | --- | --- |
-| `workbook/my-work/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | domain-specific fields, `source_ref` when useful | LLM pipeline fields |
-| `workbook/brainstorm/todo/`, `workbook/brainstorm/active/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | `derived_from`, `source_ref`, domain fields | LLM pipeline fields unless explicitly opted in |
-| `workbook/brainstorm/managed/` | LLM-managed | LLM base fields, plus ingestion fields when auto-managed | linking fields | nothing beyond the profile |
-| `workbook/resources/` | LLM-managed | LLM base fields, ingestion fields, `source_ref` when externally sourced | `source`, linking fields, `author`, `published` | human-only domain fields unrelated to the source |
-| generated `workbook/wiki/` | LLM-managed | LLM base fields | `canonical_topic`, linking fields, `source_ref` or backlinks | ingestion fields unless the note is actually in that pipeline |
-| human `workbook/output/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | deliverable-specific fields, `source_ref` | LLM pipeline fields |
-| generated `workbook/output/` | LLM-managed | LLM base fields | provenance and linking fields | ingestion fields unless auto-managed |
+| `workbook/my-work/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | domain-specific fields, `source` when useful | LLM pipeline fields |
+| `workbook/brainstorm/todo/`, `workbook/brainstorm/active/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | `source`, domain fields | LLM pipeline fields unless explicitly opted in |
+| `workbook/brainstorm/managed/` | LLM-managed | LLM base fields, plus ingestion fields when auto-managed | `canonical_topic` when useful | nothing beyond the profile |
+| `workbook/resources/` | LLM-managed | LLM base fields, ingestion fields, `source` when externally sourced | `canonical_topic`, `author`, `published` | human-only domain fields unrelated to the source |
+| generated `workbook/wiki/` | LLM-managed | LLM base fields | `canonical_topic`, `source` or backlinks | ingestion fields unless the note is actually in that pipeline |
+| human `workbook/output/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | deliverable-specific fields, `source` | LLM pipeline fields |
+| generated `workbook/output/` | LLM-managed | LLM base fields | provenance fields, `canonical_topic` | ingestion fields unless auto-managed |
 | root and folder indexes/logs | whichever manages them | same as their owning profile; keep concise | provenance fields when useful | unnecessary pipeline state |
 
 ## Field matrix
@@ -163,12 +147,8 @@ Legend:
 | `trust_level` | - | R | R |
 | `verification` | - | R | R |
 | `llm_stage` | - | R | R |
-| `source_ref` | O | O | O |
 | `source` | O | O | O |
 | `canonical_topic` | -/G | O/G | O/G |
-| `derived_from` | O | O | O |
-| `entity_refs` | - | O | O |
-| `topic_refs` | - | O | O |
 | `country` | D/G | D/G | D/G |
 | `province` | D/G | D/G | D/G |
 | `city` | D/G | D/G | D/G |
@@ -319,10 +299,7 @@ trust_level: raw
 verification: unverified
 llm_stage: unprocessed
 canonical_topic:
-source_ref:
-derived_from: []
-entity_refs: []
-topic_refs: []
+source:
 ingest_status: pending
 normalized_at:
 source_hash:
@@ -369,9 +346,6 @@ trust_level: synthesized
 verification: unverified
 llm_stage: linked
 canonical_topic:
-derived_from: []
-entity_refs: []
-topic_refs: []
 ingest_status: pending
 normalized_at:
 source_hash:

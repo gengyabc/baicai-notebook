@@ -7,7 +7,7 @@ Process resource notes marked with `llm_description_done: false` by generating L
 ## Inputs
 
 - Files with `llm_description_done: false` in frontmatter (typically in `workbook/resources/` or `workbook/brainstorm/managed/`)
-- Exclude whitelist: `index.md`, `log.md`, files with `github.com` in `source_ref`
+- Exclude whitelist: `index.md`, `log.md`
 
 ## Steps
 

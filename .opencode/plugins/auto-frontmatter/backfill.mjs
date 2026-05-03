@@ -132,10 +132,6 @@ function buildFrontmatter(existing, body, filePath) {
   next.verification = existing.verification || defaultVerification(filePath)
   next.llm_stage = existing.llm_stage || defaultLlmStage(filePath)
   next.canonical_topic = existing.canonical_topic || canonicalTopic
-  if (sourceRef) next.source_ref = sourceRef
-  next.derived_from = Array.isArray(existing.derived_from) ? existing.derived_from : []
-  next.entity_refs = Array.isArray(existing.entity_refs) ? existing.entity_refs : []
-  next.topic_refs = Array.isArray(existing.topic_refs) ? existing.topic_refs : []
   next.tags = mergeTags(existing.tags, sourceType, status, next.content_role)
 
   if (!existing.ingest_status) {
