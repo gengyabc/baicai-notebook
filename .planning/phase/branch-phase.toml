@@ -1,5 +1,0 @@
-branch = "main"
-phaseTopic = "enhance-info-retrieval"
-livePhasePath = ".planning/phase"
-status = "live"
-implementedStepKeys = ["sqlite-shortlist-ranking-and-fallback", "frontmatter-tag-governance", "structured-query-constraint-extraction", "retrieval-contract-and-safety-guardrails", "semantic-query-mapping-expansion", "debug-permission-profile-and-plugin-gate", "constrained-query-orchestration", "minimal-retrieval-contract"]
