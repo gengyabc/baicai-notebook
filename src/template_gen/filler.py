@@ -96,7 +96,8 @@ def set_paragraph_text_keep_style(paragraph, text: str) -> None:
         run = paragraph.runs[0]
         run.text = text
         for extra_run in paragraph.runs[1:]:
-            extra_run.text = ""
+            if not extra_run.text.strip():
+                extra_run.text = ""
     else:
         paragraph.add_run(text)
 
@@ -358,10 +359,6 @@ def generate_template(
                 continue
             paragraph = doc.paragraphs[mapping.paragraph_index]
             if paragraph.text.strip():
-                if paragraph.runs:
-                    paragraph.runs[-1].text += " " + mapping.placeholder
-                else:
-                    paragraph.add_run(" " + mapping.placeholder)
                 continue
             set_paragraph_text_keep_style(paragraph, mapping.placeholder)
             continue

@@ -65,7 +65,8 @@
 此命令会依次：
 - 调用 `template_gen.import_placeholder_csv` → `.temp/{task}/temp-v{N}/descriptions.json`
 - 调用 `template_gen.generate_fill_data`（先校验 `placeholders.json` 与 `descriptions.json` 一致性）→ `.temp/{task}/temp-v{N}/fill_data.json`
-- LLM 查询知识库（或网络搜索，当 `--free yes`）填充 `fill_data.json`
+- LLM 查询知识库（或网络搜索，当 `--free yes`）填充非敏感字段到 `fill_data.json`
+- 如存在 `secret_name` 绑定，调用 `bun run .opencode/scripts/fill-sensitive-fill-data.mjs` 在本地将敏感值写入 `fill_data.json`
 - 调用 `template_gen.fill_runner` → `.temp/{task}/output-v{N}/filled.docx`
 
 默认仅使用知识库内容填充；添加 `--free yes` 可使用非知识库内容和网络搜索。

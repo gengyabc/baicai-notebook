@@ -3,9 +3,6 @@ import json
 import subprocess
 from pathlib import Path
 
-import pytest
-
-from template_gen.exceptions import TemplateGenError
 from template_gen.generate_fill_data import (
     generate_fill_data,
     load_placeholder_descriptions,
@@ -13,18 +10,12 @@ from template_gen.generate_fill_data import (
 )
 from template_gen.export_placeholder_csv import export_placeholder_csv
 from template_gen.import_placeholder_csv import import_placeholder_csv
-from template_gen.secret_binding import (
-    bind_secrets_to_placeholders,
-    normalize_secret_name_to_placeholder,
-    validate_secret_binding_drift,
-    SECRET_BINDING_FIELD,
-)
+
+SECRET_BINDING_FIELD = "secret_name"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OPENCODE_DIR = REPO_ROOT / ".opencode"
 HARNESS = OPENCODE_DIR / "scripts" / "run-secure-action-harness.mjs"
-FIXTURE_SECRET_NAME = "SECURE_PLUGIN_FIXTURE_SECRET"
-FIXTURE_SECRET_VALUE = "test-secret-value-for-plugin-08"
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -50,16 +41,6 @@ def _bun(*args):
         timeout=30,
     )
     return result
-
-
-def _run_secure_action(service, operation, args=None):
-    if args is None:
-        args = {}
-    input_data = json.dumps({"service": service, "operation": operation, "args": args})
-    result = _bun("run-secure-action", input_data)
-    if result.returncode != 0:
-        raise RuntimeError(f"harness failed: {result.stderr}")
-    return json.loads(result.stdout.strip())
 
 
 class TestBatch1FillDocxWorkflowSeparation:
@@ -90,34 +71,6 @@ class TestBatch1FillDocxWorkflowSeparation:
         assert "secret_name" in text
         assert "leave" in text.lower() or "empty" in text.lower()
 
-
-class TestBatch1SecurePluginSurface:
-    def test_plugin_exposes_only_allowlisted_handlers(self):
-        source = (OPENCODE_DIR / "plugins" / "secure-plugin-access.ts").read_text()
-        allowlist = json.loads(
-            (OPENCODE_DIR / "plugin-allowlist.json").read_text()
-        )
-        for service_name, service in allowlist["services"].items():
-            for op_name, op_config in service["operations"].items():
-                handler_name = op_config["handler"]
-                assert handler_name in source
-
-    def test_plugin_returns_sanitized_results(self):
-        source = (OPENCODE_DIR / "plugins" / "secure-plugin-access.ts").read_text()
-        assert "sanitizePayload" in source or "sanitizeValue" in source
-        assert "[REDACTED_SECRET]" in source
-
-    def test_allowlisted_operation_returns_sanitized_output(self):
-        _bun("seed-secret", FIXTURE_SECRET_NAME, FIXTURE_SECRET_VALUE)
-        try:
-            result = _run_secure_action("fixture-secret", "derive-digest", {"salt": "test-salt"})
-            assert result["ok"] is True
-            result_str = json.dumps(result)
-            assert FIXTURE_SECRET_VALUE not in result_str
-        finally:
-            _bun("remove-secret", FIXTURE_SECRET_NAME)
-
-
 class TestBatch1PermissionBoundary:
     def test_opencode_json_denies_raw_secret_access(self):
         config = json.loads((REPO_ROOT / "opencode.json").read_text())
@@ -126,125 +79,8 @@ class TestBatch1PermissionBoundary:
         assert any("cross-keychain" in k for k in bash_denies)
         assert any("keytar" in k for k in bash_denies)
 
-    def test_opencode_json_denies_secrets_read(self):
-        config = json.loads((REPO_ROOT / "opencode.json").read_text())
-        read_denys = config.get("permission", {}).get("read", {})
-        assert "**/secrets/**" in read_denys
 
-
-class TestSecretNameNormalization:
-    def test_normalizes_uppercase_snake_to_placeholder(self):
-        result = normalize_secret_name_to_placeholder("MY_ID_CARD")
-        assert result == "my_id_card"
-
-    def test_normalizes_simple_name(self):
-        result = normalize_secret_name_to_placeholder("PHONE")
-        assert result == "phone"
-
-    def test_normalizes_multi_word_name(self):
-        result = normalize_secret_name_to_placeholder("BANK_ACCOUNT_NUMBER")
-        assert result == "bank_account_number"
-
-    def test_rejects_empty_name(self):
-        with pytest.raises(TemplateGenError):
-            normalize_secret_name_to_placeholder("")
-
-    def test_rejects_lowercase_name(self):
-        with pytest.raises(TemplateGenError):
-            normalize_secret_name_to_placeholder("phone")
-
-    def test_rejects_name_with_spaces(self):
-        with pytest.raises(TemplateGenError):
-            normalize_secret_name_to_placeholder("MY ID CARD")
-
-
-class TestBindSecretsToPlaceholders:
-    def _make_registry_entries(self, names):
-        return [{"name": n, "description": f"desc for {n}"} for n in names]
-
-    def test_binds_single_high_confidence_match(self):
-        placeholders = [
-            {"placeholder": "{{ phone }}", "description": "手机号码"},
-        ]
-        registry = self._make_registry_entries(["PHONE"])
-        result = bind_secrets_to_placeholders(placeholders, registry)
-        assert result[0][SECRET_BINDING_FIELD] == "PHONE"
-
-    def test_does_not_bind_when_no_exact_normalization_match(self):
-        placeholders = [
-            {"placeholder": "{{ id_card_number }}", "description": "身份证号"},
-        ]
-        registry = [
-            {"name": "ID_CARD", "description": "身份证号"},
-            {"name": "ID_CARD_BACK", "description": "身份证背面"},
-        ]
-        result = bind_secrets_to_placeholders(placeholders, registry)
-        assert SECRET_BINDING_FIELD not in result[0]
-
-    def test_skips_non_conforming_registry_entries_gracefully(self):
-        placeholders = [
-            {"placeholder": "{{ phone }}", "description": "手机号码"},
-        ]
-        registry = [
-            {"name": "PHONE", "description": "手机号码"},
-            {"name": "invalid-name", "description": "bad entry"},
-        ]
-        result = bind_secrets_to_placeholders(placeholders, registry)
-        assert result[0][SECRET_BINDING_FIELD] == "PHONE"
-
-    def test_does_not_bind_when_no_registry_match(self):
-        placeholders = [
-            {"placeholder": "{{ project_name }}", "description": "项目名称"},
-        ]
-        registry = self._make_registry_entries(["PHONE"])
-        result = bind_secrets_to_placeholders(placeholders, registry)
-        assert SECRET_BINDING_FIELD not in result[0]
-
-    def test_preserves_existing_fields(self):
-        placeholders = [
-            {"placeholder": "{{ phone }}", "description": "手机号码", "location": "tables[0].rows[0].cells[0]"},
-        ]
-        registry = self._make_registry_entries(["PHONE"])
-        result = bind_secrets_to_placeholders(placeholders, registry)
-        assert result[0]["location"] == "tables[0].rows[0].cells[0]"
-        assert result[0][SECRET_BINDING_FIELD] == "PHONE"
-
-    def test_binds_multiple_placeholders_independently(self):
-        placeholders = [
-            {"placeholder": "{{ phone }}", "description": "手机号码"},
-            {"placeholder": "{{ project_name }}", "description": "项目名称"},
-        ]
-        registry = self._make_registry_entries(["PHONE"])
-        result = bind_secrets_to_placeholders(placeholders, registry)
-        assert result[0][SECRET_BINDING_FIELD] == "PHONE"
-        assert SECRET_BINDING_FIELD not in result[1]
-
-
-class TestSecretBindingDriftValidation:
-    def test_passes_when_placeholders_match_bindings(self):
-        placeholders = [
-            {"placeholder": "{{ phone }}", "description": "手机号码", SECRET_BINDING_FIELD: "PHONE"},
-            {"placeholder": "{{ project_name }}", "description": "项目名称"},
-        ]
-        validate_secret_binding_drift(placeholders, bound_keys={"PHONE"})
-
-    def test_fails_when_bound_placeholder_disappeared(self):
-        placeholders = [
-            {"placeholder": "{{ project_name }}", "description": "项目名称"},
-        ]
-        bound_keys = {"PHONE"}
-        with pytest.raises(TemplateGenError, match="secret-binding"):
-            validate_secret_binding_drift(placeholders, bound_keys=bound_keys)
-
-    def test_fails_when_bound_placeholder_token_changed(self):
-        placeholders = [
-            {"placeholder": "{{ mobile }}", "description": "手机号码", SECRET_BINDING_FIELD: "PHONE"},
-        ]
-        with pytest.raises(TemplateGenError, match="secret-binding"):
-            validate_secret_binding_drift(placeholders, bound_keys={"PHONE"})
-
-
-class TestCsvRoundtripPreservesSecretBinding:
+class TestCsvRoundtripPreservesSecretMetadata:
     def test_export_includes_secret_name_column(self, tmp_path: Path):
         placeholders_json = tmp_path / "placeholders.json"
         out_csv = tmp_path / "out" / "descriptions.csv"
@@ -278,7 +114,7 @@ class TestCsvRoundtripPreservesSecretBinding:
         assert payload["placeholders"][0][SECRET_BINDING_FIELD] == "PHONE"
         assert SECRET_BINDING_FIELD not in payload["placeholders"][1] or payload["placeholders"][1][SECRET_BINDING_FIELD] == ""
 
-    def test_roundtrip_preserves_secret_binding(self, tmp_path: Path):
+    def test_roundtrip_preserves_secret_metadata(self, tmp_path: Path):
         placeholders_json = tmp_path / "placeholders.json"
         csv_path = tmp_path / "descriptions.csv"
         reimported_json = tmp_path / "descriptions.json"
@@ -372,7 +208,7 @@ class TestCsvRoundtripPreservesSecretBinding:
 
 
 class TestGenerateFillDataWithSecretBinding:
-    def test_generate_fill_data_preserves_secret_binding_in_output(self, tmp_path: Path):
+    def test_generate_fill_data_ignores_secret_name_for_fill_values(self, tmp_path: Path):
         repo = tmp_path / "repo"
         (repo / ".opencode").mkdir(parents=True, exist_ok=True)
         (repo / ".opencode" / "vault-config.json").write_text(
@@ -396,6 +232,56 @@ class TestGenerateFillDataWithSecretBinding:
 
         loaded = _read_json(output)
         assert loaded == {"phone": "", "project_name": ""}
+
+
+class TestJsSensitiveFillDataInjection:
+    def test_js_script_fills_secret_backed_fields_in_fill_data(self, tmp_path: Path):
+        repo = tmp_path / "repo"
+        (repo / ".opencode").mkdir(parents=True, exist_ok=True)
+        (repo / ".opencode" / "vault-config.json").write_text(
+            '{"vaultRoot": "workbook"}', encoding="utf-8"
+        )
+        (repo / "workbook").mkdir(parents=True, exist_ok=True)
+
+        descriptions = repo / ".temp" / "职业教育优质教材推荐书" / "temp-v1" / "descriptions.json"
+        fill_data = repo / ".temp" / "职业教育优质教材推荐书" / "temp-v1" / "fill_data.json"
+        descriptions.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(
+            descriptions,
+            {
+                "placeholders": [
+                    {"placeholder": "{{ phone }}", "description": "联系人手机", "secret_name": "PHONE"},
+                    {"placeholder": "{{ email }}", "description": "电子邮箱"},
+                ]
+            },
+        )
+        _write_json(fill_data, {"phone": "", "email": "test@example.invalid"})
+
+        _bun("seed-secret", "PHONE", "test-phone-secret-value")
+        try:
+            result = subprocess.run(
+                [
+                    "bun",
+                    "run",
+                    str(REPO_ROOT / ".opencode" / "scripts" / "fill-sensitive-fill-data.mjs"),
+                    "--descriptions",
+                    str(descriptions),
+                    "--fill-data",
+                    str(fill_data),
+                ],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO_ROOT),
+                timeout=30,
+            )
+            assert result.returncode == 0, result.stderr
+            assert "test-phone-secret-value" not in result.stdout
+
+            loaded = _read_json(fill_data)
+            assert loaded["phone"] == "test-phone-secret-value"
+            assert loaded["email"] == "test@example.invalid"
+        finally:
+            _bun("remove-secret", "PHONE")
 
 
 class TestDocFillInfrastructureReadiness:

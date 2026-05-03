@@ -4,8 +4,10 @@ import json
 from pathlib import Path
 
 from .exceptions import TemplateGenError
-from .secret_binding import SECRET_BINDING_FIELD
 from .task_paths import TaskPaths
+
+
+SECRET_BINDING_FIELD = "secret_name"
 
 
 def validate_placeholder_description_csv(csv_path: str) -> list[dict[str, str]]:

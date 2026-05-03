@@ -7,8 +7,10 @@ from pathlib import Path
 from docx import Document
 
 from .exceptions import TemplateGenError
-from .secret_binding import SECRET_BINDING_FIELD
 from .task_paths import TaskPaths
+
+
+SECRET_BINDING_FIELD = "secret_name"
 
 
 SUPPORTED_TEMPLATE_TOKEN_PATTERN = re.compile(
@@ -55,31 +57,36 @@ def extract_template_placeholders(template_docx_path: str) -> list[dict[str, str
     return extracted
 
 
-def rebuild_placeholders_from_template(template_docx_path: str, placeholders_output_path: str) -> str:
+def rebuild_placeholders_from_template(
+    template_docx_path: str,
+    placeholders_output_path: str,
+) -> str:
     placeholders = extract_template_placeholders(template_docx_path)
-    
-    prior_bindings: dict[str, str] = {}
     output = Path(placeholders_output_path)
+
+    prior_secret_names: dict[str, str] = {}
     if output.exists():
         try:
             prior_data = json.loads(output.read_text(encoding="utf-8"))
             if isinstance(prior_data, dict) and isinstance(prior_data.get("placeholders"), list):
                 for item in prior_data["placeholders"]:
-                    if isinstance(item, dict) and SECRET_BINDING_FIELD in item:
-                        ph = item.get("placeholder", "")
-                        if ph and isinstance(item[SECRET_BINDING_FIELD], str):
-                            prior_bindings[ph] = item[SECRET_BINDING_FIELD]
+                    if not isinstance(item, dict):
+                        continue
+                    placeholder = item.get("placeholder")
+                    secret_name = item.get(SECRET_BINDING_FIELD)
+                    if isinstance(placeholder, str) and isinstance(secret_name, str) and secret_name:
+                        prior_secret_names[placeholder] = secret_name
         except (json.JSONDecodeError, OSError):
-            print(f"Warning: could not read prior placeholders from {output}, secret bindings may be lost")
-    
+            print(f"Warning: could not read prior placeholders from {output}, secret metadata may be lost")
+
     seen: set[str] = set()
     deduped: list[dict[str, str]] = []
     for ph in placeholders:
         placeholder = ph["placeholder"]
         if placeholder not in seen:
             seen.add(placeholder)
-            if placeholder in prior_bindings:
-                ph[SECRET_BINDING_FIELD] = prior_bindings[placeholder]
+            if placeholder in prior_secret_names:
+                ph[SECRET_BINDING_FIELD] = prior_secret_names[placeholder]
             deduped.append(ph)
     
     output.parent.mkdir(parents=True, exist_ok=True)

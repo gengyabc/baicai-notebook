@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 
 from .exceptions import TemplateGenError
-from .secret_binding import SECRET_BINDING_FIELD
 from .task_paths import TaskPaths
 
 
@@ -41,7 +40,7 @@ def load_placeholder_descriptions(json_path: str) -> list[dict[str, str]]:
         if not isinstance(item, dict):
             raise TemplateGenError(f"placeholders[{index}] must be an object")
 
-        allowed_keys = {"placeholder", "description", SECRET_BINDING_FIELD}
+        allowed_keys = {"placeholder", "description", "secret_name"}
         extra_keys = set(item.keys()) - allowed_keys
         if extra_keys:
             raise TemplateGenError(
@@ -66,8 +65,8 @@ def load_placeholder_descriptions(json_path: str) -> list[dict[str, str]]:
 
         seen.add(placeholder)
         row: dict[str, str] = {"placeholder": placeholder, "description": description}
-        if SECRET_BINDING_FIELD in item and isinstance(item[SECRET_BINDING_FIELD], str):
-            row[SECRET_BINDING_FIELD] = item[SECRET_BINDING_FIELD]
+        if isinstance(item.get("secret_name"), str):
+            row["secret_name"] = item["secret_name"]
         rows.append(row)
 
     return rows
@@ -196,7 +195,13 @@ def generate_fill_data(
     rows = load_placeholder_descriptions(input_path)
     if canonical_placeholders_path is not None:
         validate_placeholder_freshness(canonical_placeholders_path, rows)
-    _ = resolve_vault_root(repo_root)
+
+    input_file = Path(input_path)
+    bound_payload = {"placeholders": rows}
+    input_file.write_text(
+        json.dumps(bound_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
     data: dict = {}
     current_loop: dict | None = None

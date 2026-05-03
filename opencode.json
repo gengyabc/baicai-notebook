@@ -25,7 +25,8 @@
       ".opencode/plugin-allowlist.json": "deny"
     },
     "read": {
-      "**/secrets/**": "deny"
+      "**/secrets/**": "deny",
+      "**/temp/**/fill_data.json": "deny"
     }
   }
 }
