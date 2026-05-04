@@ -1,0 +1,8 @@
+{
+  "name": "vault-delete-protection",
+  "version": "1.0.0",
+  "description": "Prevent deletion of files within the vault root directory",
+  "hooks": {
+    "tool.execute.before": "index.ts"
+  }
+}

@@ -6,6 +6,11 @@
   ],
   "permission": {
     "bash": {
+      "rm -r* workbook*": "deny",
+      "rm -f* workbook*": "deny",
+      "rm workbook*": "deny",
+      "rmdir *workbook*": "deny",
+      "find workbook* -delete": "deny",
       "node -e*": "deny",
       "bun -e*": "deny",
       "bun eval*": "deny",

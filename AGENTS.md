@@ -15,9 +15,11 @@
 
 ## Vault configuration
 
-The vault root folder is defined in `.opencode/vault-config.json`. Current setting: `workbook/`.
+The vault root folder is defined in `.opencode/vault-config.json` (see `vaultRoot` field).
 
-When folder names are referenced in documentation and workflows, they should be prefixed with the vault root (e.g., `workbook/wiki/`).
+**CRITICAL: Vault Delete Protection is enforced by plugin.** Never delete files in the vault. See `.opencode/rules/vault-delete-protection.md` for details.
+
+When folder names are referenced in documentation and workflows, they should be prefixed with the vault root.
 
 
 ## Folder roles
@@ -37,6 +39,7 @@ When folder names are referenced in documentation and workflows, they should be 
 - For promoting grounded knowledge into `workbook/wiki/`, read `.opencode/workflows/solidify-to-wiki.md`.
 - For vault linting or hygiene work, read `.opencode/workflows/lint-vault.md`.
 - For personal information needed in notes or forms, read `.opencode/skills/env-registry/SKILL.md`.
+- For vault delete protection rules, read `.opencode/rules/vault-delete-protection.md`.
 
 ## Vault query policy
 
