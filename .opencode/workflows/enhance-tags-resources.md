@@ -22,6 +22,7 @@ Tag generation must honor the governed tag system:
 ## Steps
 
 1. **Query pending files via SQLite**
+   - SQLite stores paths relative to `vaultRoot` (defined in vault-config.json)
    - Query frontmatter_json from notes table:
      ```sql
      SELECT path, 
@@ -32,7 +33,8 @@ Tag generation must honor the governed tag system:
      AND (json_extract(frontmatter_json, '$.llm_tags') IS NULL 
           OR json_extract(frontmatter_json, '$.llm_tags') = 0)
      ```
-   - Returns: path, description (LLM-enhanced), existing tags array
+   - Returns: path (relative to vaultRoot), description (LLM-enhanced), existing tags array
+   - **Path resolution**: Full file path = `{vaultRoot}/{path}` (e.g., `workbook/resources/web/file.md`)
 
 2. **For each pending file**:
    a. Use description from SQLite query (already LLM-enhanced summary)
@@ -42,17 +44,20 @@ Tag generation must honor the governed tag system:
       - Select from `topic/*` subset in canonical-tags.json
       - Recognize aliases per tag-aliases.json
       - Validate generated tags exist in canonical set
-e. Merge into tags array:
+   e. Merge into tags array:
        - Preserve system tags (state/*, source/*, role/*)
        - Keep existing topic/* tags if present
        - Append new topic/* tags
        - Deduplicate
-    f. Update frontmatter (write only):
-       ```yaml
-       tags: merged array
-       llm_tags: true
-       updated: YYYY-MM-DD
-       ```
+   f. Update frontmatter (write only):
+        - Before setting each key, check if it already exists in frontmatter
+        - If key exists, update the value; if not, add the key
+        - Never duplicate frontmatter keys
+        ```yaml
+        tags: merged array
+        llm_tags: true
+        updated: YYYY-MM-DD
+        ```
 
 3. **Tag handling proposal collection**:
    - For each tag gap detected:
@@ -61,7 +66,7 @@ e. Merge into tags array:
         - If concept is distinct → collect as new tag candidate for `canonical-tags.json`
      b. **Expansion check**: if new tag approved, identify related existing tags
         - Collect expansion relationship candidates for `tag-expansions.json`
-   - After all files processed:
+        - After all files processed:
      a. De-duplicate candidates by semantic similarity
      b. Present batch proposal per `.opencode/rules/tag-expansion.md`:
         - Aliases section → approve → add to `tag-aliases.json`

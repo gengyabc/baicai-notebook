@@ -23,12 +23,15 @@ Process resource notes marked with `llm_description_done: false` by generating L
       - 1-2 sentences summarizing key point
       - Concise, informative
    d. Update frontmatter:
-      ```yaml
-      description: generated description
-      llm_description_done: true
-      ingest_status: processed
-      updated: YYYY-MM-DD
-      ```
+       - Before setting each key, check if it already exists in frontmatter
+       - If key exists, update the value; if not, add the key
+       - Never duplicate frontmatter keys
+       ```yaml
+       description: generated description
+       llm_description_done: true
+       ingest_status: processed
+       updated: YYYY-MM-DD
+       ```
 
 3. **Report results**:
    - Files processed

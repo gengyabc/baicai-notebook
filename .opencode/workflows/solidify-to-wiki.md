@@ -14,7 +14,10 @@ Act as the only promotion gate that moves grounded knowledge into `workbook/wiki
 2. Test whether the target content passes the promotion policy, including provenance, confidence, and deduplication checks.
 3. Decide whether to update an existing wiki note or create a new one.
 4. Promote only the grounded parts.
-5. Add the wiki schema metadata fields required for the note.
+5. Add the wiki schema metadata fields required for the note:
+   - Before setting each key, check if it already exists in frontmatter
+   - If key exists, update the value; if not, add the key
+   - Never duplicate frontmatter keys
 6. Preserve backlinks to brainstorm or source notes when helpful.
 7. Update `workbook/wiki/index.md` for every new wiki page and for any summary or classification changes that affect discovery.
 8. If `workbook/wiki/log.md` exists and the change is structural, append a concise date-prefixed entry.

@@ -31,6 +31,18 @@ CREATE TABLE properties (
 );
 ```
 
+### Path storage convention
+
+The `notes.path` column stores paths **relative to `vaultRoot`** (defined in `.opencode/vault-config.json`). The full filesystem path to a note file is:
+
+```
+{vaultRoot}/{notes.path}
+```
+
+Example: If `vaultRoot = "workbook"` and `notes.path = "resources/web/file.md"`, the full path is `workbook/resources/web/file.md`.
+
+The wrapper (`vault_index_search`) automatically prepends `vaultRoot` when returning results. Direct SQL queries must apply this transformation when reading files.
+
 ## Minimal shared retrieval contract
 
 The broad SQLite shortlist generation uses only three conceptual shared retrieval fields:
