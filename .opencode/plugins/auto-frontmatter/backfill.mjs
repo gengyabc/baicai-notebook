@@ -13,6 +13,20 @@ const VAULT_ROOT = getVaultRootPath()
 const TARGET_PATHS = getManagedPaths()
 const RESOURCE_BUCKETS = ["inbox", "web", "local", "archive"]
 const SYSTEM_TAG_PREFIXES = ["state/", "source/", "role/"]
+const RESOURCE_DENYLIST = new Set([
+  "type",
+  "kind",
+  "source_type",
+  "content_role",
+  "trust_level",
+  "verification",
+  "llm_stage",
+  "canonical_topic",
+  "source_path",
+  "normalized_at",
+  "source_ref",
+  "llm_rename_done",
+])
 const RESOLVED_EXCLUDE_DIRS = config.excludeDirs.map((dir) => path.resolve(VAULT_ROOT, dir))
 const EXCLUDE_PATTERNS = config.excludePatterns
 const vaultConfig = getVaultConfig()
@@ -106,6 +120,64 @@ async function processFile(filePath, isDryRun = false) {
 }
 
 function buildFrontmatter(existing, body, filePath) {
+  if (isResourceNote(filePath)) {
+    return buildResourceFrontmatter(existing, body, filePath)
+  }
+  return buildGenericFrontmatter(existing, body, filePath)
+}
+
+function isResourceNote(filePath) {
+  const folders = vaultConfig.folders
+  return isUnder(filePath, folders.resources)
+}
+
+function buildResourceFrontmatter(existing, body, filePath) {
+  const imageKey = deriveImageKey(filePath)
+  const status = existing.status || defaultStatus(filePath)
+  const description = existing.description || deriveDescription(body)
+  const descriptionDone = existing.llm_description_done === true || isDescriptionWhitelisted(filePath, existing.source)
+  const tagsDone = existing.llm_tags === true || isTagsWhitelisted(filePath)
+  const now = today()
+  const sourceHash = computeHash(body)
+
+  const effectiveSource = existing.source
+  const sourceTag = classifyResourceSourceTag(effectiveSource)
+
+  const next = {}
+  next.created = existing.created || now
+  next.updated = now
+  next.imageNameKey = imageKey
+  next.description = description
+  next.status = status
+  next.tags = mergeResourceTags(existing.tags, sourceTag, status)
+  next.llm_description_done = descriptionDone
+  next.llm_tags = tagsDone
+  next.ingest_status = (existing.source_hash && existing.source_hash !== sourceHash)
+    ? "pending"
+    : (existing.ingest_status || "pending")
+  next.source_hash = sourceHash
+
+  if (effectiveSource) {
+    next.source = effectiveSource
+  }
+
+  for (const key of Object.keys(existing)) {
+    if (key in next) continue
+    if (RESOURCE_DENYLIST.has(key)) continue
+    next[key] = existing[key]
+  }
+
+  return next
+}
+
+function classifyResourceSourceTag(source) {
+  if (source && (isUrl(source) || source.includes("github.com"))) {
+    return "source/web"
+  }
+  return "source/local"
+}
+
+function buildGenericFrontmatter(existing, body, filePath) {
   const imageKey = deriveImageKey(filePath)
   const sourceRef = existing.source_ref || extractFirstUrl(body)
   const sourceType = existing.source_type || guessSourceType(sourceRef, body, filePath)
@@ -201,6 +273,10 @@ function guessSourceType(sourceRef, body, filePath) {
   return "local"
 }
 
+function isUrl(value) {
+  return /^https?:\/\//i.test(value)
+}
+
 function renderDocument(frontmatter, body) {
   const content = `---\n${stringify(frontmatter, { lineWidth: 0 }).trimEnd()}\n---\n\n${body.replace(/^\n+/, "")}`
   return content.replace(/\n{3,}$/u, "\n\n")
@@ -267,7 +343,7 @@ async function cleanupTempFilesInDir(dir) {
   }
 }
 
-function mergeTags(tags, sourceType, status, contentRole) {
+function partitionTags(tags) {
   const preserved = []
   const topics = []
 
@@ -280,8 +356,18 @@ function mergeTags(tags, sourceType, status, contentRole) {
     if (!preserved.includes(tag)) preserved.push(tag)
   }
 
+  return { preserved, topics }
+}
+
+function mergeTags(tags, sourceType, status, contentRole) {
+  const { preserved, topics } = partitionTags(tags)
   const required = [stateTag(status), `source/${sourceType}`, roleTag(contentRole)]
   return [...preserved, ...topics, ...required]
+}
+
+function mergeResourceTags(tags, sourceTag, status) {
+  const { preserved, topics } = partitionTags(tags)
+  return [...preserved, ...topics, stateTag(status), sourceTag]
 }
 
 function stateTag(status) {
@@ -391,11 +477,11 @@ function isUnder(filePath, folder) {
   return folderIndex !== -1 && folderIndex < parts.length - 1
 }
 
-function isDescriptionWhitelisted(filePath, sourceRef) {
+function isDescriptionWhitelisted(filePath, url) {
   const basename = path.basename(filePath)
   if (basename === "index.md" || basename === "log.md") return true
   
-  if (sourceRef && sourceRef.includes("github.com")) return true
+  if (url && url.includes("github.com")) return true
   
   return false
 }

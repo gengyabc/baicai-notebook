@@ -101,6 +101,44 @@ Required when provenance is external or operationally important:
 source:
 ```
 
+### Resource notes (simplified profile)
+
+`workbook/resources/` uses a simplified schema that removes fields redundant with tags, file path, or pipeline flags.
+
+Required for resource notes:
+
+```yaml
+created:
+updated:
+imageNameKey:
+description:
+status:
+tags: []
+llm_description_done:
+llm_tags:
+ingest_status:
+source_hash:
+```
+
+Optional when provenance is available:
+
+```yaml
+source:
+```
+
+Fields removed from resource notes (carried by tags or file path instead):
+
+- `type` (redundant with folder location)
+- `kind` (redundant with folder location)
+- `source_type` (redundant with `source/*` tags)
+- `content_role` (redundant with `role/*` tags; resource notes omit role tags)
+- `trust_level` (not operationally valuable for resource notes)
+- `verification` (not operationally valuable for resource notes)
+- `llm_stage` (not operationally valuable for resource notes)
+- `canonical_topic` (not operationally valuable for resource notes)
+- `source_path` (redundant with actual file path)
+- `source_ref` (redundant with `source` field)
+
 ## Brainstorm policy
 
 - `workbook/brainstorm/` is mixed by subfolder.
@@ -116,7 +154,7 @@ source:
 | `workbook/my-work/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | domain-specific fields, `source` when useful | LLM pipeline fields |
 | `workbook/brainstorm/todo/`, `workbook/brainstorm/active/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | `source`, domain fields | LLM pipeline fields unless explicitly opted in |
 | `workbook/brainstorm/managed/` | LLM-managed | LLM base fields, plus ingestion fields when auto-managed | `canonical_topic` when useful | nothing beyond the profile |
-| `workbook/resources/` | LLM-managed | LLM base fields, ingestion fields, `source` when externally sourced | `canonical_topic`, `author`, `published` | human-only domain fields unrelated to the source |
+| `workbook/resources/` | LLM-managed (simplified) | `created`, `updated`, `imageNameKey`, `description`, `status`, `tags`, `llm_description_done`, `llm_tags`, `ingest_status`, `source_hash` | `source`, `author`, `published` | `type`, `kind`, `source_type`, `content_role`, `trust_level`, `verification`, `llm_stage`, `canonical_topic`, `source_path`, `source_ref` |
 | generated `workbook/wiki/` | LLM-managed | LLM base fields | `canonical_topic`, `source` or backlinks | ingestion fields unless the note is actually in that pipeline |
 | human `workbook/output/` | human-managed | `type`, `kind`, `created`, `updated`, `imageNameKey`, `description`, `status`, `tags` | deliverable-specific fields, `source` | LLM pipeline fields |
 | generated `workbook/output/` | LLM-managed | LLM base fields | provenance fields, `canonical_topic` | ingestion fields unless auto-managed |
@@ -132,32 +170,33 @@ Legend:
 - `G`: governed by alias registry (see `.opencode/alias-registry.md`)
 - `-`: not needed by default
 
-| Field | Human-managed | LLM-managed base | Ingestion notes |
-| --- | --- | --- | --- |
-| `type` | R | R | R |
-| `kind` | R | R | R |
-| `created` | R | R | R |
-| `updated` | R | R | R |
-| `imageNameKey` | R | R | R |
-| `description` | R | R | R |
-| `status` | R | R | R |
-| `tags` | R/G | R/G | R/G |
-| `source_type` | - | R | R |
-| `content_role` | - | R | R |
-| `trust_level` | - | R | R |
-| `verification` | - | R | R |
-| `llm_stage` | - | R | R |
-| `source` | O | O | O |
-| `canonical_topic` | -/G | O/G | O/G |
-| `country` | D/G | D/G | D/G |
-| `province` | D/G | D/G | D/G |
-| `city` | D/G | D/G | D/G |
-| `llm_description_done` | - | - | R |
-| `ingest_status` | - | - | R |
-| `normalized_at` | - | - | R |
-| `source_hash` | - | - | R |
-| `source_path` | - | - | R |
-| domain-specific fields | D | D | D |
+| Field | Human-managed | LLM-managed base | Resource (simplified) | Ingestion notes |
+| --- | --- | --- | --- | --- |
+| `type` | R | R | - | R |
+| `kind` | R | R | - | R |
+| `created` | R | R | R | R |
+| `updated` | R | R | R | R |
+| `imageNameKey` | R | R | R | R |
+| `description` | R | R | R | R |
+| `status` | R | R | R | R |
+| `tags` | R/G | R/G | R/G | R/G |
+| `source_type` | - | R | - | R |
+| `content_role` | - | R | - | R |
+| `trust_level` | - | R | - | R |
+| `verification` | - | R | - | R |
+| `llm_stage` | - | R | - | R |
+| `source` | O | O | O | O |
+| `canonical_topic` | -/G | O/G | - | O/G |
+| `country` | D/G | D/G | D/G | D/G |
+| `province` | D/G | D/G | D/G | D/G |
+| `city` | D/G | D/G | D/G | D/G |
+| `llm_description_done` | - | - | R | R |
+| `llm_tags` | - | - | R | - |
+| `ingest_status` | - | - | R | R |
+| `normalized_at` | - | - | - | R |
+| `source_hash` | - | - | R | R |
+| `source_path` | - | - | - | R |
+| domain-specific fields | D | D | D | D |
 
 ## Enum guidance
 
@@ -286,29 +325,19 @@ Use `country`, `province`, and `city` as the structured location fields for retr
 
 ```yaml
 ---
-type: resource
-kind: note
-source_type: web
-content_role: raw
 created:
 updated:
 imageNameKey:
 description:
 llm_description_done: false
+llm_tags: false
 status: inbox
-trust_level: raw
-verification: unverified
-llm_stage: unprocessed
-canonical_topic:
-source:
 ingest_status: pending
-normalized_at:
 source_hash:
-source_path:
+source:
 tags:
   - state/inbox
   - source/web
-  - role/raw
 ---
 ```
 

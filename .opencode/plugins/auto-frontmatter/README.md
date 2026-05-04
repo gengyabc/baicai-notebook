@@ -51,7 +51,43 @@ LLM 摄取管道，用于标准化已纳入管理的 markdown 内容，标记处
 
 ## v2 Frontmatter Schema
 
-### 摄取层字段
+### Resource note schema (simplified)
+
+Resource notes under `workbook/resources/` use a simplified schema that removes fields redundant with tags, file path, or pipeline flags.
+
+```yaml
+created:
+updated:
+imageNameKey:
+description:
+status:
+tags: []
+llm_description_done: false
+llm_tags: false
+ingest_status: pending
+source_hash:
+source:          # optional, when external provenance is available
+```
+
+Removed fields (carried by tags or file path instead):
+- `type`, `kind` (redundant with folder location)
+- `source_type` (redundant with `source/*` tags)
+- `content_role` (resource notes omit role tags)
+- `trust_level`, `verification`, `llm_stage` (not operationally valuable)
+- `canonical_topic` (not operationally valuable)
+- `source_path` (redundant with actual file path)
+- `source_ref` (redundant with `source` field)
+
+### Source tag derivation (resource notes)
+
+`source/*` tags are derived exclusively from the `source` field:
+- `source` is a URL (`https://...` or contains `github.com`) → `source/web`
+- No `source` or non-URL `source` → `source/local`
+
+No body URL scanning. Explicit provenance required for web classification.
+- `normalized_at` (not needed in simplified profile)
+
+### 摄取层字段 (non-resource LLM-managed notes)
 
 ```yaml
 ingest_status: pending | processed | error
@@ -59,6 +95,8 @@ normalized_at: 2026-04-15
 source_hash: a1b2c3d4e5f6...
 source_path: workbook/resources/web
 ```
+
+Note: `source_path` and `normalized_at` are not written for resource notes (simplified profile).
 
 ### 描述标记
 
