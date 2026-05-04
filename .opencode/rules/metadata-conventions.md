@@ -207,7 +207,7 @@ Use stable enums where they clearly improve retrieval or automation, especially 
 Recommended shared values:
 
 ```yaml
-status: inbox | active | reviewed | archived | draft
+status: active | reviewed | archived | draft
 ```
 
 Human-managed notes may use domain-local values when that is genuinely clearer, but keep them intentional and queryable.
@@ -331,12 +331,10 @@ imageNameKey:
 description:
 llm_description_done: false
 llm_tags: false
-status: inbox
 ingest_status: pending
 source_hash:
 source:
 tags:
-  - state/inbox
   - source/web
 ---
 ```

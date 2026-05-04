@@ -29,7 +29,6 @@ New aliases and suspicious new canonical candidates require human review rather 
 | Governed surface | Canonical value | Accepted aliases | Review rationale |
 | --- | --- | --- | --- |
 | tag | `state/active` | `active`, `status/active` | Consolidate active-status variants |
-| tag | `state/inbox` | `inbox`, `status/inbox` | Consolidate inbox-status variants |
 | tag | `state/archived` | `archived`, `status/archived` | Consolidate archived-status variants |
 | tag | `state/reviewed` | `reviewed`, `status/reviewed` | Consolidate reviewed-status variants; matches `status` enum value |
 | tag | `state/draft` | `draft`, `status/draft` | Consolidate draft-status variants; matches `status` enum value |

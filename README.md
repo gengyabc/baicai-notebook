@@ -86,6 +86,9 @@ bun run --cwd .opencode frontmatter:scan
 
 - `workbook/my-work/`: 当前意图、草稿、决策和项目思考
 - `workbook/resources/`: 捕获的来源和支撑证据
+  - `workbook/resources/web/`: 网页来源笔记，包含 `attachments/` 子目录存储图片附件（MD5 命名）
+  - `workbook/resources/local/`: 本地文件来源笔记
+  - `workbook/resources/archive/`: 已归档来源
 - `workbook/brainstorm/`: `todo/` 和 `active/` 中的推测性笔记
 - `workbook/wiki/`: 稳定知识，索引优先维护
 - `workbook/output/`: 交付物，索引优先维护

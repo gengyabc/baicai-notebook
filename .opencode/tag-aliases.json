@@ -4,8 +4,6 @@
   "mappings": {
     "active": "state/active",
     "status/active": "state/active",
-    "inbox": "state/inbox",
-    "status/inbox": "state/inbox",
     "archived": "state/archived",
     "status/archived": "state/archived",
     "reviewed": "state/reviewed",
@@ -48,6 +46,8 @@
     "设计": "topic/design",
     "cv": "topic/cv",
     "myself": "topic/cv",
-    "简历": "topic/cv"
+    "简历": "topic/cv",
+    "教程": "topic/tutorial",
+    "tutorial": "topic/tutorial"
   }
 }

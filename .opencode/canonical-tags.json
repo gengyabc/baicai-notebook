@@ -1,9 +1,18 @@
 {
   "version": 1,
   "description": "Unique legal runtime source of canonical tag values. No non-canonical tag string may be sent to the wrapper as a structured tag constraint.",
+  "constraints": {
+    "topic/training": {
+      "adder": "user-only",
+      "note": "Reserved for user to tag personal training events. Use topic/tutorial for external tutorials, or topic/education for general learning content."
+    },
+    "topic/tutorial": {
+      "adder": "llm-only",
+      "note": "Reserved for external tutorial and how-to resources captured from outside sources. Use topic/training for personal training events."
+    }
+  },
   "tags": [
     "state/active",
-    "state/inbox",
     "state/archived",
     "state/reviewed",
     "state/draft",
@@ -23,6 +32,7 @@
     "role/log",
     "topic/idea",
     "topic/training",
+    "topic/tutorial",
     "topic/education",
     "topic/ai-tools",
     "topic/design",
