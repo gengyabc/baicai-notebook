@@ -64,7 +64,7 @@ class TestBatch1FillDocxWorkflowSeparation:
 
     def test_fill_docx_mentions_secure_action(self):
         text = (REPO_ROOT / ".opencode" / "workflows" / "fill-docx.md").read_text()
-        assert "secure_action" in text
+        assert "fill-sensitive-fill-data.mjs" in text or "Opaque Sensitive Fill" in text
 
     def test_fill_docx_llm_must_leave_secret_fields_empty(self):
         text = (REPO_ROOT / ".opencode" / "workflows" / "fill-docx.md").read_text()

@@ -48,6 +48,9 @@
     "myself": "topic/cv",
     "简历": "topic/cv",
     "教程": "topic/tutorial",
-    "tutorial": "topic/tutorial"
+    "tutorial": "topic/tutorial",
+    "prompt-engineer": "topic/prompt-engineering",
+    "prompt-engineering": "topic/prompt-engineering",
+    "提示词工程": "topic/prompt-engineering"
   }
 }
