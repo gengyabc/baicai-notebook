@@ -107,16 +107,19 @@ bun run --cwd .opencode frontmatter:scan
 
 - `bun run --cwd .opencode watch`: 同时启动 frontmatter 监听和 SQLite 索引监听
 
-**单独命令**
+**Frontmatter 管理**
 
-- `bun run --cwd .opencode frontmatter:watch`: 持续监听库文件并更新 frontmatter
-- `bun run --cwd .opencode frontmatter:scan`: 对知识库执行一次性扫描
+- `bun run --cwd .opencode frontmatter:watch`: 持续监听库文件并自动更新 frontmatter
+- `bun run --cwd .opencode frontmatter:scan`: 对知识库执行一次性 frontmatter 扫描
 - `bun run --cwd .opencode frontmatter:backfill`: 批量补全缺失的 frontmatter 字段
 - `bun run --cwd .opencode frontmatter:scan-pending`: 扫描待处理的资源笔记
-- `bun run --cwd .opencode frontmatter:index:scan`: 构建 SQLite frontmatter 索引
-- `bun run --cwd .opencode frontmatter:index:rebuild`: 清空并重建 SQLite frontmatter 索引
+
+**SQLite 索引管理**
+
+- `bun run --cwd .opencode frontmatter:index:scan`: 构建 SQLite frontmatter 索引（增量）
+- `bun run --cwd .opencode frontmatter:index:rebuild`: 清空并完全重建 SQLite frontmatter 索引
 - `bun run --cwd .opencode frontmatter:index:reconcile`: 重扫并清理陈旧的 SQLite 索引记录
-- `bun run --cwd .opencode frontmatter:index:watch`: 持续监听并增量更新 SQLite frontmatter 索引
+- `bun run --cwd .opencode frontmatter:index:watch`: 持续监听文件变化并增量更新 SQLite 索引
 
 
 ## 知识库层级
@@ -144,14 +147,29 @@ node .opencode/scripts/migrate-vault-path.mjs <oldRoot> <newRoot>
 
 在 OpenCode 会话中执行：
 
-- `/ingest <路径或URL>`: 摄取本地笔记、文件、URL 或会话产物
+### 知识管理命令
+
+- `/ingest <路径或URL>`: 摄取本地笔记、文件、URL 或会话产物到知识库
 - `/solidify <主题或笔记>`: 将有据可依的知识提升至 `workbook/wiki/`
 - `/lint-vault`: 审计元数据、索引和知识库卫生
-- `/enhance-description`: 增强 LLM 管理笔记的描述
-- `/debug`: 启动只读沙箱会话用于知识库行为调试
+- `/enhance-description`: 为需要 LLM 处理的资源笔记增强描述
+- `/enhance-tags`: 为资源笔记生成主题标签
+
+### 调试命令
+
+- `/debug [主题]`: 启动只读沙箱会话用于知识库行为调试，可选添加主题标签
+
+### 文档模板命令
+
 - `/generate-template [docx-file]`: 从 Word 空表生成 Jinja 模板（提供路径或使用 `.temp/*/input/` 中最新的 docx）
-- `/export-csv`: 导出占位符描述为 CSV 供人工编辑
+- `/export-csv [edit]`: 导出占位符描述为 CSV 供人工编辑（`edit` 模式从模板重新构建占位符）
 - `/fill-docx [--free yes/no]`: 导入编辑后的占位符 CSV 并填充模板（`--free yes` 允许使用非知识库内容）
+
+### 工具命令
+
+- `/pdf2md`: 将 `raw/` 中的 PDF 转换为 markdown 并保存到 `workbook/resources/local/`
+- `/rename-vault <旧名称> <新名称>`: 重命名 vault 文件夹并更新所有引用
+- `/env-helper`: 管理敏感数据条目（添加/移除/查询/更新）
 
 ## 检索与提升
 

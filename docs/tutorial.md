@@ -1,20 +1,26 @@
 # 个人知识库使用教程
 
-本教程介绍如何使用基于 OpenCode 的个人知识系统，包括知识库的日常使用、文档自动填充功能以及常见问题处理。
+本教程采用 PBL（Problem-Based Learning）方法，以真实使用场景为驱动，通过案例形式展示如何组合命令完成特定任务。每个案例聚焦用户需求，而非孤立地介绍单一命令。
 
 ## 目录
 
-- [快速开始](#快速开始)
-- [知识库层级结构](#知识库层级结构)
-- [基本使用流程](#基本使用流程)
-  - [正常路径](#正常路径)
-  - [异常路径](#异常路径)
-- [文档自动填表功能](#文档自动填表功能)
-  - [步骤 1：生成模板](#步骤-1生成模板)
-  - [步骤 2：导出占位符](#步骤-2导出占位符)
-  - [步骤 3：填充文档](#步骤-3填充文档)
-- [常用命令速查](#常用命令速查)
-- [故障排查](#故障排查)
+- [个人知识库使用教程](#个人知识库使用教程)
+  - [目录](#目录)
+  - [快速开始](#快速开始)
+    - [安装依赖](#安装依赖)
+    - [启动服务](#启动服务)
+  - [知识库层级结构](#知识库层级结构)
+    - [管理模式说明](#管理模式说明)
+  - [场景案例](#场景案例)
+    - [案例 1：日常知识问答](#案例-1日常知识问答)
+    - [案例 2：新项目调研与知识积累](#案例-2新项目调研与知识积累)
+    - [案例 3：批量 PDF 文献处理](#案例-3批量-pdf-文献处理)
+    - [案例 4：文档自动填表（含敏感信息）](#案例-4文档自动填表含敏感信息)
+    - [案例 5：知识库定期维护](#案例-5知识库定期维护)
+    - [案例 6：系统调试与问题排查](#案例-6系统调试与问题排查)
+    - [案例 7：知识库路径迁移](#案例-7知识库路径迁移)
+  - [Vault 路径迁移](#vault-路径迁移)
+  - [相关文档](#相关文档)
 
 ---
 
@@ -37,14 +43,6 @@ bun run --cwd .opencode watch
 ```
 
 这会同时启动 frontmatter 监听和 SQLite 索引监听，确保知识库变更被实时捕获。
-
-**单独命令**
-
-如果只需要一次性扫描：
-
-```bash
-bun run --cwd .opencode frontmatter:scan
-```
 
 ---
 
@@ -81,566 +79,463 @@ bun run --cwd .opencode frontmatter:scan
 - 通过 `/solidify` 命令将资源提升为稳定知识
 - 适合：经确认的知识、交付物
 
-### 目录结构与子文件夹
+---
 
-#### `workbook/resources/` — 来源证据层
+## 场景案例
 
-| 子目录 | 用途 | 说明 |
-|--------|------|------|
-| `inbox/` | 缓冲队列 | 新摄取内容暂存，等待 `second-brain-ingest` 分类路由 |
-| `web/` | 网络来源 | URL 捕获、网页笔记 |
-| `local/` | 本地来源 | 本地文件导入（PDF、笔记等） |
-| `archive/` | 归档资源 | 不再活跃但保留的证据 |
+### 案例 1：日常知识问答
 
-`source_type` 字段与子目录对应：`web` → `web/`，`local` → `local/`
+**用户需求：** 在开始新知识摄取前，先了解知识库中已有的相关积累，避免重复工作。
 
-**摄取流程：**
-- `web-to-resource` 捕获外部内容 → 写入 `inbox/`
-- `second-brain-ingest` 分类路由 → 移至最终目录（`resources/`、`brainstorm/`、`wiki/`、`my-work/`）
+**场景描述：** 用户想学习某个主题（如 "Rust 并发编程"），希望先查看知识库中是否已有相关资料。
 
-#### `workbook/brainstorm/` — 推测性思考层
+**操作流程：**
 
-| 子目录/文件 | 用途 | 说明 |
-|-------------|------|------|
-| `todo/` | 排队想法 | 待探索的想法队列 |
-| `active/` | 活跃想法 | 正在处理的想法 |
-| `managed/` | LLM 托管（可选） | 显式启用 LLM 管理的子目录 |
-| `index.md` | 索引文件 | 列出活跃和排队的想法 |
+1. **直接提问知识库**
+   
+   在 OpenCode 会话中直接提问：
+   
+   ```
+   Rust 并发编程有哪些优势？
+   ```
+   
+   系统会自动查询：
+   - `workbook/wiki/index.md` 获取稳定知识索引
+   - 相关 `workbook/wiki/` 页面获取详细信息
+   - `workbook/resources/` 获取支撑证据
+   - `workbook/brainstorm/` 查看是否有相关推测性想法
 
-**特殊规则：**
-- 默认为人工管理，保持轻量级
-- 如需启用 LLM 管理，需显式创建 `managed/` 子目录
-- 该目录下的笔记才会进入 LLM frontmatter 流程
+2. **评估结果并决策**
+   
+   根据查询结果，用户可以选择：
+   - **已有足够知识**：直接使用现有知识，无需额外操作
+   - **部分缺失**：补充摄取新资源（见 [案例 2](#案例-2新项目调研与知识积累)）
+   - **完全空白**：从零开始新主题调研（见 [案例 2](#案例-2新项目调研与知识积累)）
 
-#### `workbook/wiki/` — 稳定知识层
+**命令组合：**
+- 无需特定命令，系统自动查询知识库
 
-| 文件 | 用途 | 说明 |
-|------|------|------|
-| `index.md` | 知识索引 | **必需**，wiki 入口，列出所有稳定知识主题 |
-| `log.md` | 变更日志 | **推荐**，记录 wiki 变更历史 |
-
-子目录按主题组织，如 `workbook/wiki/programming/`、`workbook/wiki/projects/`
-
-#### `workbook/output/` — 交付物层
-
-| 文件 | 用途 | 说明 |
-|------|------|------|
-| `index.md` | 交付物索引 | **必需**，列出所有交付物 |
-
-子目录按项目或类型组织
-
-#### `workbook/my-work/` — 个人工作区
-
-无固定子目录结构，由用户自组织。常见用法：
-- 按项目创建子目录
-- 存放会议记录、决策文档、草稿
-- 不进入 LLM 自动化流程
+**预期结果：**
+- 获得已有关于该主题的知识摘要
+- 明确需要补充的内容方向
 
 ---
 
-## 基本使用流程
+### 案例 2：新项目调研与知识积累
 
-### 正常路径
+**用户需求：** 为某个新主题（如 "AI Agent 架构设计"）积累知识，从外部资源摄取到稳定知识提升的完整流程。
 
-#### 1. 摄取外部资源
+**场景描述：** 用户需要系统性学习新领域，通过摄取多个外部资源并逐步提升为稳定知识。
 
-**单个资源摄取**
+**操作流程：**
 
-使用 `/ingest` 命令将外部资源导入知识库：
+1. **摄取外部资源**
+   
+   ```
+   /ingest https://example.com/article-on-ai-agents
+   /ingest ~/Documents/ai-agent-architecture.pdf
+   ```
+   
+   系统会自动分类路由到最终目录（`resources/`、`brainstorm/`、`wiki/`、`my-work/`）。
 
-```
-/ingest <路径或URL>
-```
+2. **批量增强资源描述**
+   
+   当多个资源等待 LLM 处理时：
+   
+   ```
+   /enhance-description
+   ```
+   
+   系统会扫描所有 `llm_description_done: false` 的文件并生成描述。
 
-**支持的来源类型：**
-- 本地文件（PDF、笔记等）
-- URL 链接
-- Zotero 条目
+3. **批量生成主题标签**
+   
+   描述增强完成后：
+   
+   ```
+   /enhance-tags
+   ```
+   
+   系统会为资源笔记生成符合规范的 `topic/*` 标签。
 
-系统会自动：
-1. 判断来源类型
-2. 创建资源笔记并保存到 `workbook/resources/inbox/`（缓冲队列）
-3. 使用 `second-brain-ingest` 分类并路由至最终目录：
-   - `workbook/resources/` — 证据、来源
-   - `workbook/brainstorm/` — 推测性想法
-   - `workbook/wiki/` — 稳定知识（需强证据）
-   - `workbook/my-work/` — 活跃意图
-4. 如有强证据，建议提升至 `workbook/wiki/`
+4. **提升至 Wiki**
+   
+   当某些知识足够稳定时：
+   
+   ```
+   /solidify AI Agent 架构设计
+   ```
+   
+   系统会将经确认的知识提升至 `workbook/wiki/`。
 
-**批量 PDF 处理**
+5. **定期审计知识库**
+   
+   调研完成后：
+   
+   ```
+   /lint-vault
+   ```
+   
+   检查元数据完整性、索引一致性和 Tag 容量。
 
-如果需要批量处理多个 PDF 文件：
+**命令组合：**
+- `/ingest` - 摄取外部资源
+- `/enhance-description` - 增强资源笔记描述
+- `/enhance-tags` - 批量生成主题标签
+- `/solidify` - 提升稳定知识至 wiki
+- `/lint-vault` - 审计知识库卫生
 
-1. 将所有待处理的 PDF 放入 `raw/` 目录
-2. 运行 `/pdf2md` 命令
-3. 系统会自动：
+**预期结果：**
+- 多个外部资源被分类存储到知识库
+- 所有资源笔记有清晰的描述和标签
+- 稳定知识被提升至 wiki 层
+- 知识库卫生状态良好
+
+**详细命令参考：**
+- [/ingest 命令详情](../.opencode/commands/ingest.md)
+- [/enhance-description 命令详情](../.opencode/commands/enhance-description.md)
+- [/enhance-tags 命令详情](../.opencode/commands/enhance-tags.md)
+- [/solidify 命令详情](../.opencode/commands/solidify.md)
+- [/lint-vault 命令详情](../.opencode/commands/lint-vault.md)
+
+---
+
+### 案例 3：批量 PDF 文献处理
+
+**用户需求：** 一次性处理多个 PDF 文献（如下载的学术论文、技术资料），转换为 Markdown 并纳入知识库。
+
+**场景描述：** 用户有 10 篇与 "大模型微调" 相关的 PDF 需要导入知识库。
+
+**操作流程：**
+
+1. **准备 PDF 文件**
+   
+   将所有待处理的 PDF 放入 `raw/` 目录：
+   
+   ```
+   raw/
+   ├── paper1-llm-fine-tuning.pdf
+   ├── paper2-lora-technique.pdf
+   └── paper3-qlora-optimization.pdf
+   ```
+
+2. **批量转换 PDF**
+   
+   ```
+   /pdf2md
+   ```
+   
+   系统会自动：
    - 将 `raw/` 中的 PDF 转换为 Markdown
    - 保存到 `workbook/resources/local/`
    - 将处理完的 PDF 移至 `raw/processed/`
 
-这种批量方式适合一次性处理大量文献资料，无需逐个使用 `/ingest`。
-
-#### 2. 查询知识库
-
-正常会话中，系统会自动查询知识库。你也可以主动查询：
-
-- 从 `workbook/wiki/index.md` 开始浏览稳定知识
-- 查看相关 `workbook/wiki/` 页面获取详细信息
-- 从 `workbook/resources/` 获取支撑证据
-- `workbook/brainstorm/` 用于探索性想法（非稳定事实）
-
-#### 3. 提升至 Wiki
-
-当知识足够稳定时，使用 `/solidify` 命令将其提升至 wiki：
-
-```
-/solidify <主题或笔记>
-```
-
-**提升标准：**
-- 必须有据可依（来自 `workbook/resources/` 的强证据）
-- 保留溯源信息
-- 未解决的推测保留在 `workbook/brainstorm/`
-
-#### 4. 维护知识库卫生
-
-定期运行审计：
-
-```
-/lint-vault
-```
-
-这会检查：
-- 元数据完整性
-- 索引一致性
-- 知识库整体卫生状况
-- Tag 容量是否超过阈值
-
-#### Tag 维护
-
-知识库使用规范化的 tag 系统，确保检索一致性和可维护性。
-
-**自动生成 Tag**
-
-当资源笔记完成描述增强后（`llm_description_done: true`），可以批量生成主题标签：
-
-```
-/enhance-tags
-```
-
-系统会：
-1. 查询所有已完成描述但未生成 tag 的资源笔记
-2. 分析内容并生成符合规范的 `topic/*` 标签
-3. 遵循 tag 命名空间规则和容量限制
-4. 如遇到新概念，会按三步决策流程处理（见下文）
-
-**核心配置文件：**
-
-| 文件 | 用途 | 何时修改 |
-|------|------|---------|
-| `.opencode/canonical-tags.json` | 规范标签的唯一法律来源 | 添加新概念 tag |
-| `.opencode/tag-aliases.json` | 别名映射（同义词到规范标签） | 发现现有 tag 的同义词 |
-| `.opencode/tag-expansions.json` | 检索扩展关系（相关标签） | 新 tag 批准后建议关联 |
-
-**Tag 命名空间规则：**
-
-| 命名空间 | 扩展策略 | 示例 |
-|---------|---------|------|
-| `topic/*` | 可扩展（用户审批） | `topic/training`、`topic/ai-tools`、`topic/cv` |
-| `state/*` | 固定（系统管理） | `state/active`、`state/archived`、`state/draft` |
-| `source/*` | 固定（系统管理） | `source/web`、`source/local`、`source/paper` |
-| `role/*` | 固定（系统管理） | `role/raw`、`role/summary`、`role/synthesis` |
-
-**特殊约束：**
-
-某些 tag 有添加者限制，防止混淆：
-
-- `topic/training`：**仅限用户添加**（user-only）——标记个人培训事件
-- `topic/tutorial`：**仅限 LLM 添加**（llm-only）——标记外部教程资源
-
-这两者的区别：
-- `topic/training`：用户参与的培训、研讨会、学习活动
-- `topic/tutorial`：从网络捕获的教程、how-to 文档
-
-**维护流程（三步决策）：**
-
-检测到 tag 缺口时，按以下顺序处理：
-
-1. **检查是否为别名**（同义词）
-   - 查看现有 `canonical-tags.json` 和 `tag-aliases.json`
-   - 如果概念匹配现有规范 tag → 添加别名，**不提议新 tag**
-   - 示例：检测到 "job-hunting" → 匹配 `topic/career` → 添加 `"job-hunting": "topic/career"`
-
-2. **提议新 tag**（新概念）
-   - 如果是真正的新概念 → 提议 `topic/<name>`
-   - 示例：检测到 "finance" → 无匹配 → 提议 `topic/finance`
-   - 注意：只提议 `topic/*` 命名空间，其他命名空间固定
-
-3. **添加扩展关系**（可选，审批后）
-   - 新 tag 批准后，可建议相关 tag 的检索扩展
-   - 示例：`topic/career` 批准 → 建议扩展 `topic/career ↔ topic/cv`
-
-**实际操作示例：**
-
-**场景 1：检测到同义词**
-
-```
-# 处理资源笔记时发现 tag "教育"
-# 检查 canonical-tags.json → 发现已有 topic/education
-# 检查 tag-aliases.json → 发现已有 "教育": "topic/education"
-# 结果：无需操作，系统已能识别
-```
-
-**场景 2：发现新别名**
-
-```
-# 处理资源笔记时发现 tag "edu/child"
-# 检查 canonical-tags.json → 无匹配
-# 检查 tag-aliases.json → 发现 "edu": "topic/education"
-# 判断："edu/child" 是 "education" 的变体形式
-# 操作：添加别名 "edu/child": "topic/education" 到 tag-aliases.json
-```
-
-**场景 3：提议新 tag**
-
-```
-# 处理 3 篇关于职业规划的资源笔记
-# 检查 canonical-tags.json → 无相关 tag（只有 topic/cv）
-# 检查 tag-aliases.json → 无别名
-# 判断："career" 是新概念，不同于 cv（简历只是工具）
-# 操作：
-#   1. 提议新 tag：topic/career
-#   2. 用户审批 → 添加到 canonical-tags.json
-#   3. 建议扩展：topic/career ↔ topic/cv（可选）
-```
-
-**批量处理模式：**
-
-`/enhance-description` 或 `/lint-vault` 可能批量发现 tag 缺口。系统会收集所有候选：
-
-```
-## Tag 处理提案
-
-### 待添加别名
-| 别名 | 目标规范 tag | 适用笔记数 | 理由 |
-|------|-------------|-----------|------|
-| `job` | `topic/career` | 2 | 同义词 |
-| `简历` | `topic/cv` | 1 | 中文别名 |
-
-审批别名？[y/n]
-
-### 待添加新 tag
-| 提议 tag | 适用笔记数 | 理由 |
-|---------|-----------|------|
-| `topic/finance` | 3 | 财务主题，无匹配 |
-| `topic/health` | 2 | 健康主题，无匹配 |
-
-审批新 tag？[all/none/1,2]
-
-### 扩展关系建议
-| Tag | 相关 tag | 理由 |
-|-----|---------|------|
-| `topic/career` | `topic/cv` | 检索邻近 |
-
-添加扩展？[y/n]
-```
-
-**Tag 容量阈值：**
-
-`canonical-tags.json` 的 tag 数量有阈值限制，防止过度膨胀：
-
-| vault 规模 | 推荐 tag 容量 |
-|-----------|-------------|
-| < 200 笔记 | 50-80 |
-| 200-500 笔记 | 80-120 |
-| 500-1000 笔记 | 100-150 |
-| > 1000 笔记 | 150-200 |
-
-配置位置：`.opencode/vault-config.json`
-
-```json
-{
-  "tagCapThreshold": 100
-}
-```
-
-超过阈值时，`/lint-vault` 会发出警告并建议：
-- 合理使用少于 3 笔记的 tag
-- 合并语义相似的 tag（别名候选）
-- 移除未使用的扩展关系
-
-**查看当前 tag 状态：**
-
-```bash
-# 查看 tag 列表
-cat .opencode/canonical-tags.json
-
-# 查看别名映射
-cat .opencode/tag-aliases.json
-
-# 查看扩展关系
-cat .opencode/tag-expansions.json
-```
-
-详细规则见 `.opencode/rules/tag-expansion.md`。
-
-### 异常路径
-
-#### 调试模式
-
-遇到问题时，使用 `/debug` 命令启动沙箱会话：
-
-```
-/debug
-```
-
-**调试模式特性：**
-- 禁用所有知识库自动化策略
-- 阻止写入 `workbook/wiki/`、`workbook/resources/` 和 `workbook/brainstorm/`
-- 只读模式，适合安全地排查问题
-
-#### 处理待处理项目
-
-如果有待处理的笔记：
-
-```
-/enhance-description
-```
-
-这会处理等待 LLM 描述的笔记。
-
-#### 常见问题及解决方案
-
-| 问题 | 解决方案 |
-|------|----------|
-| 索引不同步 | 运行 `bun run --cwd .opencode frontmatter:index:rebuild` 重建索引 |
-| 缺失 frontmatter | 运行 `bun run --cwd .opencode frontmatter:backfill` 批量补全 |
-| 重复资源 | 系统会自动检测并更新现有笔记 |
-| 提升失败 | 检查证据是否充分，补充 `workbook/resources/` 内容后重试 |
+3. **增强描述和标签**
+   
+   ```
+   /enhance-description
+   /enhance-tags
+   ```
+   
+   为转换后的 Markdown 笔记生成描述和标签。
+
+4. **知识提升（可选）**
+   
+   如果有足够证据支持某些知识点：
+   
+   ```
+   /solidify 大模型微调
+   ```
+
+**命令组合：**
+- `/pdf2md` - 批量转换 PDF 为 Markdown
+- `/enhance-description` - 增强资源笔记描述
+- `/enhance-tags` - 批量生成主题标签
+- `/solidify` - 提升稳定知识至 wiki（可选）
+
+**预期结果：**
+- 所有 PDF 转换为 Markdown 格式
+- 转换后的笔记存储在 `workbook/resources/local/`
+- 每个笔记有清晰的描述和主题标签
+- 原始 PDF 归档到 `raw/processed/`
+
+**详细命令参考：**
+- [/pdf2md 命令详情](../.opencode/commands/pdf2md.md)
 
 ---
 
-## 文档自动填表功能
+### 案例 4：文档自动填表（含敏感信息）
 
-本系统支持从 Word 文档生成 Jinja 模板，并从知识库自动填充内容。
+**用户需求：** 使用知识库内容自动填充 Word 表格（如申请表、报告模板），并安全处理敏感个人信息。
 
-### 敏感数据管理
+**场景描述：** 用户需要填写一份培训申请表，包含个人信息、培训经历等字段。
 
-在填充表格时，可能需要使用身份证号、手机号等敏感个人信息。系统提供安全的环境变量管理：
+**操作流程：**
 
-```
-/env-helper <操作> <键名>
-```
+1. **准备空白 Word 文档**
+   
+   将空白表格放入 `.temp/[task-name]/input/`：
+   
+   ```
+   .temp/training-application/input/
+   └── application-form.docx
+   ```
 
-**操作类型：**
-- `add` - 添加新的敏感数据
-- `query` - 查询已存储的数据
-- `update` - 更新现有数据
-- `remove` - 删除数据
+2. **生成 Jinja 模板**
+   
+   ```
+   /generate-template
+   ```
+   
+   系统会自动找到最新的 `.docx` 文件并生成 Jinja 模板。
 
-**使用场景：**
-填充表格前，可以先添加所需的敏感信息：
+3. **导出占位符描述**
+   
+   ```
+   /export-csv
+   ```
+   
+   系统会导出 `output-v{N}/descriptions.csv`，包含 `placeholder,description` 两列。
 
-```
-/env-helper add id_number
-/env-helper add phone_number
-```
+4. **编辑 CSV 描述**
+   
+   人工编辑 `descriptions.csv`，为每个占位符提供准确描述：
+   ```csv
+   placeholder,description
+   applicant_name,"申请人姓名"
+   id_number,"身份证号码"
+   training_date,"培训日期"
+   ```
 
-系统会安全地存储这些信息，在填充时自动调用，且不会暴露实际值。
+5. **管理敏感数据**
+   
+   填充前设置敏感信息（如身份证号）：
+   
+   ```
+   # 注册敏感数据条目
+   /env-helper add MY_ID_CARD
+   > 输入描述：身份证号
+   
+   # 交互式设置实际值
+   bun run .opencode/scripts/env-registry.mjs set MY_ID_CARD
+   > 输入值：[不回显]
+   ```
 
-### 步骤 1：生成模板
+6. **填充文档**
+   
+   仅使用知识库内容：
+   ```
+   /fill-docx
+   ```
+   
+   或允许网络搜索补充：
+   ```
+   /fill-docx --free yes
+   ```
 
-将空白 Word 表格转换为 Jinja 模板：
+7. **查看结果**
+   
+   检查生成的文档：`output-v{N}/template.docx`
 
-```
-/generate-template [docx-file]
-```
+**命令组合：**
+- `/generate-template` - 从 Word 生成 Jinja 模板
+- `/export-csv` - 导出占位符描述 CSV
+- `/env-helper` - 管理敏感数据
+- `/fill-docx` - 填充文档模板（可选 `--free yes`）
 
-**参数：**
-- `docx-file`（可选）：Word 文件路径
-- 如果不提供，系统会使用 `.temp/*/input/` 中最新的 `.docx` 文件
+**预期结果：**
+- 生成填充完整的 Word 文档
+- 敏感信息通过 Keychain 安全调用，不暴露实际值
+- 知识库内容被正确映射到表格字段
 
-**执行过程：**
-1. 解析文档结构
-2. 生成语义化占位符（使用 `snake_case` 命名）
-3. 创建 Jinja 模板文件
-
-**占位符命名规则：**
-- 使用英文 `snake_case`（如 `applicant_name`）
-- 表格行使用数字前缀（如 `course_1_name`、`course_2_name`）
-- 根据相邻单元格中文内容推断语义（如"姓名" → `name`）
-
-### 步骤 2：导出占位符
-
-导出占位符描述为 CSV 供人工编辑：
-
-```
-/export-csv [edit]
-```
-
-**模式：**
-- **默认模式**：从现有 `temp-v{N}/placeholders.json` 导出 CSV
-- **编辑模式**（添加 `edit` 参数）：从当前模板重新生成占位符并导出
-
-**编辑模式使用场景：**
-- 模板结构发生变化
-- 需要重新生成占位符列表
-
-执行后，系统会：
-1. 导出 `output-v{N}/descriptions.csv`（包含 `placeholder,description` 两列）
-2. 自动为每个占位符填写中文描述
-
-**人工编辑：**
-编辑 `descriptions.csv` 文件，为每个占位符提供准确描述。描述应用引号包裹，避免逗号干扰。
-
-### 步骤 3：填充文档
-
-导入编辑后的 CSV 并填充模板：
-
-```
-/fill-docx [--free yes/no]
-```
-
-**参数：**
-- `--free no`（默认）：仅使用知识库内容填充
-- `--free yes`：允许使用非知识库内容和网络搜索
-
-**执行过程：**
-1. 导入 CSV 为 JSON 格式
-2. 验证新鲜度（确保描述与当前模板匹配）
-3. 查询知识库填充数据
-4. 运行填充脚本生成最终文档
-
-**填充规则：**
-- 优先使用知识库中的真实数据
-- 未找到数据时留空（不编造数据）
-- 数组类型字段：填充实际项目或保留单个空模板项
-- 保留数据来源溯源信息
-
-**`--free yes` 模式额外规则：**
-- 优先使用知识库数据
-- 缺失内容可通过网络搜索补充
-- 绝不编造个人信息
-
-### 填表工作流完整示例
-
-```
-# 1. 准备空白 Word 文档，放入 .temp/[task-name]/input/
-
-# 2. 生成模板
-/generate-template
-
-# 3. 导出占位符描述
-/export-csv
-
-# 4. 编辑 output-v{N}/descriptions.csv，完善每个占位符的描述
-
-# 5. 如果模板有修改，重新导出
-/export-csv edit
-
-# 6. 填充文档（仅使用知识库）
-/fill-docx
-
-# 或填充文档（允许网络搜索）
-/fill-docx --free yes
-
-# 7. 查看生成的文档：output-v{N}/template.docx
-```
+**详细命令参考：**
+- [/generate-template 命令详情](../.opencode/commands/generate-template.md)
+- [/export-csv 命令详情](../.opencode/commands/export-csv.md)
+- [/fill-docx 命令详情](../.opencode/commands/fill-docx.md)
+- [/env-helper 命令详情](../.opencode/commands/env-helper.md)
+- [敏感数据管理完整指南](../.opencode/env-registry-README.md)
 
 ---
 
-## 常用命令速查
+### 案例 5：知识库定期维护
 
-### OpenCode 命令
+**用户需求：** 定期检查知识库卫生状态，处理积压的待处理笔记，维护 Tag 系统。
 
-| 命令 | 用途 |
-|------|------|
-| `/ingest <路径或URL>` | 摄取本地笔记、文件、URL 或会话产物 |
-| `/pdf2md` | 批量转换 raw/ 中的 PDF 为 Markdown |
-| `/solidify <主题或笔记>` | 将有据可依的知识提升至 `workbook/wiki/` |
-| `/lint-vault` | 审计元数据、索引和知识库卫生 |
-| `/enhance-description` | 增强资源笔记描述 |
-| `/enhance-tags` | 批量生成资源笔记的主题标签 |
-| `/debug` | 启动只读沙箱会话用于调试 |
-| `/generate-template [docx-file]` | 从 Word 空表生成 Jinja 模板 |
-| `/export-csv [edit]` | 导出占位符描述为 CSV |
-| `/fill-docx [--free yes/no]` | 导入编辑后的 CSV 并填充模板 |
-| `/env-helper <操作> <键名>` | 管理敏感数据（添加/查询/更新/删除） |
-| `/rename-vault <旧路径> <新路径>` | 迁移 vault 路径并更新所有引用 |
+**场景描述：** 用户每周或每月进行一次知识库维护，确保知识库质量。
 
-### 维护命令
+**操作流程：**
 
-| 命令 | 用途 |
-|------|------|
-| `bun run --cwd .opencode watch` | 同时启动 frontmatter 和 SQLite 索引监听 |
-| `bun run --cwd .opencode frontmatter:scan` | 一次性扫描知识库 |
-| `bun run --cwd .opencode frontmatter:backfill` | 批量补全缺失的 frontmatter |
-| `bun run --cwd .opencode frontmatter:index:rebuild` | 清空并重建 SQLite 索引 |
-| `bun run --cwd .opencode frontmatter:index:reconcile` | 清理陈旧的索引记录 |
+1. **审计知识库**
+   
+   ```
+   /lint-vault
+   ```
+   
+   系统会检查：
+   - 元数据完整性
+   - 索引一致性
+   - Tag 容量是否超过阈值
+   - 知识库整体卫生状况
+
+2. **处理待描述笔记**
+   
+   如果有待处理笔记：
+   
+   ```
+   /enhance-description
+   ```
+
+3. **生成主题标签**
+   
+   描述增强完成后：
+   
+   ```
+   /enhance-tags
+   ```
+
+4. **处理 Tag 提案**
+   
+   系统可能提出 Tag 处理建议（别名、新 Tag、扩展关系），用户审批：
+   
+   ```
+   审批别名？[y/n]
+   审批新 tag？[all/none/1,2]
+   添加扩展？[y/n]
+   ```
+
+5. **重建索引（必要时）**
+   
+   如果发现索引问题：
+   
+   ```bash
+   bun run --cwd .opencode frontmatter:index:rebuild
+   ```
+
+**命令组合：**
+- `/lint-vault` - 审计知识库卫生
+- `/enhance-description` - 增强资源笔记描述
+- `/enhance-tags` - 批量生成主题标签
+- 维护命令 - 重建索引等
+
+**预期结果：**
+- 知识库元数据完整一致
+- 所有资源笔记有描述和标签
+- Tag 系统保持规范，无重复或冗余
+- 索引状态良好
+
+**详细命令参考：**
+- [维护命令详情](../.opencode/package.json) - 查看 `scripts` 部分
 
 ---
 
-## 故障排查
+### 案例 6：系统调试与问题排查
 
-### 索引问题
+**用户需求：** 遇到知识库查询问题或系统行为异常时，安全地排查问题而不影响现有数据。
 
-**症状：** 查询结果不完整或过期
+**场景描述：** 用户发现知识库查询结果不完整，或某些命令行为不符合预期。
 
-**解决方案：**
-```bash
-# 重建索引
-bun run --cwd .opencode frontmatter:index:rebuild
+**操作流程：**
 
-# 清理陈旧记录
-bun run --cwd .opencode frontmatter:index:reconcile
-```
+1. **启动调试会话**
+   
+   ```
+   /debug 知识库查询问题
+   ```
+   
+   系统进入只读沙箱模式：
+   - 禁用所有知识库自动化策略
+   - 阻止写入 `workbook/wiki/`、`workbook/resources/` 和 `workbook/brainstorm/`
+   - SQLite vault 检索 (`vault_index_search`) 正常工作
 
-### Frontmatter 缺失
+2. **检查知识库状态**
+   
+   在调试会话中：
+   - 检查 `workbook/wiki/index.md` 索引状态
+   - 查看相关笔记的 frontmatter
+   - 验证 SQLite 索引数据
 
-**症状：** 笔记缺少元数据字段
+3. **询问命令使用方法**
+   
+   在调试模式下，可以安全地询问任何命令的使用方法、参数说明或使用场景，系统不会执行实际写入操作：
+   
+   ```
+   ingest 命令如何使用？
+   solidify 和 enhance-description 有什么区别？
+   批量处理 PDF 应该用什么命令？
+   ```
+   
+   适合：
+   - 学习新命令的用法
+   - 了解命令参数选项
+   - 查看命令适用场景
+   - 测试命令组合效果
 
-**解决方案：**
-```bash
-bun run --cwd .opencode frontmatter:backfill
-```
+4. **排查问题**
+   
+   根据调试结果：
+   - **索引不同步** → 运行 `bun run --cwd .opencode frontmatter:index:rebuild`
+   - **缺失 frontmatter** → 运行 `bun run --cwd .opencode frontmatter:backfill`
+   - **重复资源** → 系统自动检测并更新现有笔记
+   - **提升失败** → 检查证据是否充分，补充 `workbook/resources/` 后重试
 
-### 模板填充失败
+5. **退出调试**
+   
+   调试模式是会话级的，启动新会话即可退出。
 
-**症状：** `/fill-docx` 报错或生成空白文档
+**命令组合：**
+- `/debug [主题]` - 启动只读沙箱会话
 
-**排查步骤：**
-1. 确认 `descriptions.csv` 格式正确
-2. 运行 `/export-csv edit` 重新生成占位符
-3. 检查知识库中是否有相关内容
-4. 尝试 `/fill-docx --free yes` 允许网络搜索
+**预期结果：**
+- 安全地排查问题，不影响现有数据
+- 明确问题根源并采取修复措施
+- 恢复知识库正常运行
 
-### 调试模式
+**详细命令参考：**
+- [/debug 命令详情](../.opencode/commands/debug.md)
 
-遇到任何不确定问题时，首先：
+---
 
-```
-/debug
-```
+### 案例 7：知识库路径迁移
 
-进入沙箱模式后，可以安全地检查知识库状态而不影响现有数据。
+**用户需求：** 更改知识库的存储位置或名称（如重命名 `workbook/` 目录）。
 
-#### Vault 路径迁移
+**场景描述：** 用户需要将知识库目录从 `workbook/` 迁移到 `knowledge-base/`。
 
-如果需要更改知识库的存储位置或名称：
+**操作流程：**
 
-```
-/rename-vault <旧路径> <新路径>
-```
+1. **执行路径迁移**
+   
+   ```
+   /rename-vault workbook knowledge-base
+   ```
+   
+   系统会自动：
+   - 更新所有配置文件中的路径引用
+   - 修改 `.opencode/vault-config.json`
+   - 更新相对路径引用（如文档中的链接）
 
-**使用场景：**
-- 更改 `workbook/` 目录名称
-- 迁移知识库到新位置
-- 统一团队协作时的路径引用
+2. **重启监听服务**
+   
+   ```bash
+   bun run --cwd .opencode watch
+   ```
 
-**执行效果：**
-1. 更新所有配置文件中的路径引用
-2. 修改 `.opencode/vault-config.json`
-3. 更新相对路径引用（如文档中的链接）
+**命令组合：**
+- `/rename-vault <旧> <新>` - 迁移 vault 路径
+
+**预期结果：**
+- 知识库目录成功迁移到新路径
+- 所有配置文件和引用更新完成
+- 监听服务正常运行
+
+**详细命令参考：**
+- [/rename-vault 命令详情](../.opencode/commands/rename-vault.md)
+
+---
+
+## Vault 路径迁移
+
+如果需要更改知识库的存储位置或名称，参见 [案例 7：知识库路径迁移](#案例-7知识库路径迁移)。
 
 **注意事项：**
 - 执行前备份知识库
@@ -654,3 +549,5 @@ bun run --cwd .opencode frontmatter:backfill
 - [路由流程图](./routing-flows.md)：系统命令、工作流、技能和规则的完整路由图
 - [元数据字段矩阵](./metadata-field-matrix.md)：所有 frontmatter 字段的详细说明
 - [SQLite 数据视图对齐](./sqlite-dataview-alignment.md)：SQLite 索引机制说明
+- [OpenCode 命令参考](../README.md#常用-opencode-命令)：README 中的命令速查表
+- [维护命令参考](../README.md#运行服务)：README 中的维护命令速查表
