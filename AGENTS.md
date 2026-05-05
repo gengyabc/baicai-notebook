@@ -24,11 +24,11 @@ When folder names are referenced in documentation and workflows, they should be 
 
 ## Folder roles
 
-- `workbook/my-work/`: active intent, drafts, decisions, meetings, and project thinking
-- `workbook/resources/`: captured sources, evidence, and local-file references; keep changes incremental
-- `workbook/brainstorm/`: speculative material; `todo/` and `active/` stay lightweight and human-managed by default, while `brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes
+- `workbook/my-work/`: active intent, drafts, decisions, meetings, and project thinking (index-first)
+- `workbook/resources/`: captured sources, evidence, and local-file references; SQLite-indexed, no index.md needed
+- `workbook/brainstorm/`: speculative material; `todo/` and `active/` stay lightweight and human-managed by default, while `brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes (SQLite-indexed, no index.md needed)
 - `workbook/wiki/`: stable knowledge, curated and index-first
-- `workbook/output/`: deliverables, kept index-first
+- `workbook/output/`: deliverables, index-first
 - `docs/plans/`: development requirements and plans, organized by date-prefixed folders
 - `.opencode/`: project-local agent system
 
@@ -66,6 +66,7 @@ When folder names are referenced in documentation and workflows, they should be 
 
 - Primary discovery: `workbook/wiki/index.md`, `workbook/output/index.md`
 - Structural log: `workbook/wiki/log.md` when present
+- LLM-managed zones (`resources/`, `brainstorm/managed/`): SQLite-indexed, no index.md
 
 Keep provenance, local links, `imageNameKey`, and attachment locality intact.
 

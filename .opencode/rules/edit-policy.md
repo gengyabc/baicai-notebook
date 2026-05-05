@@ -14,5 +14,4 @@ For note schemas and `imageNameKey`, see `.opencode/rules/metadata-conventions.m
 
 - When a change materially restructures `workbook/wiki/`, append a short note to `workbook/wiki/log.md` if that file exists.
 - When creating or materially changing `workbook/wiki/` or `workbook/output/` pages, update the relevant `index.md`.
-- When creating new brainstorm items, update `workbook/brainstorm/index.md`.
 - Root `index.md` should reflect structural changes but does not require frequent updates.
