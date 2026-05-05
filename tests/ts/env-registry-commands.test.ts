@@ -3,7 +3,7 @@ import { $ } from "bun"
 import { join, resolve } from "node:path"
 import { writeFileSync, readFileSync, existsSync, rmSync, mkdirSync } from "node:fs"
 
-const REPO_ROOT = join(import.meta.dir, "..")
+const REPO_ROOT = join(import.meta.dir, "..", "..")
 const ENV_REGISTRY_SCRIPT = join(REPO_ROOT, ".opencode", "scripts", "env-registry.mjs")
 const REGISTRY_PATH = join(REPO_ROOT, ".opencode", "env-registry.json")
 const TEMP_DIR = join(REPO_ROOT, ".temp", "env-registry-test")

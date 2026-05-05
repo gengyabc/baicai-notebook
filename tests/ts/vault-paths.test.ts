@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { join, resolve } from "node:path"
 import { writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs"
 
-const REPO_ROOT = join(import.meta.dir, "..")
+const REPO_ROOT = join(import.meta.dir, "..", "..")
 const OPENCODE_DIR = join(REPO_ROOT, ".opencode")
 const SCRIPTS_DIR = join(OPENCODE_DIR, "scripts")
 const CONFIG_PATH = join(OPENCODE_DIR, "vault-config.json")

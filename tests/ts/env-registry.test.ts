@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test"
 import { $ } from "bun"
 import { join } from "node:path"
 
-const REPO_ROOT = join(import.meta.dir, "..")
+const REPO_ROOT = join(import.meta.dir, "..", "..")
 const ENV_REGISTRY_SCRIPT = join(REPO_ROOT, ".opencode", "scripts", "env-registry.mjs")
 
 async function runEnvRegistry(...args: string[]) {

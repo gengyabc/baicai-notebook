@@ -1,15 +1,38 @@
 [project]
 name = "baicai-notebook"
 version = "0.1.0"
-description = "Add your description here"
+description = "Word document template generation and filling library designed for OpenCode workflows"
 readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.13"
+authors = [
+    {name = "Geng", email = "gengyabc@aliyun.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Office Suites",
+    "Topic :: Text Processing :: Markup",
+]
 dependencies = [
     "cli-anything-drawio>=1.0.0",
     "docxtpl>=0.20.2",
     "markitdown[pdf]>=0.1.5",
     "python-docx>=1.1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/gengyabc/baicai-notebook"
+Repository = "https://github.com/gengyabc/baicai-notebook"
+
+[project.scripts]
+baicai-template-gen = "template_gen.fill_runner:main"
+baicai-generate-template = "template_gen.generate_template:main"
+baicai-export-csv = "template_gen.export_placeholder_csv:main"
+baicai-import-csv = "template_gen.import_placeholder_csv:main"
+baicai-generate-fill-data = "template_gen.generate_fill_data:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -25,4 +48,4 @@ dev = [
 where = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/python"]

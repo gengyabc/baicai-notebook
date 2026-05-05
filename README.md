@@ -1,5 +1,22 @@
 # 个人知识库
 
+## English Summary
+
+**Baicai Notebook** is a personal knowledge system built on OpenCode for:
+- Ingesting sources, querying grounded knowledge, and promoting stable notes to wiki
+- Word document template generation and filling (Jinja2 templates from DOCX)
+- Semi-automated, command-driven workflow with low token consumption
+
+Key features:
+- **Knowledge workflows**: ingest, query, solidify, lint, enhance
+- **Document templates**: generate Jinja templates from Word, export/import CSV, fill documents
+- **Vault management**: SQLite frontmatter index, auto-watch, metadata governance
+- **Secure secrets**: local keychain integration for sensitive data filling
+
+This project works best with [OpenCode](https://opencode.ai). The Python package (`template_gen`) can be used standalone for Word template manipulation.
+
+---
+
 基于 OpenCode 的个人知识系统，用于摄取来源、查询有据可依的知识，并将稳定的笔记提升至 `workbook/wiki/` 并保留溯源信息。
 (采用半自动模式,很多行为采用命令驱动,消耗词元较少,适合节俭度日的小伙伴)
 

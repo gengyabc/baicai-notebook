@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test"
 import { $ } from "bun"
 import { join } from "node:path"
 
-const REPO_ROOT = join(import.meta.dir, "..")
+const REPO_ROOT = join(import.meta.dir, "..", "..")
 const OPENCODE_DIR = join(REPO_ROOT, ".opencode")
 const HARNESS = join(OPENCODE_DIR, "scripts", "run-secure-action-harness.mjs")
 

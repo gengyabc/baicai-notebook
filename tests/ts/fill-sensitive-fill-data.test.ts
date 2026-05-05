@@ -3,7 +3,7 @@ import { $ } from "bun"
 import { join, resolve } from "node:path"
 import { writeFileSync, readFileSync, existsSync, rmSync, mkdirSync } from "node:fs"
 
-const REPO_ROOT = join(import.meta.dir, "..")
+const REPO_ROOT = join(import.meta.dir, "..", "..")
 const SCRIPT = join(REPO_ROOT, ".opencode", "scripts", "fill-sensitive-fill-data.mjs")
 const TEMP_DIR = join(REPO_ROOT, ".temp", "fill-sensitive-test")
 

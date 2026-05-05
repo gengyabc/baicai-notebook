@@ -3,7 +3,7 @@ import { $ } from "bun"
 import { join } from "node:path"
 import { createHash } from "node:crypto"
 
-const REPO_ROOT = join(import.meta.dir, "..")
+const REPO_ROOT = join(import.meta.dir, "..", "..")
 const OPENCODE_DIR = join(REPO_ROOT, ".opencode")
 const HARNESS = join(OPENCODE_DIR, "scripts", "run-secure-action-harness.mjs")
 const FIXTURE_SECRET_NAME = "SECURE_PLUGIN_FIXTURE_SECRET"
