@@ -45,6 +45,7 @@ Legend:
 
 - `workbook/brainstorm/` is human-minimal by default.
 - `workbook/brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes.
+- `workbook/resources/inbox/` is the buffer queue for incoming material before classification; it follows the same metadata schema as `workbook/resources/`.
 - Human-managed notes should preserve useful domain fields instead of being flattened into generic metadata.
 - LLM-managed notes should only carry provenance and pipeline fields that a workflow actually uses.
 - Fields marked `G` are governed by the alias registry at `.opencode/alias-registry.md`. Lint checks report non-canonical values as advisory findings.

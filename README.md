@@ -43,10 +43,32 @@ This project works best with [OpenCode](https://opencode.ai). The Python package
 
 ### 前置要求
 
+- [Obsidian](https://obsidian.md/)：用于查看和编辑知识库笔记
 - [Bun](https://bun.sh/) >= 1.0.0
 - [Node.js](https://nodejs.org/) >= 18.0.0（可选，Bun 可独立运行）
 - [Python](https://www.python.org/) >= 3.10
 - [uv](https://docs.astral.sh/uv/) >= 0.1.0（Python 包管理器）
+
+### Obsidian 配置
+
+1. **安装 Obsidian**
+
+   从 [官网](https://obsidian.md/) 下载并安装
+
+2. **打开知识库**
+
+   在 Obsidian 中选择"打开文件夹作为仓库"，选择本项目的 `workbook/` 目录
+
+3. **安装插件**
+
+   在 Obsidian 设置 → 社区插件中搜索并安装以下插件：
+
+   - **Paste image rename**：自动重命名粘贴的图片，保持图片命名规范
+   - **Obsidian web clipper**：快速剪藏网页内容到知识库
+
+4. **浏览器插件（可选）**
+
+   Obsidian web clipper 需要在浏览器中单独安装扩展程序，支持 Chrome、Firefox 等主流浏览器
 
 ### 安装步骤
 
@@ -103,6 +125,7 @@ bun run --cwd .opencode frontmatter:scan
 
 - `workbook/my-work/`: 当前意图、草稿、决策和项目思考
 - `workbook/resources/`: 捕获的来源和支撑证据
+  - `workbook/resources/inbox/`: 缓冲队列，新摄取内容暂存待分类
   - `workbook/resources/web/`: 网页来源笔记，包含 `attachments/` 子目录存储图片附件（MD5 命名）
   - `workbook/resources/local/`: 本地文件来源笔记
   - `workbook/resources/archive/`: 已归档来源
@@ -250,6 +273,16 @@ llm_description_done: false
 - 保留对具体领域真正有价值的结构化字段
 - 例如：`start_date`、`end_date`、`location`、`host`、`participants`、`organizer`
 - 不要为了统一 schema 删除这些字段
+
+## Tag 维护
+
+知识库使用规范化的 tag 系统，确保检索一致性。核心配置文件：
+
+- `.opencode/canonical-tags.json`：规范标签的唯一法律来源
+- `.opencode/tag-aliases.json`：别名到规范标签的映射
+- `.opencode/tag-expansions.json`：相关标签的检索扩展关系
+
+Tag 容量阈值（默认 100）在 `.opencode/vault-config.json` 中配置。详细维护流程见 [使用教程](docs/tutorial.md)。
 
 ## 敏感信息管理
 

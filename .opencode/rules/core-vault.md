@@ -4,6 +4,7 @@
 
 - `workbook/my-work/` is the active intent layer.
 - `workbook/resources/` is LLM-managed storage for captured sources, evidence, and supporting material, with guardrails.
+- `workbook/resources/inbox/` is the buffer queue for incoming material before classification; content is routed to final destination via `second-brain-ingest`.
 - `workbook/brainstorm/` is the speculative thinking layer and is human-managed by default.
 - `workbook/brainstorm/todo/` and `workbook/brainstorm/active/` are the default lightweight brainstorm areas.
 - `workbook/brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes.
@@ -14,7 +15,7 @@ For retrieval order, promotion, and schema details, follow `.opencode/rules/quer
 
 ## Knowledge standard
 
-- External material should become Markdown in `workbook/resources/`.
+- External material should become Markdown in `workbook/resources/inbox/` first, then be routed to final destination.
 - Important binaries should have a Markdown sidecar.
 - Bare URLs are insufficient; keep provenance, summary, and context.
 - Prefer durable notes over ephemeral references.

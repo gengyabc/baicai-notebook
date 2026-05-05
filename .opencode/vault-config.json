@@ -11,13 +11,16 @@
   "folderPriorities": {
     "wiki": 400,
     "output": 350,
-    "resources": 300,
-    "brainstorm": 200,
-    "myWork": 100
+    "myWork": 300,
+    "resources": 200,
+    "brainstorm": 100
   },
   "managedSubfolders": {
     "brainstorm": [
       "managed"
+    ],
+    "resources": [
+      "inbox"
     ]
   }
 }

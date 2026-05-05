@@ -11,4 +11,4 @@ Process the edited placeholder descriptions and fill the template.
   - `no` (default): only use vault content
   - `yes`: may fill with non-vault content and search the web
 
-Follow the `@workflows/fill-docx.md` workflow.
+Follow the `@.opencode/workflows/fill-docx.md` workflow.

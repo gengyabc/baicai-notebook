@@ -6,9 +6,14 @@ compatibility: opencode
 ## What I do
 
 - classify incoming material by role and confidence
-- decide whether content belongs in `workbook/resources/`, `workbook/brainstorm/`, `workbook/wiki/`, or remains in `workbook/my-work/`
+- route content to appropriate vault layer:
+  - `workbook/resources/inbox/` — uncertain/pending material, buffer queue
+  - `workbook/resources/` — evidence, sources, captured artifacts
+  - `workbook/brainstorm/` — speculative ideas, hypotheses
+  - `workbook/wiki/` — stable, grounded knowledge
+  - `workbook/my-work/` — active intent, drafts, decisions
 - extract durable points without flattening active user intent
-- route derived material into `workbook/brainstorm/` by default and suggest backlinks and next-note placement
+- suggest backlinks and next-note placement
 
 ## When to use me
 

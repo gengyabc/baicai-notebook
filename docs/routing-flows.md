@@ -211,25 +211,29 @@ flowchart TD
     A[URL/file/Zotero] --> B{Source type?}
     B -->|web| C[web-to-resource]
     B -->|pdf| C
-    B -->|zotero| D[second-brain-ingest]
+    B -->|zotero| C
     B -->|local-file| C
-    B -->|note| D
-    C --> E[Check duplicate]
-    D --> E
-    E -->|exists| F[Update existing]
-    E -->|new| G[Create resource note]
-    F --> H[Normalize metadata]
-    G --> H
-    H --> I{Strong evidence?}
-    I -->|yes| J[solidify-to-wiki]
-    I -->|no| K[workbook/brainstorm/]
-    J --> L[Update workbook/wiki/index.md]
-    K --> M[Link to relevant notes]
-    L --> N[Output: resource + links]
+    B -->|note| D[second-brain-ingest]
+    C --> E[Write to resources/inbox/]
+    E --> D
+    D --> F{Classify by role}
+    F -->|evidence| G[resources/]
+    F -->|speculative| H[brainstorm/]
+    F -->|grounded| I[solidify-to-wiki]
+    F -->|active| J[my-work/]
+    F -->|uncertain| K[resources/inbox/]
+    G --> L[Link to relevant notes]
+    H --> L
+    I --> M[Update wiki/index.md]
+    J --> L
+    K --> L
+    L --> N[Output: routed note]
     M --> N
 ```
 
 **Routing Standards:**
+- `web-to-resource` captures to `resources/inbox/` first
+- `second-brain-ingest` routes from inbox to final destination
 - Default derived material to `workbook/brainstorm/`
 - Only promote to `workbook/wiki/` via explicit `solidify` gate
 
@@ -320,15 +324,16 @@ flowchart TD
 flowchart TD
     A[incoming material] --> B{Classify by role}
     B --> C{Confidence level?}
-    C -->|high| D[workbook/wiki/]
-    C -->|medium| E[workbook/brainstorm/]
-    C -->|low| F[workbook/resources/]
-    C -->|active| G[workbook/my-work/]
-    D --> H[Extract durable points]
-    E --> H
-    F --> H
-    G --> H
-    H --> I[Default to workbook/brainstorm/]
+    C -->|high, grounded| D[workbook/wiki/ via solidify]
+    C -->|medium, speculative| E[workbook/brainstorm/]
+    C -->|low, evidence| F[workbook/resources/]
+    C -->|active intent| G[workbook/my-work/]
+    C -->|uncertain| H[workbook/resources/inbox/]
+    D --> I[Extract durable points]
+    E --> I
+    F --> I
+    G --> I
+    H --> I
     I --> J[Suggest backlinks]
     J --> K[Output: routed note]
 ```
@@ -336,6 +341,7 @@ flowchart TD
 **Skill Bounds:**
 - Keep user-authored notes intact
 - Do not promote speculative claims to `workbook/wiki/` by default
+- `inbox/` serves as buffer queue for uncertain material
 
 ### Web to Resource Skill
 
@@ -347,7 +353,8 @@ flowchart TD
     C -->|no| E[Error: fetch failed]
     D --> F[Add provenance]
     F --> G[Normalize metadata]
-    G --> H[Output: resource note]
+    G --> H[Write to resources/inbox/]
+    H --> I[Output: resource note in inbox]
 ```
 
 ---
@@ -419,8 +426,10 @@ flowchart TD
 
 ### Default Paths
 
+- Capture: `web-to-resource` → `workbook/resources/inbox/`
+- Routing: `second-brain-ingest` from inbox to final destination
 - Derived material: `workbook/brainstorm/` by default
-- External sources: `workbook/resources/` for capture, `workbook/brainstorm/` for synthesis
+- External sources: `workbook/resources/` for evidence, `workbook/brainstorm/` for synthesis
 - Promotion: Only through `solidify` gate
 - Debug: Session-scoped, disables all auto-write rules
 

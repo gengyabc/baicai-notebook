@@ -9,6 +9,7 @@ compatibility: opencode
 - summarize why the source matters
 - normalize a note into the resource schema
 - preserve source links and original source identity for web, local-file, and Zotero materials
+- write output to `workbook/resources/inbox/` as a buffer queue before classification
 
 ## When to use me
 

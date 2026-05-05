@@ -26,6 +26,7 @@ When folder names are referenced in documentation and workflows, they should be 
 
 - `workbook/my-work/`: active intent, drafts, decisions, meetings, and project thinking (index-first)
 - `workbook/resources/`: captured sources, evidence, and local-file references; SQLite-indexed, no index.md needed
+- `workbook/resources/inbox/`: buffer queue for incoming material before classification (SQLite-indexed, LLM-managed)
 - `workbook/brainstorm/`: speculative material; `todo/` and `active/` stay lightweight and human-managed by default, while `brainstorm/managed/` is the explicit opt-in area for LLM-managed brainstorm notes (SQLite-indexed, no index.md needed)
 - `workbook/wiki/`: stable knowledge, curated and index-first
 - `workbook/output/`: deliverables, index-first
